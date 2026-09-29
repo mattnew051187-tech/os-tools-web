@@ -14,7 +14,8 @@ apt-get update
 apt-get install -y nodejs npm git iptables-persistent
 
 APP_DIR=/opt/sos-tools
-REPO_URL="https://github.com/mattnew051187-tech/sos-tools-web.git"
+REPO_URL="https://github.com/mattnew051187-tech/os-tools-web.git"
+
 
 # --- fetch the app ---
 rm -rf "$APP_DIR"
