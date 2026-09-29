@@ -1,0 +1,145 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-src 'self' data: http: https:; img-src 'self' data:;" />
+  <title>SOS Tools</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body data-theme="yellow">
+  <!-- ============ LOGIN SCREEN ============ -->
+  <div id="screen-login" class="screen centered">
+    <div class="card login-card">
+      <img class="brand-logo" src="assets/sos-logo.png" alt="SOS Quality Used Goods — Buy · Sell · Repair" />
+      <p class="tagline">SOS Tools — Workshop Launchpad</p>
+      <form id="login-form">
+        <label for="login-username">Username</label>
+        <input id="login-username" type="text" autocomplete="username" autofocus />
+        <label for="login-password">Password</label>
+        <input id="login-password" type="password" autocomplete="current-password" />
+        <button type="submit" class="btn primary block">Sign in</button>
+        <p id="login-error" class="error"></p>
+      </form>
+      <p class="hint">Accounts are managed by your SOS Tools administrator.</p>
+    </div>
+  </div>
+
+  <!-- ============ LOCK SCREEN (PIN) ============ -->
+  <div id="screen-lock" class="screen centered hidden">
+    <div class="card login-card">
+      <div class="lock-icon">&#128274;</div>
+      <h2>Session locked</h2>
+      <p class="tagline" id="lock-user"></p>
+      <div id="pin-display" class="pin-display">&#9679;&#9679;&#9679;&#9679;</div>
+      <div class="keypad" id="keypad"></div>
+      <p id="lock-error" class="error"></p>
+      <button id="lock-logout" class="btn subtle block">Sign out instead</button>
+    </div>
+  </div>
+
+  <!-- ============ MAIN APP ============ -->
+  <div id="screen-main" class="screen hidden">
+    <header class="topbar">
+      <img class="brand-logo small" src="assets/sos-logo.png" alt="SOS Tools" />
+      <nav id="tab-nav" class="tabs"></nav>
+      <div class="user-box">
+        <span id="whoami"></span>
+        <button id="btn-reload" class="btn subtle" title="Reload modules now">&#10227; Reload</button>
+        <button id="btn-account" class="btn subtle" title="Account">Account</button>
+        <button id="btn-logout" class="btn subtle">Sign out</button>
+      </div>
+    </header>
+
+    <div id="banner" class="banner hidden"></div>
+    <div id="must-change" class="banner warn hidden">
+      You are using the default master password. Please change it in <b>Account</b>.
+    </div>
+
+    <main id="tab-content" class="tab-content">
+      <div class="tab-pane" data-pane="phone-tablets"><iframe class="module-frame" title="Phone and Tablets"></iframe></div>
+      <div class="tab-pane" data-pane="gamepad-tester"><iframe class="module-frame" title="Gamepad Tester"></iframe></div>
+      <div class="tab-pane" data-pane="game-library"><iframe class="module-frame" title="Game Library"></iframe></div>
+      <div class="tab-pane" data-pane="product-search"><iframe class="module-frame" title="Product Search"></iframe></div>
+      <div class="tab-pane" data-pane="users">
+        <div class="pane-inner">
+          <h2>User Management</h2>
+          <form id="user-form" class="row-form">
+            <input id="new-username" placeholder="Username" />
+            <input id="new-password" type="password" placeholder="Password" />
+            <input id="new-pin" inputmode="numeric" maxlength="4" placeholder="PIN (4 digits)" />
+            <select id="new-role"><option value="user">Standard user</option><option value="admin">Admin</option></select>
+            <button type="submit" class="btn primary">Create user</button>
+          </form>
+          <p id="user-form-error" class="error"></p>
+          <table class="data-table" id="users-table">
+            <thead><tr><th>Username</th><th>Role</th><th>Created</th><th>Actions</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="tab-pane" data-pane="settings">
+        <div class="pane-inner">
+          <h2>Settings &amp; Modules</h2>
+          <p class="hint">
+            Each tab can show the built-in placeholder, a file on the server, or a web URL.
+            Content is served fresh by the server at every sign-in and unlock.
+          </p>
+          <table class="data-table" id="module-table">
+            <thead><tr><th>Tab</th><th>Type</th><th>Source (file path on server, or URL)</th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <div class="row-form">
+            <label class="inline-label">Idle lock (minutes)</label>
+            <input id="set-idle" type="number" min="1" max="120" style="max-width:90px" />
+            <label class="inline-label">Update notice URL (optional)</label>
+            <input id="set-update-url" placeholder="https://example.com/sos-tools/version.json" style="flex:1" />
+          </div>
+          <div class="row-form">
+            <button id="btn-save-settings" class="btn primary">Save settings</button>
+            <button id="btn-check-updates" class="btn">Check for updates now</button>
+            <span id="settings-msg" class="hint"></span>
+          </div>
+          <p class="hint">Server version: <span id="app-version">…</span></p>
+        </div>
+      </div>
+      <div class="tab-pane" data-pane="activity">
+        <div class="pane-inner">
+          <h2>Activity Log</h2>
+          <table class="data-table" id="log-table">
+            <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Details</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="tab-pane" data-pane="account">
+        <div class="pane-inner narrow">
+          <h2>Account</h2>
+          <form id="change-password-form">
+            <label>Current password</label>
+            <input id="cur-password" type="password" />
+            <label>New password</label>
+            <input id="new-self-password" type="password" />
+            <button type="submit" class="btn primary">Change password</button>
+            <p id="change-password-msg" class="hint"></p>
+          </form>
+          <h2 style="margin-top:28px">Appearance</h2>
+          <p class="hint">Your colour profile is saved to your account and applied every time you sign in — on every device.</p>
+          <label for="theme-select">Colour profile</label>
+          <select id="theme-select">
+            <option value="yellow">Yellow (default)</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+            <option value="blue">Blue</option>
+          </select>
+          <p id="theme-msg" class="hint"></p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
