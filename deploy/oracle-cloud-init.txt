@@ -1,0 +1,83 @@
+#!/bin/bash
+# =====================================================================
+# SOS Tools — Oracle Cloud Always-Free VM setup (Ubuntu 22.04/24.04)
+# Paste this whole file into the "User data / cloud-init" box when
+# creating the instance. The repo address for mattnew051187-tech is already set.
+# It: installs Node.js, fetches the app from GitHub, installs it as an
+# auto-restarting service, opens the firewall, and sets up a 10-minute
+# auto-updater that pulls changes from GitHub (your "deploy" workflow).
+# =====================================================================
+set -e
+
+export DEBIAN_FRONTEND=noninteractive
+apt-get update
+apt-get install -y nodejs npm git iptables-persistent
+
+APP_DIR=/opt/sos-tools
+REPO_URL="https://github.com/mattnew051187-tech/sos-tools-web.git"
+
+# --- fetch the app ---
+rm -rf "$APP_DIR"
+git clone "$REPO_URL" "$APP_DIR"
+cd "$APP_DIR"
+npm install --omit=dev --no-audit --no-fund
+chown -R ubuntu:ubuntu "$APP_DIR"
+sudo -u ubuntu git config --global --add safe.directory "$APP_DIR"
+
+# --- run as a service that restarts if it ever crashes ---
+cat >/etc/systemd/system/sos-tools.service <<'EOF'
+[Unit]
+Description=SOS Tools Web
+After=network.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/opt/sos-tools
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=3
+Environment=PORT=3000
+
+[Install]
+WantedBy=multi-user.target
+EOF
+systemctl enable --now sos-tools
+
+# --- auto-updater: pull from GitHub every 10 minutes, restart only if changed ---
+cat >/etc/systemd/system/sos-update.service <<'EOF'
+[Unit]
+Description=SOS Tools auto-update from GitHub
+
+[Service]
+Type=oneshot
+User=ubuntu
+ExecStart=/bin/bash -c '\
+  cd /opt/sos-tools || exit 0; \
+  out=$$(git pull --ff-only 2>&1); \
+  if ! echo "$$out" | grep -q "Already up to date"; then \
+    echo "Update pulled: $$out"; \
+    npm install --omit=dev --no-audit --no-fund --silent; \
+    systemctl restart sos-tools; \
+  fi'
+EOF
+cat >/etc/systemd/system/sos-update.timer <<'EOF'
+[Unit]
+Description=Check for SOS Tools updates every 10 minutes
+
+[Timer]
+OnCalendar=*:0/10
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+EOF
+systemctl enable --now sos-update.timer
+
+# --- firewall (Oracle's Ubuntu image ships with a locked-down iptables) ---
+iptables -I INPUT 5 -p tcp --dport 3000 -j ACCEPT
+netfilter-persistent save
+ufw allow OpenSSH >/dev/null 2>&1 || true
+ufw allow 3000/tcp >/dev/null 2>&1 || true
+ufw --force enable >/dev/null 2>&1 || true
+
+echo "SOS Tools setup complete — app on port 3000"
