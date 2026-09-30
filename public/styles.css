@@ -277,3 +277,33 @@ input:focus, select:focus { border-color: var(--accent); }
 }
 .data-table th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
 .data-table td input { padding: 6px 9px; font-size: 13px; }
+
+/* Home launcher grid */
+.tab-pane { position: relative; }
+.home-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 18px;
+  padding: 30px;
+  align-content: start;
+}
+.tile {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 34px 18px;
+  text-align: center;
+  cursor: pointer;
+  color: var(--text);
+  box-shadow: 0 4px 14px var(--shadow);
+  transition: transform 0.12s, border-color 0.12s;
+}
+.tile:hover { border-color: var(--accent); transform: translateY(-3px); }
+.tile:active { transform: translateY(0); }
+.tile .tile-icon { font-size: 48px; }
+.tile h3 { margin: 12px 0 4px; font-size: 18px; }
+.tile p { color: var(--muted); font-size: 12.5px; margin: 0; }
+
+/* Back buttons */
+.back-btn { position: absolute; top: 12px; left: 12px; z-index: 5; }
+.pane-inner .back-btn { position: static; margin: 0 0 10px; }

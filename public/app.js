@@ -84,7 +84,7 @@ async function enterApp(user, { via }) {
   show('screen-main');
   $('#whoami').textContent = user.username;
   $('#must-change').classList.toggle('hidden', !user.mustChangePassword);
-  selectTab('phone-tablets');
+  selectTab('home');
 
   if (via === 'pin') flashBanner('Session unlocked — content refreshed.');
 }
@@ -108,7 +108,7 @@ async function refreshModules() {
 async function buildTabNav() {
   const nav = $('#tab-nav');
   nav.innerHTML = '';
-  const tabs = Object.keys(TAB_LABELS);
+  const tabs = ['home', ...Object.keys(TAB_LABELS)];
   if (state.user.role === 'admin') tabs.push(...ADMIN_TABS.map((t) => t.id), 'account');
   else tabs.push('account');
 
@@ -255,6 +255,14 @@ $('#btn-reload').addEventListener('click', async () => {
   await refreshModules();
   flashBanner('Modules reloaded.');
 });
+
+/* Home screen tiles + back buttons */
+document.querySelectorAll('[data-open]').forEach((el) =>
+  el.addEventListener('click', () => selectTab(el.dataset.open))
+);
+document.querySelectorAll('[data-back]').forEach((el) =>
+  el.addEventListener('click', () => selectTab('home'))
+);
 
 /* ---------------- Users pane (admin) ---------------- */
 async function loadUsersTable() {
