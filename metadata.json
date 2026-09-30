@@ -1,0 +1,6 @@
+{
+  "name": "SOS Tools Web",
+  "description": "SOS Tools — Central workshop launchpad and multi-user management web application.",
+  "permissions": [],
+  "capabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

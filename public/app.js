@@ -438,7 +438,8 @@ $('#change-password-form').addEventListener('submit', async (e) => {
   $('#change-password-msg').textContent = res.ok ? 'Password changed.' : res.error;
   if (res.ok) {
     $('#cur-password').value = $('#new-self-password').value = '';
-    state.user = await window.sos.getCurrentUser();
+    const me = await window.sos.getCurrentUser();
+    if (me && me.user) state.user = me.user;
     $('#must-change').classList.add('hidden');
   }
 });

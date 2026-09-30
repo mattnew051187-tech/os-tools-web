@@ -4,13 +4,21 @@
 (function () {
   async function request(method, url, body) {
     try {
+      const token = sessionStorage.getItem('sos_token');
+      const headers = {};
+      if (body) headers['Content-Type'] = 'application/json';
+      if (token) headers['Authorization'] = `Bearer ${token}`;
       const res = await fetch(url, {
         method,
-        headers: body ? { 'Content-Type': 'application/json' } : undefined,
+        headers,
         body: body ? JSON.stringify(body) : undefined,
-        credentials: 'same-origin',
+        credentials: 'include',
       });
-      return await res.json();
+      const data = await res.json();
+      if (data && data.token) {
+        sessionStorage.setItem('sos_token', data.token);
+      }
+      return data;
     } catch (err) {
       return { ok: false, error: 'Cannot reach the SOS Tools server. Check your connection.' };
     }
@@ -21,7 +29,10 @@
     getCurrentUser: () => request('GET', '/api/me'),
     login: (username, password) => request('POST', '/api/login', { username, password }),
     verifyPin: (pin) => request('POST', '/api/verify-pin', { pin }),
-    logout: () => request('POST', '/api/logout'),
+    logout: async () => {
+      sessionStorage.removeItem('sos_token');
+      return request('POST', '/api/logout');
+    },
     setTheme: (theme) => request('POST', '/api/set-theme', { theme }),
     changeOwnPassword: (currentPassword, newPassword) =>
       request('POST', '/api/change-own-password', { currentPassword, newPassword }),
@@ -44,7 +55,12 @@
     getActivityLog: () => request('GET', '/api/activity'),
     openDataFolder: () => Promise.resolve({ ok: false, error: 'Data lives on the central server in the web edition.' }),
     showMessage: (message) => {
-      alert(String(message || ''));
+      const banner = document.getElementById('banner');
+      if (banner) {
+        banner.textContent = String(message || '');
+        banner.classList.remove('hidden');
+        setTimeout(() => banner.classList.add('hidden'), 4000);
+      }
       return Promise.resolve({ ok: true });
     },
 

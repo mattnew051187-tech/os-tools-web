@@ -19,7 +19,7 @@ const store = require('./store');
 const APP_VERSION = '1.1.0';
 const APP_ROOT = __dirname;
 
-const PORT = process.env.PORT || 3000;
+const PORT = 3000;
 const TAB_IDS = ['phone-tablets', 'gamepad-tester', 'game-library', 'product-search'];
 const VALID_THEMES = ['yellow', 'light', 'dark', 'blue'];
 const SESSION_COOKIE = 'sos_session';
@@ -196,10 +196,17 @@ function createSession(user) {
 }
 
 function getSessionUser(req) {
-  const cookies = req.headers.cookie || '';
-  const match = cookies.split(/;\s*/).find((c) => c.startsWith(SESSION_COOKIE + '='));
-  if (!match) return null;
-  const token = decodeURIComponent(match.split('=')[1]);
+  let token = null;
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.slice(7).trim();
+  }
+  if (!token) {
+    const cookies = req.headers.cookie || '';
+    const match = cookies.split(/;\s*/).find((c) => c.startsWith(SESSION_COOKIE + '='));
+    if (match) token = decodeURIComponent(match.split('=')[1]);
+  }
+  if (!token) return null;
   const session = sessions.get(token);
   if (!session) return null;
   if (Date.now() - session.createdAt > SESSION_MAX_AGE_MS) {
@@ -216,6 +223,10 @@ function getSessionUser(req) {
 }
 
 function clearSession(req, res) {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    sessions.delete(authHeader.slice(7).trim());
+  }
   const cookies = req.headers.cookie || '';
   const match = cookies.split(/;\s*/).find((c) => c.startsWith(SESSION_COOKIE + '='));
   if (match) sessions.delete(decodeURIComponent(match.split('=')[1]));
@@ -254,11 +265,12 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-function cookieOptions() {
+function cookieOptions(req) {
+  const isHttps = req ? (req.secure || req.headers['x-forwarded-proto'] === 'https') : false;
   return {
     httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production' || process.env.FORCE_SECURE_COOKIES === '1',
+    sameSite: isHttps ? 'none' : 'lax',
+    secure: isHttps || process.env.NODE_ENV === 'production' || process.env.FORCE_SECURE_COOKIES === '1',
     maxAge: SESSION_MAX_AGE_MS,
   };
 }
@@ -309,9 +321,9 @@ app.post('/api/login', (req, res) => {
   }
   failedLogins.delete(ip);
   const token = createSession(user);
-  res.cookie(SESSION_COOKIE, token, cookieOptions());
+  res.cookie(SESSION_COOKIE, token, cookieOptions(req));
   logActivity(user.username, 'login', 'Signed in with password');
-  res.json({ ok: true, user: publicUser(user) });
+  res.json({ ok: true, user: publicUser(user), token });
 });
 
 app.post('/api/logout', (req, res) => {
@@ -518,7 +530,7 @@ app.get('/healthz', (req, res) => res.json({ ok: true, version: APP_VERSION }));
   loadSettings();
   logActivity('system', 'server-start', `SOS Tools Web v${APP_VERSION} started (store: ${mode})`);
 
-  app.listen(PORT, () => {
-    console.log(`SOS Tools Web v${APP_VERSION} running on http://localhost:${PORT}`);
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`SOS Tools Web v${APP_VERSION} running on http://0.0.0.0:${PORT}`);
   });
 })();

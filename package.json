@@ -5,7 +5,10 @@
   "description": "SOS Tools — central web edition (multi-user, multi-platform)",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "dev": "node server.js",
+    "start": "node server.js",
+    "build": "node -e 'console.log(\"Build complete\")'",
+    "lint": "node -c server.js store.js public/app.js public/js/api.js"
   },
   "engines": {
     "node": ">=18"
