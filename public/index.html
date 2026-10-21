@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-src 'self' data: http: https:; img-src 'self' data:;" />
+        content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https:; font-src 'self' data: https:; frame-src 'self' data: blob: http: https:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; connect-src 'self' data: blob: https:;" />
   <title>SOS Tools Web</title>
   <meta name="description" content="SOS Tools — Central workshop launchpad and multi-user management web application." />
   <meta property="og:title" content="SOS Tools Web" />
@@ -73,23 +73,23 @@
       </div>
       <div class="tab-pane" data-pane="phone-tablets">
         <button class="btn back-btn" data-back>&#8592; Home</button>
-        <iframe class="module-frame" title="Phone and Tablets"></iframe>
+        <iframe class="module-frame" title="Phone and Tablets" allow="gamepad; camera; microphone; display-capture; clipboard-read; clipboard-write; autoplay"></iframe>
       </div>
       <div class="tab-pane" data-pane="gamepad-tester">
         <button class="btn back-btn" data-back>&#8592; Home</button>
-        <iframe class="module-frame" title="Gamepad Tester"></iframe>
+        <iframe class="module-frame" title="Gamepad Tester" allow="gamepad; camera; microphone; display-capture; clipboard-read; clipboard-write; autoplay"></iframe>
       </div>
       <div class="tab-pane" data-pane="game-library">
         <button class="btn back-btn" data-back>&#8592; Home</button>
-        <iframe class="module-frame" title="Game Library"></iframe>
+        <iframe class="module-frame" title="Game Library" allow="gamepad; camera; microphone; display-capture; clipboard-read; clipboard-write; autoplay"></iframe>
       </div>
       <div class="tab-pane" data-pane="product-search">
         <button class="btn back-btn" data-back>&#8592; Home</button>
-        <iframe class="module-frame" title="Product Search"></iframe>
+        <iframe class="module-frame" title="Product Search" allow="gamepad; camera; microphone; display-capture; clipboard-read; clipboard-write; autoplay"></iframe>
       </div>
       <div class="tab-pane" data-pane="repair-book-in">
         <button class="btn back-btn" data-back>&#8592; Home</button>
-        <iframe class="module-frame" title="Repair Book In"></iframe>
+        <iframe class="module-frame" title="Repair Book In" allow="gamepad; camera; microphone; display-capture; clipboard-read; clipboard-write; autoplay"></iframe>
       </div>
       <div class="tab-pane" data-pane="users">
         <div class="pane-inner">

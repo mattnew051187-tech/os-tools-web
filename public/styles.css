@@ -305,5 +305,19 @@ input:focus, select:focus { border-color: var(--accent); }
 .tile p { color: var(--muted); font-size: 12.5px; margin: 0; }
 
 /* Back buttons */
-.back-btn { position: absolute; top: 12px; left: 12px; z-index: 5; }
+.tab-pane:has(.module-frame) {
+  display: none;
+  height: 100%;
+  flex-direction: column;
+}
+.tab-pane.active:has(.module-frame) {
+  display: flex;
+}
+.tab-pane > .back-btn {
+  position: static;
+  margin: 6px 14px;
+  align-self: flex-start;
+  font-size: 12px;
+  padding: 4px 12px;
+}
 .pane-inner .back-btn { position: static; margin: 0 0 10px; }

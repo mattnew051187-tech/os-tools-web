@@ -128,7 +128,7 @@ function resolveModule(settings, tabId) {
   }
   const builtinPath = path.join(APP_ROOT, 'modules', `${tabId}.html`);
   try {
-    return { tabId, type: 'html', content: fs.readFileSync(builtinPath, 'utf8'), from: builtinPath };
+    return { tabId, type: 'builtin', url: `/modules/${tabId}.html`, content: fs.readFileSync(builtinPath, 'utf8'), from: builtinPath };
   } catch {
     return { tabId, type: 'html', content: fallbackModuleHtml(tabId, 'Built-in module file missing.') };
   }
@@ -254,6 +254,7 @@ const app = express();
 app.set('trust proxy', 1);
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(APP_ROOT, 'public')));
+app.use('/modules', express.static(path.join(APP_ROOT, 'modules')));
 
 function requireAuth(req, res, next) {
   const user = getSessionUser(req);

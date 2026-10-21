@@ -62,6 +62,24 @@ $('#login-form').addEventListener('submit', async (e) => {
 /* ---------------- Enter app / refresh ---------------- */
 function applyTheme(theme) {
   document.body.dataset.theme = VALID_THEMES.includes(theme) ? theme : 'yellow';
+  document.querySelectorAll('.module-frame').forEach(updateFrameTheme);
+}
+
+function updateFrameTheme(frame) {
+  try {
+    const doc = frame.contentDocument;
+    if (doc) {
+      const themeCss = THEME_CSS[document.body.dataset.theme] || THEME_CSS.yellow;
+      let styleTag = doc.querySelector('style[data-sos-theme]');
+      if (!styleTag) {
+        styleTag = doc.createElement('style');
+        styleTag.setAttribute('data-sos-theme', '');
+        if (doc.head) doc.head.appendChild(styleTag);
+        else doc.documentElement.appendChild(styleTag);
+      }
+      styleTag.textContent = themeCss;
+    }
+  } catch (e) {}
 }
 
 async function enterApp(user, { via }) {
@@ -97,10 +115,13 @@ async function refreshModules() {
   for (const [tabId, mod] of Object.entries(res.modules)) {
     const frame = document.querySelector(`.tab-pane[data-pane="${tabId}"] iframe`);
     if (!frame) continue;
-    if (mod.type === 'url') {
-      // Cache-bust so re-login always pulls the latest page.
+    if (mod.url) {
+      // Load real URL with cache-busting so browser grants full same-origin privileges
+      frame.removeAttribute('srcdoc');
       frame.src = mod.url + (mod.url.includes('?') ? '&' : '?') + '_rt=' + Date.now();
+      frame.onload = () => updateFrameTheme(frame);
     } else {
+      frame.removeAttribute('src');
       frame.srcdoc = injectThemeCss(mod.content);
     }
   }
