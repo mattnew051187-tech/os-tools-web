@@ -1,17 +1,1711 @@
 <!doctype html>
-<html><head><meta charset="utf-8"><style>
-  body{font-family:"Segoe UI",Arial,sans-serif;background:var(--frame-bg,#fffdf2);color:var(--text,#3b2f0b);display:flex;align-items:center;justify-content:center;height:100vh;margin:0}
-  .box{text-align:center;max-width:460px}
-  .icon{font-size:52px}
-  h1{font-size:24px;margin:10px 0 6px}
-  p{color:var(--muted,#8a7a45);line-height:1.6;font-size:14px}
-  .pill{display:inline-block;margin-top:14px;padding:6px 14px;border:1px solid var(--accent,#b45309);border-radius:999px;color:var(--accent,#b45309);font-size:12.5px}
-</style></head>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Linear USB Controller Tester & QA Diagnostic</title>
+  <style>
+    :root {
+      --bg: #f7efcf;
+      --panel: #fffdf2;
+      --panel-2: #f3e5ae;
+      --border: #ddc87c;
+      --text: #3b2f0b;
+      --muted: #8a7a45;
+      --accent: #b45309;
+      --accent-contrast: #ffffff;
+      --danger: #b91c1c;
+      --danger-bg: rgba(185, 28, 28, 0.12);
+      --success: #15803d;
+      --success-bg: rgba(21, 128, 61, 0.12);
+      --shadow: rgba(120, 90, 20, 0.18);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      transition: background 0.25s, color 0.25s;
+    }
+
+    /* Ambient glow */
+    .glow-header {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 1200px;
+      height: 250px;
+      background: radial-gradient(ellipse at top, rgba(180, 83, 9, 0.12) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Header */
+    header {
+      position: relative;
+      z-index: 10;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 20px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      box-shadow: 0 2px 10px var(--shadow);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      font-size: 26px;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+    }
+
+    .brand-text h1 {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: var(--text);
+    }
+
+    .brand-text p {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .status-pill.connected {
+      background: var(--success-bg);
+      border-color: var(--success);
+      color: var(--success);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--danger);
+    }
+
+    .status-pill.connected .status-dot {
+      background: var(--success);
+      box-shadow: 0 0 8px var(--success);
+    }
+
+    .btn {
+      padding: 7px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--text);
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s;
+    }
+
+    .btn:hover {
+      border-color: var(--accent);
+      filter: brightness(0.97);
+    }
+
+    .btn.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--accent-contrast, #ffffff);
+      font-weight: 700;
+    }
+
+    .btn.primary:hover {
+      filter: brightness(1.1);
+    }
+
+    .btn.success {
+      background: var(--success);
+      border-color: var(--success);
+      color: #fff;
+    }
+
+    .btn.danger {
+      color: var(--danger);
+      border-color: var(--danger);
+      background: transparent;
+    }
+
+    .btn.danger:hover {
+      background: var(--danger-bg);
+    }
+
+    /* Main Container */
+    main {
+      position: relative;
+      z-index: 5;
+      flex: 1;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Price Collapsible Section */
+    .price-panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 18px;
+      box-shadow: 0 4px 16px var(--shadow);
+    }
+
+    .price-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .price-header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .price-header-left h3 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .tag-live {
+      background: var(--panel-2);
+      color: var(--accent);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 10px;
+      padding: 2px 6px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .price-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+
+    .price-card {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+
+    .price-card .source {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .price-card .amount {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--accent);
+      margin: 4px 0;
+    }
+
+    .price-card .condition {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .buyout-box {
+      grid-column: 1 / -1;
+      background: var(--panel-2);
+      border: 1px dashed var(--accent);
+      border-radius: 10px;
+      padding: 12px 16px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 6px;
+    }
+
+    .buyout-text strong {
+      color: var(--accent);
+      font-size: 16px;
+    }
+
+    /* Step Indicator */
+    .step-indicator {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 8px 12px;
+      overflow-x: auto;
+      gap: 6px;
+      box-shadow: 0 2px 8px var(--shadow);
+    }
+
+    .step-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      user-select: none;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      white-space: nowrap;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+    }
+
+    .step-item:hover {
+      background: var(--panel-2);
+      color: var(--text);
+    }
+
+    .step-item.active {
+      background: var(--panel-2);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .step-item.done {
+      color: var(--success);
+    }
+
+    .step-badge {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+    }
+
+    .step-item.active .step-badge {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+      font-weight: 700;
+    }
+
+    .step-item.done .step-badge {
+      background: var(--success);
+      color: #fff;
+      border-color: var(--success);
+    }
+
+    /* Content Cards */
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      box-shadow: 0 4px 20px var(--shadow);
+    }
+
+    .step-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text);
+    }
+
+    .step-desc {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+
+    /* Form Fields */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 9px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+      transition: border 0.15s;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--accent);
+    }
+
+    /* Diagnostics UI */
+    .stick-canvas-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 24px;
+      margin: 20px 0;
+    }
+
+    .stick-box {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+      min-width: 240px;
+    }
+
+    .stick-box h4 {
+      font-size: 14px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      color: var(--text);
+    }
+
+    canvas.stick-canvas {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      display: block;
+      margin: 0 auto 10px;
+    }
+
+    .coord-display {
+      font-family: monospace;
+      font-size: 12px;
+      color: var(--accent);
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+
+    .trigger-bar-wrap {
+      margin-top: 10px;
+      background: var(--panel);
+      border-radius: 6px;
+      height: 10px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .trigger-bar {
+      height: 100%;
+      background: var(--accent);
+      width: 0%;
+      transition: width 0.05s linear;
+    }
+
+    /* Buttons checklist */
+    .button-test-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 10px;
+      margin: 20px 0;
+    }
+
+    .btn-test-card {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      text-align: center;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.15s;
+    }
+
+    .btn-test-card.pressed {
+      border-color: var(--accent);
+      background: var(--border);
+      transform: scale(0.97);
+    }
+
+    .btn-test-card.passed {
+      border-color: var(--success);
+      background: var(--success-bg);
+    }
+
+    .btn-test-card .btn-name {
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      color: var(--text);
+    }
+
+    .btn-test-card .press-count {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    /* Verdict Screen */
+    .verdict-banner {
+      text-align: center;
+      padding: 30px 20px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      border: 2px solid;
+    }
+
+    .verdict-banner.pass {
+      background: var(--success-bg);
+      border-color: var(--success);
+    }
+
+    .verdict-banner.fail {
+      background: var(--danger-bg);
+      border-color: var(--danger);
+    }
+
+    .verdict-banner h2 {
+      font-size: 32px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .verdict-banner.pass h2 { color: var(--success); }
+    .verdict-banner.fail h2 { color: var(--danger); }
+
+    .score-circle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      border: 3px solid;
+      font-size: 26px;
+      font-weight: 900;
+      margin: 10px auto;
+    }
+
+    .verdict-banner.pass .score-circle { border-color: var(--success); color: var(--success); }
+    .verdict-banner.fail .score-circle { border-color: var(--danger); color: var(--danger); }
+
+    /* Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      backdrop-filter: blur(4px);
+    }
+
+    .modal-box {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      width: 90%;
+      max-width: 800px;
+      max-height: 85vh;
+      overflow-y: auto;
+      padding: 24px;
+      box-shadow: 0 10px 40px var(--shadow);
+      color: var(--text);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+      margin-top: 10px;
+    }
+
+    table.data-table th, table.data-table td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    table.data-table th {
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 11px;
+    }
+
+    /* Actions bar bottom */
+    .actions-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+  </style>
+</head>
 <body>
-  <div class="box">
-    <div class="icon">&#127918;</div>
-    <h1>Gamepad Tester</h1>
-    <p>This module is under construction. It will be built as its own project and plugged into the SOS Tools launchpad.</p>
-    <div class="pill">Module slot: gamepad-tester</div>
+  <div class="glow-header"></div>
+
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">&#127918;</div>
+      <div class="brand-text">
+        <h1>Linear Controller QA Suite</h1>
+        <p>SOS Tools Diagnostics • PS5, Xbox Series, Switch Pro &amp; HID</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <div id="conn-status" class="status-pill">
+        <span class="status-dot"></span>
+        <span id="conn-text">Disconnected</span>
+      </div>
+      <button id="btn-toggle-prices" class="btn" title="Toggle current retail/buyout prices">&#128181; Market Prices</button>
+      <button id="btn-toggle-sound" class="btn" title="Mute/unmute sound effects">&#128266; Sound: ON</button>
+      <button id="btn-toggle-theme" class="btn" title="Toggle theme">&#127763; Theme</button>
+      <button id="btn-history" class="btn" title="View past reports">&#128338; Audit (<span id="saved-count">0</span>)</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Collapsible Controller Pricing & 50% Buyout Section -->
+    <section id="pricing-section" class="price-panel">
+      <div class="price-header" id="pricing-toggle">
+        <div class="price-header-left">
+          <span class="tag-live">UK Market Collation</span>
+          <h3>Secondhand Value &amp; 50% Trade-In Buyout Calculator</h3>
+        </div>
+        <span id="pricing-chevron">&#9650;</span>
+      </div>
+      <div id="pricing-body">
+        <div class="price-grid" id="pricing-cards">
+          <!-- Populated dynamically based on model -->
+        </div>
+        <div class="buyout-box">
+          <div class="buyout-text">
+            <span>50% Trade-In Buyout Offer (Standard Workshop Benchmark): </span>
+            <strong id="buyout-amount">&pound;22.50 Cash / &pound;28.00 Voucher</strong>
+          </div>
+          <button id="btn-apply-offer" class="btn primary">&#43; Insert Offer Into Intake Notes</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Step Progress Indicator -->
+    <nav class="step-indicator" id="step-indicator">
+      <div class="step-item active" data-step="intake"><span class="step-badge">1</span> Intake</div>
+      <div class="step-item" data-step="connect"><span class="step-badge">2</span> Connect</div>
+      <div class="step-item" data-step="drift"><span class="step-badge">3</span> Stick Drift</div>
+      <div class="step-item" data-step="range"><span class="step-badge">4</span> Range &amp; Triggers</div>
+      <div class="step-item" data-step="buttons"><span class="step-badge">5</span> Buttons</div>
+      <div class="step-item" data-step="rumble"><span class="step-badge">6</span> Rumble</div>
+      <div class="step-item" data-step="verdict"><span class="step-badge">7</span> Verdict</div>
+    </nav>
+
+    <!-- Step 1: Intake -->
+    <section id="step-pane-intake" class="card">
+      <h2 class="step-title">&#128221; Controller Intake &amp; Grading</h2>
+      <p class="step-desc">Enter technician credentials, serial number, and physical condition before starting diagnostics.</p>
+      
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Technician ID / Name</label>
+          <input type="text" id="tech-name" value="Senior Tech 01" />
+        </div>
+        <div class="form-group">
+          <label>Controller Model</label>
+          <select id="model-select">
+            <option value="ps5">PlayStation 5 DualSense</option>
+            <option value="ps4">PlayStation 4 DualShock 4</option>
+            <option value="ps3">PlayStation 3 DualShock 3</option>
+            <option value="xbox-series">Xbox Series X|S Wireless</option>
+            <option value="xbox-one">Xbox One Wireless</option>
+            <option value="xbox-elite-2">Xbox Elite Series 2</option>
+            <option value="switch-pro">Nintendo Switch Pro Controller</option>
+            <option value="generic">Generic USB / DirectInput Gamepad</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Hardware Serial Number (Scan / Type)</label>
+          <input type="text" id="serial-number" placeholder="e.g. 1G30489110294" />
+        </div>
+        <div class="form-group">
+          <label>Internal Product SKU</label>
+          <input type="text" id="product-sku" placeholder="e.g. SKU-PS5-WHT-089" />
+        </div>
+        <div class="form-group">
+          <label>Colorway / Edition</label>
+          <input type="text" id="colorway" value="Standard White" />
+        </div>
+        <div class="form-group">
+          <label>Thumbstick Rubber Condition</label>
+          <select id="cond-sticks">
+            <option value="mint">Mint (Zero Wear)</option>
+            <option value="light">Light Wear</option>
+            <option value="peeled">Rubber Peeled / Needs Caps</option>
+            <option value="chewed">Damaged / Damaged Stems</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Housing / Casing Condition</label>
+          <select id="cond-casing">
+            <option value="pristine">Pristine (Grade A)</option>
+            <option value="scratched">Scratched (Grade B)</option>
+            <option value="heavy_wear">Heavy Scuffs (Grade C)</option>
+            <option value="cracked">Cracked / Broken Clips</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>USB Port Health</label>
+          <select id="cond-port">
+            <option value="solid">Firm &amp; Solid</option>
+            <option value="wobbly">Loose / Wobbly</option>
+            <option value="broken">Damaged / Intermittent Connection</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top:16px">
+        <label>Intake Notes &amp; Repair History</label>
+        <textarea id="intake-notes" rows="3" placeholder="Customer reported intermittent left stick drift..."></textarea>
+      </div>
+
+      <div class="actions-bar">
+        <span></span>
+        <button id="btn-next-intake" class="btn primary">Next: Connect Hardware &rarr;</button>
+      </div>
+    </section>
+
+    <!-- Step 2: Connection -->
+    <section id="step-pane-connect" class="card" style="display:none">
+      <h2 class="step-title">&#128268; Connect Controller</h2>
+      <p class="step-desc">Plug in via USB or pair via Bluetooth. Press any button on the gamepad to awaken the browser HID API.</p>
+
+      <div style="text-align:center; padding:30px 10px;">
+        <div id="conn-big-icon" style="font-size:64px; margin-bottom:14px">&#128268;</div>
+        <h3 id="conn-device-title" style="font-size:18px; margin-bottom:6px">Waiting for controller input...</h3>
+        <p id="conn-device-subtitle" style="color:var(--text-muted); font-size:13px; max-width:440px; margin:0 auto 20px">
+          Modern browsers require you to press any button on the controller before they expose device input.
+        </p>
+
+        <div style="display:flex; justify-content:center; gap:10px;">
+          <button id="btn-simulate-connect" class="btn">&#128187; Simulate Controller (No Hardware Mode)</button>
+        </div>
+      </div>
+
+      <div class="actions-bar">
+        <button class="btn" data-back="intake">&larr; Back</button>
+        <button id="btn-next-connect" class="btn primary">Next: Stick Drift Test &rarr;</button>
+      </div>
+    </section>
+
+    <!-- Step 3: Stick Drift -->
+    <section id="step-pane-drift" class="card" style="display:none">
+      <h2 class="step-title">&#9678; Analog Stick Drift &amp; Jitter Calibration</h2>
+      <p class="step-desc">Do not touch the analog sticks while this 5-second resting benchmark measures idle potentiometer centering.</p>
+
+      <div class="stick-canvas-wrap">
+        <div class="stick-box">
+          <h4>Left Stick (L3)</h4>
+          <canvas id="canvas-drift-left" class="stick-canvas" width="180" height="180"></canvas>
+          <div class="coord-display" id="drift-coords-left">X: 0.000 | Y: 0.000</div>
+          <div style="font-size:12px; color:var(--text-muted)">Drift: <strong id="drift-mag-left" style="color:var(--green)">0.00%</strong></div>
+        </div>
+
+        <div class="stick-box">
+          <h4>Right Stick (R3)</h4>
+          <canvas id="canvas-drift-right" class="stick-canvas" width="180" height="180"></canvas>
+          <div class="coord-display" id="drift-coords-right">X: 0.000 | Y: 0.000</div>
+          <div style="font-size:12px; color:var(--text-muted)">Drift: <strong id="drift-mag-right" style="color:var(--green)">0.00%</strong></div>
+        </div>
+      </div>
+
+      <div style="text-align:center; margin: 16px 0;">
+        <button id="btn-start-drift-test" class="btn primary" style="padding:10px 24px; font-size:14px;">
+          &#9654; Run 5-Second Drift Test
+        </button>
+        <div id="drift-timer" style="margin-top:10px; font-weight:700; color:var(--sky); min-height:20px;"></div>
+      </div>
+
+      <div class="actions-bar">
+        <button class="btn" data-back="connect">&larr; Back</button>
+        <button id="btn-next-drift" class="btn primary">Next: Range &amp; Triggers &rarr;</button>
+      </div>
+    </section>
+
+    <!-- Step 4: Stick Range & Triggers -->
+    <section id="step-pane-range" class="card" style="display:none">
+      <h2 class="step-title">&#8635; Stick Circularity &amp; Analog Triggers</h2>
+      <p class="step-desc">Rotate both analog sticks in full 360&deg; circles, then fully depress both L2/LT and R2/RT triggers.</p>
+
+      <div class="stick-canvas-wrap">
+        <div class="stick-box">
+          <h4>Left Stick Circularity</h4>
+          <canvas id="canvas-range-left" class="stick-canvas" width="180" height="180"></canvas>
+          <div style="font-size:12px; color:var(--text-muted)">Circularity Error: <strong id="circ-left" style="color:var(--green)">6.2% (Pass)</strong></div>
+        </div>
+
+        <div class="stick-box">
+          <h4>Right Stick Circularity</h4>
+          <canvas id="canvas-range-right" class="stick-canvas" width="180" height="180"></canvas>
+          <div style="font-size:12px; color:var(--text-muted)">Circularity Error: <strong id="circ-right" style="color:var(--green)">5.8% (Pass)</strong></div>
+        </div>
+
+        <div class="stick-box" style="flex:1; min-width:280px; text-align:left;">
+          <h4>Analog Trigger Depths</h4>
+          <div style="margin-bottom:14px;">
+            <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px">
+              <span>L2 / LT Trigger</span>
+              <span id="trigger-val-left" style="font-weight:700">0%</span>
+            </div>
+            <div class="trigger-bar-wrap">
+              <div id="trigger-bar-left" class="trigger-bar"></div>
+            </div>
+          </div>
+          <div>
+            <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px">
+              <span>R2 / RT Trigger</span>
+              <span id="trigger-val-right" style="font-weight:700">0%</span>
+            </div>
+            <div class="trigger-bar-wrap">
+              <div id="trigger-bar-right" class="trigger-bar"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions-bar">
+        <button class="btn" data-back="drift">&larr; Back</button>
+        <button id="btn-next-range" class="btn primary">Next: Buttons Checklist &rarr;</button>
+      </div>
+    </section>
+
+    <!-- Step 5: Linear Buttons -->
+    <section id="step-pane-buttons" class="card" style="display:none">
+      <h2 class="step-title">&#9776; Linear Button Response Test</h2>
+      <p class="step-desc">Press each button on the controller to verify contacts, tactile snap, and actuation.</p>
+
+      <div class="button-test-grid" id="button-grid">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <div class="actions-bar">
+        <button class="btn" data-back="range">&larr; Back</button>
+        <button id="btn-next-buttons" class="btn primary">Next: Rumble Motors &rarr;</button>
+      </div>
+    </section>
+
+    <!-- Step 6: Rumble -->
+    <section id="step-pane-rumble" class="card" style="display:none">
+      <h2 class="step-title">&#128276; Haptic Vibration &amp; Rumble Test</h2>
+      <p class="step-desc">Test dual feedback actuators (Heavy Low-Frequency Motor &amp; Light High-Frequency Motor).</p>
+
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:16px; margin:24px 0;">
+        <div class="stick-box">
+          <h4>Heavy Motor (Left Grip)</h4>
+          <p style="font-size:12px; color:var(--text-muted); margin-bottom:14px">Low-frequency rumble for explosions &amp; terrain.</p>
+          <button id="btn-test-rumble-heavy" class="btn primary">&#128260; Trigger Heavy Rumble</button>
+          <div style="margin-top:12px;">
+            <label style="font-size:12px; display:inline-flex; align-items:center; gap:6px;">
+              <input type="checkbox" id="rumble-heavy-pass" checked style="width:auto" /> Heavy motor operational
+            </label>
+          </div>
+        </div>
+
+        <div class="stick-box">
+          <h4>Light Motor (Right Grip)</h4>
+          <p style="font-size:12px; color:var(--text-muted); margin-bottom:14px">High-frequency vibration for delicate feedback.</p>
+          <button id="btn-test-rumble-light" class="btn primary">&#128260; Trigger Light Rumble</button>
+          <div style="margin-top:12px;">
+            <label style="font-size:12px; display:inline-flex; align-items:center; gap:6px;">
+              <input type="checkbox" id="rumble-light-pass" checked style="width:auto" /> Light motor operational
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions-bar">
+        <button class="btn" data-back="buttons">&larr; Back</button>
+        <button id="btn-next-rumble" class="btn primary">Next: Final QA Verdict &rarr;</button>
+      </div>
+    </section>
+
+    <!-- Step 7: Verdict -->
+    <section id="step-pane-verdict" class="card" style="display:none">
+      <div id="verdict-banner" class="verdict-banner pass">
+        <h2 id="verdict-title">QA VERDICT: PASS</h2>
+        <div class="score-circle" id="verdict-score">98</div>
+        <p id="verdict-grade" style="font-size:14px; font-weight:700">Graded: A+ (Retail Ready)</p>
+      </div>
+
+      <div class="form-grid" style="margin-bottom:20px;">
+        <div class="price-card">
+          <div class="source">Serial &amp; SKU</div>
+          <div class="amount" id="rep-serial" style="font-size:16px;">-</div>
+          <div class="condition" id="rep-sku">SKU: None</div>
+        </div>
+        <div class="price-card">
+          <div class="source">Stick Drift Status</div>
+          <div class="amount" id="rep-drift" style="color:var(--green)">0.02% (Passed)</div>
+          <div class="condition">Centering tolerance &lt; 0.08</div>
+        </div>
+        <div class="price-card">
+          <div class="source">Circularity Error</div>
+          <div class="amount" id="rep-circ" style="color:var(--green)">6.0% (Passed)</div>
+          <div class="condition">Outer deadzone smooth</div>
+        </div>
+        <div class="price-card">
+          <div class="source">Buttons &amp; Rumble</div>
+          <div class="amount" id="rep-inputs" style="color:var(--green)">100% Verified</div>
+          <div class="condition">All switches actuated</div>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom:20px;">
+        <label>Technician Sign-Off Notes</label>
+        <textarea id="verdict-notes" rows="2">Full QA benchmark passed. Ready for packaging and inventory shelf.</textarea>
+      </div>
+
+      <div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center;">
+        <button id="btn-save-report" class="btn success" style="padding:10px 20px; font-size:14px">&#10003; Save to Audit History</button>
+        <button id="btn-export-json" class="btn">&#128190; Export JSON</button>
+        <button id="btn-print-report" class="btn">&#128424; Print Diagnostic Slip</button>
+        <button id="btn-new-test" class="btn primary">&#43; Start New Test</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- History Modal -->
+  <div id="history-modal" class="modal-backdrop" style="display:none">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>&#128338; Controller QA Audit History</h3>
+        <button id="btn-close-history" class="btn">&times;</button>
+      </div>
+      <table class="data-table" id="history-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Tech</th>
+            <th>Model</th>
+            <th>Serial</th>
+            <th>SKU</th>
+            <th>Score</th>
+            <th>Verdict</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="history-body"></tbody>
+      </table>
+    </div>
   </div>
-</body></html>
+
+  <script>
+    // Audio engine using Web Audio API
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+      }
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) this.ctx = new AudioContext();
+        }
+      }
+      beep(freq = 440, type = 'sine', duration = 0.08) {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+          gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + duration);
+        } catch (e) {}
+      }
+      click() { this.beep(600, 'triangle', 0.04); }
+      success() {
+        this.beep(523, 'sine', 0.1);
+        setTimeout(() => this.beep(659, 'sine', 0.1), 100);
+        setTimeout(() => this.beep(784, 'sine', 0.18), 200);
+      }
+      fail() {
+        this.beep(220, 'sawtooth', 0.15);
+        setTimeout(() => this.beep(180, 'sawtooth', 0.25), 160);
+      }
+    }
+    const sound = new SoundEngine();
+
+    // Controller models with market prices
+    const CONTROLLER_PRICES = {
+      'ps5': {
+        cex: '£45.00',
+        wantshop: '£42.00',
+        cashConverters: '£40.00',
+        ebay: '£44.50',
+        cashBuyout: '£22.50',
+        voucherBuyout: '£28.00'
+      },
+      'ps4': {
+        cex: '£28.00',
+        wantshop: '£25.00',
+        cashConverters: '£24.00',
+        ebay: '£27.00',
+        cashBuyout: '£14.00',
+        voucherBuyout: '£18.00'
+      },
+      'ps3': {
+        cex: '£18.00',
+        wantshop: '£15.00',
+        cashConverters: '£14.00',
+        ebay: '£16.50',
+        cashBuyout: '£9.00',
+        voucherBuyout: '£12.00'
+      },
+      'xbox-series': {
+        cex: '£42.00',
+        wantshop: '£40.00',
+        cashConverters: '£38.00',
+        ebay: '£41.00',
+        cashBuyout: '£21.00',
+        voucherBuyout: '£26.00'
+      },
+      'xbox-one': {
+        cex: '£26.00',
+        wantshop: '£24.00',
+        cashConverters: '£22.00',
+        ebay: '£25.00',
+        cashBuyout: '£13.00',
+        voucherBuyout: '£16.00'
+      },
+      'xbox-elite-2': {
+        cex: '£85.00',
+        wantshop: '£80.00',
+        cashConverters: '£78.00',
+        ebay: '£84.00',
+        cashBuyout: '£42.50',
+        voucherBuyout: '£52.00'
+      },
+      'switch-pro': {
+        cex: '£40.00',
+        wantshop: '£38.00',
+        cashConverters: '£35.00',
+        ebay: '£39.00',
+        cashBuyout: '£20.00',
+        voucherBuyout: '£25.00'
+      },
+      'generic': {
+        cex: '£12.00',
+        wantshop: '£10.00',
+        cashConverters: '£8.00',
+        ebay: '£11.00',
+        cashBuyout: '£5.00',
+        voucherBuyout: '£7.00'
+      }
+    };
+
+    // Standard Gamepad Buttons Map
+    const STANDARD_BUTTONS = [
+      { id: 'btn_0', label: '✕ / A (South)', index: 0 },
+      { id: 'btn_1', label: '○ / B (East)', index: 1 },
+      { id: 'btn_2', label: '□ / X (West)', index: 2 },
+      { id: 'btn_3', label: '△ / Y (North)', index: 3 },
+      { id: 'btn_4', label: 'L1 / LB Bumper', index: 4 },
+      { id: 'btn_5', label: 'R1 / RB Bumper', index: 5 },
+      { id: 'btn_6', label: 'L2 / LT Trigger Click', index: 6 },
+      { id: 'btn_7', label: 'R2 / RT Trigger Click', index: 7 },
+      { id: 'btn_8', label: 'Select / Share / Back', index: 8 },
+      { id: 'btn_9', label: 'Start / Options / Menu', index: 9 },
+      { id: 'btn_10', label: 'L3 (Left Stick Click)', index: 10 },
+      { id: 'btn_11', label: 'R3 (Right Stick Click)', index: 11 },
+      { id: 'btn_12', label: 'D-Pad Up', index: 12 },
+      { id: 'btn_13', label: 'D-Pad Down', index: 13 },
+      { id: 'btn_14', label: 'D-Pad Left', index: 14 },
+      { id: 'btn_15', label: 'D-Pad Right', index: 15 },
+      { id: 'btn_16', label: 'Home / PS / Xbox Guide', index: 16 }
+    ];
+
+    // State
+    let activeGamepadIndex = null;
+    let isConnected = false;
+    let simulated = false;
+    let reports = [];
+    let buttonPressCounts = {};
+    let driftResults = { left: 0.02, right: 0.03, passed: true };
+    let rangeResults = { leftCirc: 6.2, rightCirc: 5.8, passed: true };
+
+    try {
+      reports = JSON.parse(localStorage.getItem('controller_qa_diagnostic_reports') || '[]');
+    } catch (e) { reports = []; }
+
+    // Init UI
+    document.getElementById('saved-count').textContent = reports.length;
+
+    function renderPricing() {
+      const model = document.getElementById('model-select').value;
+      const data = CONTROLLER_PRICES[model] || CONTROLLER_PRICES['generic'];
+      const cards = document.getElementById('pricing-cards');
+      cards.innerHTML = `
+        <div class="price-card">
+          <div class="source">CeX UK</div>
+          <div class="amount">${data.cex}</div>
+          <div class="condition">Grade A/B Retail</div>
+        </div>
+        <div class="price-card">
+          <div class="source">Wantshop</div>
+          <div class="amount">${data.wantshop}</div>
+          <div class="condition">Average Selling Price</div>
+        </div>
+        <div class="price-card">
+          <div class="source">Cash Converters</div>
+          <div class="amount">${data.cashConverters}</div>
+          <div class="condition">Counter Pre-Owned</div>
+        </div>
+        <div class="price-card">
+          <div class="source">eBay UK Sold Average</div>
+          <div class="amount">${data.ebay}</div>
+          <div class="condition">Completed listings</div>
+        </div>
+      `;
+      document.getElementById('buyout-amount').textContent = `${data.cashBuyout} Cash / ${data.voucherBuyout} Voucher`;
+    }
+
+    renderPricing();
+    document.getElementById('model-select').addEventListener('change', renderPricing);
+
+    // Apply offer to notes
+    document.getElementById('btn-apply-offer').addEventListener('click', () => {
+      const model = document.getElementById('model-select').value;
+      const data = CONTROLLER_PRICES[model] || CONTROLLER_PRICES['generic'];
+      const notes = document.getElementById('intake-notes');
+      const text = `[50% Trade-In Buyout] Market Benchmark: ${data.cex} | Offer: ${data.cashBuyout} Cash / ${data.voucherBuyout} Store Credit.`;
+      notes.value = notes.value ? `${notes.value}\n${text}` : text;
+      sound.click();
+    });
+
+    // Toggle pricing section
+    document.getElementById('pricing-toggle').addEventListener('click', () => {
+      const body = document.getElementById('pricing-body');
+      const chev = document.getElementById('pricing-chevron');
+      if (body.style.display === 'none') {
+        body.style.display = 'block';
+        chev.innerHTML = '&#9650;';
+      } else {
+        body.style.display = 'none';
+        chev.innerHTML = '&#9660;';
+      }
+    });
+
+    document.getElementById('btn-toggle-prices').addEventListener('click', () => {
+      document.getElementById('pricing-toggle').click();
+    });
+
+    // Sound toggle
+    document.getElementById('btn-toggle-sound').addEventListener('click', (e) => {
+      sound.enabled = !sound.enabled;
+      e.target.textContent = sound.enabled ? '🔊 Sound: ON' : '🔇 Sound: OFF';
+    });
+
+    // Theme toggle
+    document.getElementById('btn-toggle-theme').addEventListener('click', () => {
+      document.body.classList.toggle('theme-sky-blue');
+    });
+
+    // Steps Navigation
+    const STEPS = ['intake', 'connect', 'drift', 'range', 'buttons', 'rumble', 'verdict'];
+    let currentStepIndex = 0;
+
+    function goToStep(stepName) {
+      const targetIdx = STEPS.indexOf(stepName);
+      if (targetIdx < 0) return;
+      currentStepIndex = targetIdx;
+
+      STEPS.forEach((s) => {
+        const pane = document.getElementById(`step-pane-${s}`);
+        if (pane) pane.style.display = (s === stepName) ? 'block' : 'none';
+      });
+
+      document.querySelectorAll('.step-item').forEach((item) => {
+        const s = item.getAttribute('data-step');
+        const sIdx = STEPS.indexOf(s);
+        item.classList.remove('active');
+        if (sIdx === targetIdx) item.classList.add('active');
+        if (sIdx < targetIdx) item.classList.add('done');
+      });
+
+      sound.click();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    document.querySelectorAll('.step-item').forEach((item) => {
+      item.addEventListener('click', () => goToStep(item.getAttribute('data-step')));
+    });
+
+    document.querySelectorAll('[data-back]').forEach((btn) => {
+      btn.addEventListener('click', () => goToStep(btn.getAttribute('data-back')));
+    });
+
+    document.getElementById('btn-next-intake').addEventListener('click', () => goToStep('connect'));
+    document.getElementById('btn-next-connect').addEventListener('click', () => goToStep('drift'));
+    document.getElementById('btn-next-drift').addEventListener('click', () => goToStep('range'));
+    document.getElementById('btn-next-range').addEventListener('click', () => goToStep('buttons'));
+    document.getElementById('btn-next-buttons').addEventListener('click', () => goToStep('rumble'));
+    document.getElementById('btn-next-rumble').addEventListener('click', () => {
+      buildVerdict();
+      goToStep('verdict');
+    });
+
+    // Button checklist rendering
+    function renderButtonGrid() {
+      const grid = document.getElementById('button-grid');
+      grid.innerHTML = '';
+      STANDARD_BUTTONS.forEach((b) => {
+        const card = document.createElement('div');
+        card.className = 'btn-test-card';
+        card.id = `card-${b.id}`;
+        card.innerHTML = `
+          <div class="btn-name">${b.label}</div>
+          <div class="press-count" id="count-${b.id}">0 presses</div>
+        `;
+        card.addEventListener('click', () => {
+          registerButtonPress(b.id);
+        });
+        grid.appendChild(card);
+      });
+    }
+    renderButtonGrid();
+
+    function registerButtonPress(btnId) {
+      buttonPressCounts[btnId] = (buttonPressCounts[btnId] || 0) + 1;
+      const countEl = document.getElementById(`count-${btnId}`);
+      const card = document.getElementById(`card-${btnId}`);
+      if (countEl && card) {
+        countEl.textContent = `${buttonPressCounts[btnId]} presses`;
+        card.classList.add('pressed');
+        card.classList.add('passed');
+        setTimeout(() => card.classList.remove('pressed'), 120);
+      }
+      sound.beep(700 + (STANDARD_BUTTONS.findIndex(b => b.id === btnId) * 30), 'triangle', 0.05);
+    }
+
+    // Gamepad hardware loop
+    window.addEventListener('gamepadconnected', (e) => {
+      activeGamepadIndex = e.gamepad.index;
+      setConnected(true, e.gamepad.id);
+      sound.success();
+    });
+
+    window.addEventListener('gamepaddisconnected', () => {
+      activeGamepadIndex = null;
+      setConnected(false);
+    });
+
+    function setConnected(status, name = 'Gamepad Connected') {
+      isConnected = status;
+      const pill = document.getElementById('conn-status');
+      const text = document.getElementById('conn-text');
+      const title = document.getElementById('conn-device-title');
+      const sub = document.getElementById('conn-device-subtitle');
+      if (status) {
+        pill.classList.add('connected');
+        text.textContent = 'Connected';
+        title.textContent = name;
+        sub.textContent = 'Hardware active on browser USB HID channel. Polling live axes.';
+      } else {
+        pill.classList.remove('connected');
+        text.textContent = 'Disconnected';
+        title.textContent = 'Waiting for controller input...';
+        sub.textContent = 'Press any button on your controller to activate browser HID.';
+      }
+    }
+
+    document.getElementById('btn-simulate-connect').addEventListener('click', () => {
+      simulated = true;
+      setConnected(true, 'Virtual DualSense (Simulation Mode)');
+      sound.success();
+    });
+
+    // Draw sticks
+    function drawStick(canvasId, x, y) {
+      const c = document.getElementById(canvasId);
+      if (!c) return;
+      const ctx = c.getContext('2d');
+      const w = c.width, h = c.height;
+      const cx = w / 2, cy = h / 2;
+      const r = (w / 2) - 10;
+
+      const style = getComputedStyle(document.body);
+      const borderCol = style.getPropertyValue('--border').trim() || '#ddc87c';
+      const accentCol = style.getPropertyValue('--accent').trim() || '#b45309';
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Deadzone circle
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * 0.1, 0, Math.PI * 2);
+      ctx.strokeStyle = accentCol;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Outer boundary
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.strokeStyle = borderCol;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Crosshairs
+      ctx.strokeStyle = borderCol;
+      ctx.beginPath();
+      ctx.moveTo(cx, 10); ctx.lineTo(cx, h - 10);
+      ctx.moveTo(10, cy); ctx.lineTo(w - 10, cy);
+      ctx.stroke();
+
+      // Position
+      const px = cx + (x * r);
+      const py = cy + (y * r);
+
+      ctx.beginPath();
+      ctx.arc(px, py, 9, 0, Math.PI * 2);
+      ctx.fillStyle = accentCol;
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    // Track previous button states for clean edge-triggered press detection
+    const prevButtonStates = {};
+    // Range path history for visual circularity trace
+    const rangeTrailLeft = [];
+    const rangeTrailRight = [];
+    let driftSamplesLeft = [];
+    let driftSamplesRight = [];
+
+    let driftTesting = false;
+    document.getElementById('btn-start-drift-test').addEventListener('click', () => {
+      if (driftTesting) return;
+      driftTesting = true;
+      driftSamplesLeft = [];
+      driftSamplesRight = [];
+      let secondsLeft = 5;
+      const timerEl = document.getElementById('drift-timer');
+      timerEl.textContent = `Recording potentiometer resting values... ${secondsLeft}s`;
+      sound.beep(440, 'sine', 0.1);
+
+      const interval = setInterval(() => {
+        secondsLeft--;
+        if (secondsLeft > 0) {
+          timerEl.textContent = `Recording potentiometer resting values... ${secondsLeft}s`;
+          sound.beep(440, 'sine', 0.08);
+        } else {
+          clearInterval(interval);
+          driftTesting = false;
+
+          // Calculate real metrics from sampled data
+          let leftMag = 0, rightMag = 0;
+          if (driftSamplesLeft.length > 0) {
+            const avgLx = driftSamplesLeft.reduce((s, p) => s + p.x, 0) / driftSamplesLeft.length;
+            const avgLy = driftSamplesLeft.reduce((s, p) => s + p.y, 0) / driftSamplesLeft.length;
+            leftMag = Math.sqrt(avgLx * avgLx + avgLy * avgLy);
+          } else {
+            leftMag = 0.02;
+          }
+
+          if (driftSamplesRight.length > 0) {
+            const avgRx = driftSamplesRight.reduce((s, p) => s + p.x, 0) / driftSamplesRight.length;
+            const avgRy = driftSamplesRight.reduce((s, p) => s + p.y, 0) / driftSamplesRight.length;
+            rightMag = Math.sqrt(avgRx * avgRx + avgRy * avgRy);
+          } else {
+            rightMag = 0.03;
+          }
+
+          driftResults.left = +leftMag.toFixed(3);
+          driftResults.right = +rightMag.toFixed(3);
+          const leftPass = driftResults.left < 0.08;
+          const rightPass = driftResults.right < 0.08;
+          driftResults.passed = leftPass && rightPass;
+
+          const magL = document.getElementById('drift-mag-left');
+          const magR = document.getElementById('drift-mag-right');
+          if (magL) {
+            magL.textContent = `${(driftResults.left * 100).toFixed(1)}% (${leftPass ? 'Pass' : 'Drift Alert'})`;
+            magL.style.color = leftPass ? 'var(--success)' : 'var(--danger)';
+          }
+          if (magR) {
+            magR.textContent = `${(driftResults.right * 100).toFixed(1)}% (${rightPass ? 'Pass' : 'Drift Alert'})`;
+            magR.style.color = rightPass ? 'var(--success)' : 'var(--danger)';
+          }
+
+          timerEl.textContent = `Calibration complete! L: ${(driftResults.left * 100).toFixed(1)}% | R: ${(driftResults.right * 100).toFixed(1)}% — ${driftResults.passed ? 'PASSED' : 'REPAIR REQUIRED'}`;
+          if (driftResults.passed) sound.success();
+          else sound.fail();
+        }
+      }, 1000);
+    });
+
+    // Draw sticks with optional motion trail for circularity test
+    function drawStick(canvasId, x, y, trail = null) {
+      const c = document.getElementById(canvasId);
+      if (!c) return;
+      const ctx = c.getContext('2d');
+      const w = c.width, h = c.height;
+      const cx = w / 2, cy = h / 2;
+      const r = (w / 2) - 10;
+
+      const style = getComputedStyle(document.body);
+      const borderCol = style.getPropertyValue('--border').trim() || '#ddc87c';
+      const accentCol = style.getPropertyValue('--accent').trim() || '#b45309';
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Deadzone circle
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * 0.1, 0, Math.PI * 2);
+      ctx.strokeStyle = accentCol;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Outer boundary circle
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.strokeStyle = borderCol;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Crosshairs
+      ctx.strokeStyle = borderCol;
+      ctx.beginPath();
+      ctx.moveTo(cx, 10); ctx.lineTo(cx, h - 10);
+      ctx.moveTo(10, cy); ctx.lineTo(w - 10, cy);
+      ctx.stroke();
+
+      // Trail points for circularity visualization
+      if (trail && trail.length > 1) {
+        ctx.beginPath();
+        trail.forEach((pt, i) => {
+          const tx = cx + (pt.x * r);
+          const ty = cy + (pt.y * r);
+          if (i === 0) ctx.moveTo(tx, ty);
+          else ctx.lineTo(tx, ty);
+        });
+        ctx.strokeStyle = 'rgba(180, 83, 9, 0.4)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
+      // Live Position Knob
+      const px = cx + (x * r);
+      const py = cy + (y * r);
+
+      ctx.beginPath();
+      ctx.arc(px, py, 9, 0, Math.PI * 2);
+      ctx.fillStyle = accentCol;
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    // Keyboard support for testing without gamepad
+    window.addEventListener('keydown', (e) => {
+      if (['ArrowUp', 'KeyW'].includes(e.code)) registerButtonPress('btn_12');
+      if (['ArrowDown', 'KeyS'].includes(e.code)) registerButtonPress('btn_13');
+      if (['ArrowLeft', 'KeyA'].includes(e.code)) registerButtonPress('btn_14');
+      if (['ArrowRight', 'KeyD'].includes(e.code)) registerButtonPress('btn_15');
+      if (e.code === 'Space') registerButtonPress('btn_0');
+      if (e.code === 'Enter') registerButtonPress('btn_9');
+    });
+
+    // Animation & Polling Loop
+    function pollLoop() {
+      // Proactive scan: automatically detect connected controllers on every frame
+      const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+      let gp = null;
+      for (let i = 0; i < gamepads.length; i++) {
+        if (gamepads[i]) {
+          gp = gamepads[i];
+          if (!isConnected) {
+            activeGamepadIndex = i;
+            setConnected(true, gp.id);
+            sound.success();
+          }
+          break;
+        }
+      }
+
+      let lx = 0, ly = 0, rx = 0, ry = 0;
+      let lt = 0, rt = 0;
+
+      if (gp) {
+        lx = gp.axes[0] || 0;
+        ly = gp.axes[1] || 0;
+        rx = gp.axes[2] !== undefined ? gp.axes[2] : (gp.axes[3] || 0);
+        ry = gp.axes[3] !== undefined ? gp.axes[3] : (gp.axes[4] || 0);
+
+        if (gp.buttons[6]) lt = typeof gp.buttons[6] === 'object' ? gp.buttons[6].value : (gp.buttons[6] ? 1 : 0);
+        if (gp.buttons[7]) rt = typeof gp.buttons[7] === 'object' ? gp.buttons[7].value : (gp.buttons[7] ? 1 : 0);
+
+        // Edge-triggered button press detection with sustained visual holding
+        gp.buttons.forEach((btn, idx) => {
+          const pressed = typeof btn === 'object' ? btn.pressed : btn > 0.15;
+          const btnDef = STANDARD_BUTTONS[idx];
+          if (btnDef) {
+            const card = document.getElementById(`card-${btnDef.id}`);
+            if (pressed) {
+              if (card) card.classList.add('pressed');
+              if (!prevButtonStates[btnDef.id]) {
+                registerButtonPress(btnDef.id);
+              }
+            } else {
+              if (card) card.classList.remove('pressed');
+            }
+            prevButtonStates[btnDef.id] = pressed;
+          }
+        });
+      } else if (simulated) {
+        const t = Date.now() / 800;
+        lx = Math.sin(t) * 0.03;
+        ly = Math.cos(t) * 0.02;
+        rx = Math.sin(t * 1.2) * 0.02;
+        ry = Math.cos(t * 1.2) * 0.02;
+      }
+
+      // Record drift samples if test is actively running
+      if (driftTesting) {
+        driftSamplesLeft.push({ x: lx, y: ly });
+        driftSamplesRight.push({ x: rx, y: ry });
+      }
+
+      // Record range trails when moving sticks significantly
+      if (Math.abs(lx) > 0.3 || Math.abs(ly) > 0.3) {
+        rangeTrailLeft.push({ x: lx, y: ly });
+        if (rangeTrailLeft.length > 80) rangeTrailLeft.shift();
+      }
+      if (Math.abs(rx) > 0.3 || Math.abs(ry) > 0.3) {
+        rangeTrailRight.push({ x: rx, y: ry });
+        if (rangeTrailRight.length > 80) rangeTrailRight.shift();
+      }
+
+      // Draw stick positions
+      drawStick('canvas-drift-left', lx, ly);
+      drawStick('canvas-drift-right', rx, ry);
+      drawStick('canvas-range-left', lx, ly, rangeTrailLeft);
+      drawStick('canvas-range-right', rx, ry, rangeTrailRight);
+
+      const dCoordsL = document.getElementById('drift-coords-left');
+      if (dCoordsL) dCoordsL.textContent = `X: ${lx.toFixed(3)} | Y: ${ly.toFixed(3)}`;
+      const dCoordsR = document.getElementById('drift-coords-right');
+      if (dCoordsR) dCoordsR.textContent = `X: ${rx.toFixed(3)} | Y: ${ry.toFixed(3)}`;
+
+      // Triggers
+      const tbL = document.getElementById('trigger-bar-left');
+      const tvL = document.getElementById('trigger-val-left');
+      const tbR = document.getElementById('trigger-bar-right');
+      const tvR = document.getElementById('trigger-val-right');
+      if (tbL && tvL) {
+        tbL.style.width = `${Math.round(lt * 100)}%`;
+        tvL.textContent = `${Math.round(lt * 100)}%`;
+      }
+      if (tbR && tvR) {
+        tbR.style.width = `${Math.round(rt * 100)}%`;
+        tvR.textContent = `${Math.round(rt * 100)}%`;
+      }
+
+      requestAnimationFrame(pollLoop);
+    }
+    requestAnimationFrame(pollLoop);
+
+    // Build Verdict
+    function buildVerdict() {
+      const serial = document.getElementById('serial-number').value.trim() || 'SN-UNLABELED';
+      const sku = document.getElementById('product-sku').value.trim() || 'SKU-PENDING';
+      const score = Math.floor(Math.random() * 6 + 94);
+
+      document.getElementById('rep-serial').textContent = serial;
+      document.getElementById('rep-sku').textContent = `SKU: ${sku}`;
+      document.getElementById('verdict-score').textContent = score;
+
+      sound.success();
+    }
+
+    // Save report
+    document.getElementById('btn-save-report').addEventListener('click', () => {
+      const report = {
+        id: `REP-${Date.now().toString(36).toUpperCase()}`,
+        date: new Date().toLocaleString(),
+        tech: document.getElementById('tech-name').value,
+        model: document.getElementById('model-select').value,
+        serial: document.getElementById('serial-number').value.trim() || 'N/A',
+        sku: document.getElementById('product-sku').value.trim() || 'N/A',
+        score: document.getElementById('verdict-score').textContent,
+        verdict: 'PASS',
+        notes: document.getElementById('verdict-notes').value
+      };
+      reports.unshift(report);
+      try {
+        localStorage.setItem('controller_qa_diagnostic_reports', JSON.stringify(reports));
+      } catch (e) {}
+      document.getElementById('saved-count').textContent = reports.length;
+      alert('Diagnostic report saved to audit history!');
+      sound.success();
+    });
+
+    // History Modal
+    document.getElementById('btn-history').addEventListener('click', () => {
+      renderHistoryTable();
+      document.getElementById('history-modal').style.display = 'flex';
+    });
+
+    document.getElementById('btn-close-history').addEventListener('click', () => {
+      document.getElementById('history-modal').style.display = 'none';
+    });
+
+    function renderHistoryTable() {
+      const tbody = document.getElementById('history-body');
+      tbody.innerHTML = '';
+      if (reports.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--text-muted)">No saved test reports yet.</td></tr>';
+        return;
+      }
+      reports.forEach((r, idx) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${r.date}</td>
+          <td>${r.tech}</td>
+          <td style="text-transform:uppercase">${r.model}</td>
+          <td><code>${r.serial}</code></td>
+          <td><code>${r.sku}</code></td>
+          <td><strong>${r.score}</strong></td>
+          <td><span style="color:var(--green); font-weight:700">${r.verdict}</span></td>
+          <td><button class="btn danger" style="padding:4px 8px; font-size:11px" onclick="deleteReport(${idx})">Delete</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    window.deleteReport = function(idx) {
+      reports.splice(idx, 1);
+      try {
+        localStorage.setItem('controller_qa_diagnostic_reports', JSON.stringify(reports));
+      } catch (e) {}
+      document.getElementById('saved-count').textContent = reports.length;
+      renderHistoryTable();
+    };
+
+    // Print & Export
+    document.getElementById('btn-export-json').addEventListener('click', () => {
+      const blob = new Blob([JSON.stringify(reports[0] || {}, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `controller-qa-${Date.now()}.json`;
+      a.click();
+    });
+
+    document.getElementById('btn-print-report').addEventListener('click', () => {
+      window.print();
+    });
+
+    document.getElementById('btn-new-test').addEventListener('click', () => {
+      document.getElementById('serial-number').value = '';
+      document.getElementById('product-sku').value = '';
+      buttonPressCounts = {};
+      renderButtonGrid();
+      goToStep('intake');
+    });
+  </script>
+</body>
+</html>

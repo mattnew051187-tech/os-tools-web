@@ -49,7 +49,7 @@ async function init() {
   if (uri) {
     try {
       const { MongoClient } = require('mongodb');
-      const client = new MongoClient(uri, { serverSelectionTimeoutMS: 15000 });
+      const client = new MongoClient(uri, { serverSelectionTimeoutMS: 3000, connectTimeoutMS: 3000 });
       await client.connect();
       const dbName = parseDbName(uri) || 'sos-tools';
       const db = client.db(dbName);

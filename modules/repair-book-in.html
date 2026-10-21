@@ -1,0 +1,1631 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SOS Repair Book In — Job Intake &amp; Workshop Tracker</title>
+  <style>
+    :root {
+      --bg: #f7efcf;
+      --panel: #fffdf2;
+      --panel-2: #f3e5ae;
+      --border: #ddc87c;
+      --text: #3b2f0b;
+      --muted: #8a7a45;
+      --accent: #b45309;
+      --accent-contrast: #ffffff;
+      --danger: #b91c1c;
+      --danger-bg: rgba(185, 28, 28, 0.12);
+      --success: #15803d;
+      --success-bg: rgba(21, 128, 61, 0.12);
+      --amber: #b45309;
+      --amber-bg: rgba(180, 83, 9, 0.12);
+      --info: #0284c7;
+      --info-bg: rgba(2, 132, 199, 0.12);
+      --shadow: rgba(120, 90, 20, 0.18);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      transition: background 0.25s, color 0.25s;
+    }
+
+    .ambient-glow {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 1200px;
+      height: 220px;
+      background: radial-gradient(ellipse at top, rgba(180, 83, 9, 0.12) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Header */
+    header {
+      position: relative;
+      z-index: 10;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 20px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      box-shadow: 0 2px 10px var(--shadow);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      font-size: 26px;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+    }
+
+    .brand-text h1 {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: var(--text);
+    }
+
+    .brand-text p {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--text);
+      transition: all 0.15s ease;
+      white-space: nowrap;
+      text-decoration: none;
+    }
+
+    .btn:hover {
+      background: #edd898;
+      border-color: #c9b058;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      border-color: #92400e;
+      color: var(--accent-contrast);
+    }
+
+    .btn-primary:hover {
+      background: #92400e;
+      border-color: #78350f;
+    }
+
+    .btn-sm {
+      padding: 5px 10px;
+      font-size: 12px;
+    }
+
+    /* Layout */
+    .container {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Summary Bar */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+    }
+
+    .stat-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      box-shadow: 0 2px 8px var(--shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+    }
+
+    .stat-value {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .stat-hint {
+      font-size: 11.5px;
+      color: var(--muted);
+    }
+
+    /* Controls Bar */
+    .controls-panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      box-shadow: 0 2px 8px var(--shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .filter-tabs {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+
+    .filter-tab {
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--muted);
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .filter-tab:hover {
+      background: var(--panel-2);
+      color: var(--text);
+    }
+
+    .filter-tab.active {
+      background: var(--accent);
+      border-color: #92400e;
+      color: var(--accent-contrast);
+    }
+
+    .search-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 12px;
+      flex: 1;
+      max-width: 440px;
+    }
+
+    .search-box input {
+      border: none;
+      background: transparent;
+      outline: none;
+      font-size: 13px;
+      width: 100%;
+      color: var(--text);
+    }
+
+    .search-box input::placeholder {
+      color: var(--muted);
+    }
+
+    /* Ticket Grid */
+    .tickets-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 14px;
+    }
+
+    .ticket-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 2px 8px var(--shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: relative;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .ticket-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px var(--shadow);
+    }
+
+    .ticket-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .ticket-ref {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--accent);
+      letter-spacing: 0.3px;
+    }
+
+    .ticket-date {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .priority-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .priority-standard {
+      background: rgba(138, 122, 69, 0.15);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    .priority-priority {
+      background: var(--amber-bg);
+      color: var(--amber);
+      border: 1px solid #f59e0b;
+    }
+
+    .priority-express {
+      background: var(--danger-bg);
+      color: var(--danger);
+      border: 1px solid #f87171;
+    }
+
+    .customer-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .customer-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .customer-contact {
+      font-size: 11.5px;
+      color: var(--muted);
+      display: flex;
+      gap: 10px;
+    }
+
+    .device-info {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .device-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .device-meta {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .fault-box {
+      font-size: 12.5px;
+      line-height: 1.45;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.4);
+      padding: 8px 10px;
+      border-radius: 6px;
+      border-left: 3px solid var(--accent);
+    }
+
+    .accessories-tag {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    /* Financials & Status */
+    .financials-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(243, 229, 174, 0.4);
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+
+    .quote-badge {
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .deposit-badge {
+      color: var(--success);
+      font-weight: 600;
+    }
+
+    .balance-badge {
+      font-weight: 800;
+      color: var(--accent);
+    }
+
+    .status-select-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .status-select {
+      flex: 1;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    .ticket-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    /* Status Badges */
+    .status-badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .status-booked { background: #e2e8f0; color: #475569; }
+    .status-diagnosing { background: var(--amber-bg); color: var(--amber); }
+    .status-awaiting-parts { background: rgba(168, 85, 247, 0.15); color: #9333ea; }
+    .status-in-progress { background: var(--info-bg); color: var(--info); }
+    .status-ready { background: var(--success-bg); color: var(--success); }
+    .status-collected { background: #f1f5f9; color: #64748b; text-decoration: line-through; }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      background: var(--panel);
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      color: var(--muted);
+      grid-column: 1 / -1;
+    }
+
+    .empty-state h3 {
+      font-size: 16px;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    /* Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(2px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .modal-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      width: 100%;
+      max-width: 680px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      background: var(--panel);
+      z-index: 10;
+    }
+
+    .modal-header h2 {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .modal-body {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .form-section-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      font-weight: 800;
+      color: var(--accent);
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 4px;
+      margin-bottom: 8px;
+    }
+
+    .form-grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+
+    .form-grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .form-group label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--panel-2);
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+      font-family: inherit;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      border-color: var(--accent);
+      background: #fffdf5;
+    }
+
+    .preset-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .preset-chip {
+      padding: 4px 10px;
+      background: var(--panel-2);
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .preset-chip:hover {
+      background: var(--accent);
+      color: white;
+      border-style: solid;
+    }
+
+    .checkbox-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+    }
+
+    .modal-footer {
+      padding: 14px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      position: sticky;
+      bottom: 0;
+      background: var(--panel);
+      z-index: 10;
+    }
+
+    /* Print Ticket Styling */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #print-area, #print-area * {
+        visibility: visible;
+      }
+      #print-area {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        background: white;
+        color: black;
+        padding: 20px;
+      }
+      .no-print {
+        display: none !important;
+      }
+    }
+
+    .print-ticket-box {
+      border: 2px dashed #333;
+      padding: 20px;
+      background: #fff;
+      color: #111;
+      border-radius: 8px;
+      font-family: 'Courier New', Courier, monospace;
+    }
+
+    .print-barcode-sim {
+      font-family: 'Libre Barcode 39', monospace, sans-serif;
+      font-size: 38px;
+      letter-spacing: 2px;
+      text-align: center;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="ambient-glow"></div>
+
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">&#128295;</div>
+      <div class="brand-text">
+        <h1>SOS Repair Book In</h1>
+        <p>Workshop Job Intake, Device Diagnostics &amp; Ticket Tracking</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-primary" onclick="openNewTicketModal()">
+        &#43; Book In New Repair
+      </button>
+      <button class="btn btn-sm" onclick="loadDemoTickets()">
+        &#9881; Reset Demo Jobs
+      </button>
+      <button class="btn btn-sm" onclick="exportTicketsCsv()">
+        &#128190; Export CSV
+      </button>
+      <button class="btn btn-sm" onclick="exportBackupJson()">
+        &#128230; Backup JSON
+      </button>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- Stat Summary -->
+    <div class="summary-grid">
+      <div class="stat-card">
+        <span class="stat-label">Active Jobs</span>
+        <span class="stat-value" id="stat-active-count">0</span>
+        <span class="stat-hint" id="stat-active-hint">Open repairs on bench</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Awaiting Parts</span>
+        <span class="stat-value" id="stat-parts-count">0</span>
+        <span class="stat-hint">Components on order</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Ready for Pickup</span>
+        <span class="stat-value" id="stat-ready-count" style="color:var(--success)">0</span>
+        <span class="stat-hint">Passed QA testing</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Quote Pipeline</span>
+        <span class="stat-value" id="stat-quote-val" style="color:var(--accent)">£0.00</span>
+        <span class="stat-hint" id="stat-deposit-val">£0.00 deposits received</span>
+      </div>
+    </div>
+
+    <!-- Controls Bar -->
+    <div class="controls-panel">
+      <!-- Status Tabs -->
+      <div class="filter-tabs" id="status-filter-tabs">
+        <button class="filter-tab active" data-filter="all">All Jobs (<span id="count-all">0</span>)</button>
+        <button class="filter-tab" data-filter="Booked In">Booked In (<span id="count-booked">0</span>)</button>
+        <button class="filter-tab" data-filter="Under Diagnosis">Diagnosing (<span id="count-diag">0</span>)</button>
+        <button class="filter-tab" data-filter="Awaiting Parts">Awaiting Parts (<span id="count-parts">0</span>)</button>
+        <button class="filter-tab" data-filter="Repair In Progress">In Progress (<span id="count-progress">0</span>)</button>
+        <button class="filter-tab" data-filter="Ready for Collection">Ready for Collection (<span id="count-ready">0</span>)</button>
+        <button class="filter-tab" data-filter="Collected">Completed / Collected (<span id="count-collected">0</span>)</button>
+      </div>
+
+      <!-- Search & Filters -->
+      <div class="search-row">
+        <div class="search-box">
+          <span>&#128269;</span>
+          <input type="text" id="search-input" placeholder="Search ticket #, customer name, phone, device model, or serial..." oninput="renderTickets()" />
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <label style="font-size:12px; font-weight:700; color:var(--muted)">Priority:</label>
+          <select id="priority-filter" class="btn btn-sm" onchange="renderTickets()" style="padding:6px 10px;">
+            <option value="all">All Priorities</option>
+            <option value="Standard">Standard</option>
+            <option value="Priority">Priority</option>
+            <option value="Express">Express Same-Day</option>
+          </select>
+          <label style="font-size:12px; font-weight:700; color:var(--muted); margin-left:8px;">Category:</label>
+          <select id="category-filter" class="btn btn-sm" onchange="renderTickets()" style="padding:6px 10px;">
+            <option value="all">All Categories</option>
+            <option value="Console">Games Console</option>
+            <option value="Phone">Smart Phone</option>
+            <option value="Tablet">Tablet</option>
+            <option value="Controller">Controller</option>
+            <option value="Laptop/PC">Laptop / PC</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tickets Grid -->
+    <div class="tickets-grid" id="tickets-container">
+      <!-- Rendered dynamically -->
+    </div>
+  </div>
+
+  <!-- ================= TICKET MODAL ================= -->
+  <div class="modal-backdrop" id="ticket-modal" style="display:none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="modal-title">Book In New Repair Ticket</h2>
+        <button class="btn btn-sm" onclick="closeTicketModal()">&#10005;</button>
+      </div>
+      <div class="modal-body">
+        <!-- Quick Preset Buttons -->
+        <div>
+          <div style="font-size:11px; font-weight:700; color:var(--muted); margin-bottom:4px;">QUICK DEMO TEMPLATES:</div>
+          <div class="preset-chips">
+            <button class="preset-chip" type="button" onclick="applyPreset('ps5-hdmi')">PS5 HDMI Port Replacement</button>
+            <button class="preset-chip" type="button" onclick="applyPreset('iphone-screen')">iPhone 14 Pro Screen Replacement</button>
+            <button class="preset-chip" type="button" onclick="applyPreset('switch-drift')">Switch OLED Stick Drift &amp; Clean</button>
+            <button class="preset-chip" type="button" onclick="applyPreset('series-x-power')">Xbox Series X No Power Repair</button>
+            <button class="preset-chip" type="button" onclick="applyPreset('dualsense-drift')">DualSense Left Stick Drift</button>
+          </div>
+        </div>
+
+        <form id="ticket-form" onsubmit="handleSaveTicket(event)">
+          <input type="hidden" id="edit-ticket-id" value="" />
+
+          <!-- Customer Details -->
+          <div class="form-section-title">1. Customer Information</div>
+          <div class="form-grid-3">
+            <div class="form-group">
+              <label>Customer Name *</label>
+              <input type="text" id="cust-name" required placeholder="e.g. David Clarke" />
+            </div>
+            <div class="form-group">
+              <label>Phone Number *</label>
+              <input type="tel" id="cust-phone" required placeholder="e.g. 07700 900123" />
+            </div>
+            <div class="form-group">
+              <label>Email Address</label>
+              <input type="email" id="cust-email" placeholder="e.g. d.clarke@email.co.uk" />
+            </div>
+          </div>
+
+          <!-- Device Details -->
+          <div class="form-section-title" style="margin-top:14px;">2. Device Information</div>
+          <div class="form-grid-3">
+            <div class="form-group">
+              <label>Device Category *</label>
+              <select id="device-category" required>
+                <option value="Console">Games Console</option>
+                <option value="Phone">Smart Phone</option>
+                <option value="Tablet">Tablet</option>
+                <option value="Controller">Controller</option>
+                <option value="Laptop/PC">Laptop / PC</option>
+                <option value="Other">Other Equipment</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Brand &amp; Model *</label>
+              <input type="text" id="device-model" required placeholder="e.g. Sony PlayStation 5 Disc Edition" />
+            </div>
+            <div class="form-group">
+              <label>Serial # / IMEI</label>
+              <input type="text" id="device-serial" placeholder="e.g. CFI-1116A / 35894109..." />
+            </div>
+          </div>
+
+          <div class="form-grid-3" style="margin-top:10px;">
+            <div class="form-group">
+              <label>Device Color</label>
+              <input type="text" id="device-color" placeholder="e.g. White / Cosmic Red" />
+            </div>
+            <div class="form-group">
+              <label>Passcode / PIN</label>
+              <input type="text" id="device-passcode" placeholder="e.g. 1984 / Pattern on file" />
+            </div>
+            <div class="form-group">
+              <label>Priority *</label>
+              <select id="job-priority">
+                <option value="Standard">Standard (2-3 working days)</option>
+                <option value="Priority">Priority (+£15, 24h turnaround)</option>
+                <option value="Express">Express Same-Day (+£25)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top:10px;">
+            <label>Accessories Left With Device</label>
+            <div class="checkbox-group">
+              <label class="checkbox-item"><input type="checkbox" id="acc-power" /> Power Cable</label>
+              <label class="checkbox-item"><input type="checkbox" id="acc-controller" /> Controller</label>
+              <label class="checkbox-item"><input type="checkbox" id="acc-hdmi" /> HDMI Lead</label>
+              <label class="checkbox-item"><input type="checkbox" id="acc-case" /> Case / Cover</label>
+              <label class="checkbox-item"><input type="checkbox" id="acc-disc" /> Game Disc in tray</label>
+              <label class="checkbox-item"><input type="checkbox" id="acc-box" /> Original Box</label>
+            </div>
+          </div>
+
+          <!-- Fault Details -->
+          <div class="form-section-title" style="margin-top:14px;">3. Fault Description &amp; Technician Notes</div>
+          <div class="form-group">
+            <label>Reported Fault / Symptoms *</label>
+            <textarea id="fault-description" rows="2" required placeholder="Describe issue reported by customer (e.g. HDMI port damaged, white light but no picture on TV, pins visible inside port)..."></textarea>
+          </div>
+          <div class="form-group" style="margin-top:8px;">
+            <label>Pre-repair Inspection / Existing Cosmetic Damage</label>
+            <input type="text" id="existing-damage" placeholder="e.g. Light scratches on piano black glossy center; seal intact" />
+          </div>
+          <div class="form-group" style="margin-top:8px;">
+            <label>Technician Notes &amp; Required Parts</label>
+            <textarea id="tech-notes" rows="2" placeholder="e.g. Ordered OEM PS5 HDMI port. Bench inspection confirms cracked trace on pin 19..."></textarea>
+          </div>
+
+          <!-- Financials -->
+          <div class="form-section-title" style="margin-top:14px;">4. Quotation &amp; Status</div>
+          <div class="form-grid-3">
+            <div class="form-group">
+              <label>Estimated Total (£) *</label>
+              <input type="number" step="0.01" min="0" id="quote-price" required placeholder="79.99" oninput="updateBalanceCalc()" />
+            </div>
+            <div class="form-group">
+              <label>Deposit Paid (£)</label>
+              <input type="number" step="0.01" min="0" id="deposit-paid" placeholder="20.00" oninput="updateBalanceCalc()" />
+            </div>
+            <div class="form-group">
+              <label>Current Status *</label>
+              <select id="job-status">
+                <option value="Booked In">Booked In</option>
+                <option value="Under Diagnosis">Under Diagnosis</option>
+                <option value="Awaiting Parts">Awaiting Parts</option>
+                <option value="Repair In Progress">Repair In Progress</option>
+                <option value="Ready for Collection">Ready for Collection</option>
+                <option value="Collected">Collected &amp; Closed</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="margin-top:12px; padding:10px 14px; background:var(--panel-2); border-radius:8px; border:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:12.5px; font-weight:700;">Remaining Balance Due upon Collection:</span>
+            <span id="calc-balance-due" style="font-size:16px; font-weight:800; color:var(--accent);">£0.00</span>
+          </div>
+
+          <div class="modal-footer" style="padding-left:0; padding-right:0;">
+            <button type="button" class="btn" onclick="closeTicketModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Repair Ticket</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= PRINT TICKET MODAL ================= -->
+  <div class="modal-backdrop" id="print-modal" style="display:none;">
+    <div class="modal-card" style="max-width:540px;">
+      <div class="modal-header no-print">
+        <h2>Print Workshop Job Sheet / Customer Receipt</h2>
+        <button class="btn btn-sm" onclick="closePrintModal()">&#10005;</button>
+      </div>
+      <div class="modal-body" id="print-area">
+        <div class="print-ticket-box">
+          <div style="text-align:center; border-bottom:1px solid #111; padding-bottom:12px; margin-bottom:12px;">
+            <div style="font-size:18px; font-weight:900; letter-spacing:1px;">SOS QUALITY USED GOODS</div>
+            <div style="font-size:12px;">BUY · SELL · REPAIR WORKSHOP</div>
+            <div style="font-size:11px; margin-top:4px;">Tel: 0161 700 8000 · www.sostools.co.uk</div>
+            <div class="print-barcode-sim" id="print-ticket-barcode">*SOS-REP*</div>
+            <div style="font-size:15px; font-weight:800;" id="print-ticket-ref">#SOS-REP-1001</div>
+            <div style="font-size:11px;" id="print-ticket-date">Date: 2026-10-21 14:30</div>
+          </div>
+
+          <table style="width:100%; font-size:12px; margin-bottom:12px; border-collapse:collapse;">
+            <tr><td style="font-weight:700; width:120px;">Customer:</td><td id="print-cust-name">-</td></tr>
+            <tr><td style="font-weight:700;">Phone:</td><td id="print-cust-phone">-</td></tr>
+            <tr><td style="font-weight:700;">Device:</td><td id="print-device-name" style="font-weight:700;">-</td></tr>
+            <tr><td style="font-weight:700;">Serial/IMEI:</td><td id="print-device-serial">-</td></tr>
+            <tr><td style="font-weight:700;">Passcode:</td><td id="print-device-passcode">-</td></tr>
+            <tr><td style="font-weight:700;">Accessories:</td><td id="print-device-acc">-</td></tr>
+          </table>
+
+          <div style="border-top:1px dashed #333; padding-top:8px; margin-bottom:10px; font-size:12px;">
+            <div style="font-weight:700; margin-bottom:4px;">Reported Fault:</div>
+            <div id="print-fault-desc" style="font-style:italic;">-</div>
+          </div>
+
+          <div style="border-top:1px dashed #333; padding-top:8px; margin-bottom:12px; font-size:12px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:3px;">
+              <span>Estimated Repair Total:</span>
+              <strong id="print-quote-price">£0.00</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:3px;">
+              <span>Deposit Paid:</span>
+              <span id="print-deposit-paid">£0.00</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-weight:800; font-size:14px; border-top:1px solid #111; padding-top:4px;">
+              <span>BALANCE DUE:</span>
+              <span id="print-balance-due">£0.00</span>
+            </div>
+          </div>
+
+          <div style="font-size:9.5px; line-height:1.35; color:#444; border-top:1px solid #111; padding-top:8px;">
+            <strong>TERMS &amp; CONDITIONS:</strong> All repairs carry a 90-day parts and labour guarantee covering the specific fault repaired. Customer is responsible for backing up personal data prior to booking in; SOS Quality Used Goods accepts no liability for software/data loss. Uncollected items held for 30 days after collection notice before recycling or disposal to recover parts costs.
+          </div>
+
+          <div style="margin-top:20px; font-size:11px; display:flex; justify-content:space-between; padding-top:12px; border-top:1px dotted #666;">
+            <div>Customer Signature: __________________</div>
+            <div>Tech Sign-off: __________________</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer no-print">
+        <button class="btn" onclick="closePrintModal()">Close</button>
+        <button class="btn btn-primary" onclick="window.print()">&#128438; Print Job Sheet</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Storage Key
+    const STORAGE_KEY = 'sos_repair_tickets';
+
+    // Initial Demo Dataset
+    const DEFAULT_TICKETS = [
+      {
+        id: 'SOS-REP-2041',
+        createdAt: '2026-10-21 10:15',
+        customer: {
+          name: 'Marcus Vance',
+          phone: '07891 234567',
+          email: 'marcus.v@outlook.com'
+        },
+        device: {
+          category: 'Console',
+          model: 'PlayStation 5 Disc Edition',
+          serial: 'CFI-1116A / 03-27451992',
+          color: 'Standard White',
+          passcode: 'No passcode',
+          accessories: ['Power Cable', 'HDMI Lead']
+        },
+        fault: 'HDMI port pins visibly bent inside socket. No video signal output to TV; TV shows "No Signal" with solid blue/white power indicator light.',
+        existingDamage: 'Minor scuff on bottom glossy plastic stand mount.',
+        techNotes: 'Replacement OEM HDMI socket soldered on hot air rework station. Pin traces verified on microscope with continuity check. Testing 4K 120Hz output.',
+        quote: 79.99,
+        deposit: 20.00,
+        priority: 'Priority',
+        status: 'Repair In Progress'
+      },
+      {
+        id: 'SOS-REP-2042',
+        createdAt: '2026-10-20 15:40',
+        customer: {
+          name: 'Sarah Jenkins',
+          phone: '07700 900543',
+          email: 'sjenkins@gmail.com'
+        },
+        device: {
+          category: 'Phone',
+          model: 'Apple iPhone 14 Pro 128GB',
+          serial: 'IMEI: 358941098234112',
+          color: 'Deep Purple',
+          passcode: '4826',
+          accessories: ['Case / Cover']
+        },
+        fault: 'Cracked front OLED glass after drop. Vertical green line visible on right half of display. Touch screen erratic near bottom edge.',
+        existingDamage: 'Impact dent on bottom-right stainless steel corner bezel.',
+        techNotes: 'Fitted premium refurbished OEM OLED display. True Tone programmed from original display IC. 100% passed touch digitizer 32-zone grid test.',
+        quote: 149.99,
+        deposit: 50.00,
+        priority: 'Express',
+        status: 'Ready for Collection'
+      },
+      {
+        id: 'SOS-REP-2043',
+        createdAt: '2026-10-21 11:30',
+        customer: {
+          name: 'Callum Wright',
+          phone: '07945 678120',
+          email: 'cwright99@yahoo.co.uk'
+        },
+        device: {
+          category: 'Console',
+          model: 'Nintendo Switch OLED',
+          serial: 'XAW400129841',
+          color: 'White Joy-Cons',
+          passcode: 'None',
+          accessories: ['Case / Cover', 'Game Disc in tray']
+        },
+        fault: 'Both left and right Joy-Con analog sticks suffer from severe upward drift in game menus. Internal fan rattles loudly during intensive gameplay.',
+        existingDamage: 'Minor scratches on kickstand.',
+        techNotes: 'Installing Hall Effect magnetic analog joystick modules to prevent future drift. Clean fan exhaust and replace thermal paste.',
+        quote: 45.00,
+        deposit: 0.00,
+        priority: 'Standard',
+        status: 'Under Diagnosis'
+      },
+      {
+        id: 'SOS-REP-2044',
+        createdAt: '2026-10-19 14:10',
+        customer: {
+          name: 'Liam Gallagher',
+          phone: '07812 345678',
+          email: 'liam.g@btinternet.com'
+        },
+        device: {
+          category: 'Console',
+          model: 'Xbox Series X 1TB',
+          serial: '084291837491',
+          color: 'Matte Black',
+          passcode: 'None',
+          accessories: ['Power Cable']
+        },
+        fault: 'Console beeps when power button is pressed, power LED lights up for 2 seconds then immediately shuts down. No fan spin.',
+        existingDamage: 'Intact warranty sticker, clean exterior.',
+        techNotes: 'Multimeter diagnostics show short circuit on 12V rail of internal power supply module (Model 1882). Waiting on replacement power board from supplier.',
+        quote: 89.99,
+        deposit: 30.00,
+        priority: 'Standard',
+        status: 'Awaiting Parts'
+      },
+      {
+        id: 'SOS-REP-2045',
+        createdAt: '2026-10-21 13:05',
+        customer: {
+          name: 'Emma Harrison',
+          phone: '07788 112233',
+          email: 'emma.harrison@icloud.com'
+        },
+        device: {
+          category: 'Controller',
+          model: 'Sony DualSense Wireless Controller',
+          serial: 'CFI-ZCT1W',
+          color: 'Midnight Black',
+          passcode: 'N/A',
+          accessories: []
+        },
+        fault: 'Left stick drifts to top-left when in neutral resting position. Character constantly walks in games without touching stick.',
+        existingDamage: 'Good condition, light thumbstick rubber wear.',
+        techNotes: 'Booked in for potentiometer potentiometer replacement or Hall Effect upgrade.',
+        quote: 25.00,
+        deposit: 0.00,
+        priority: 'Standard',
+        status: 'Booked In'
+      }
+    ];
+
+    // State
+    let tickets = [];
+    let currentFilter = 'all';
+
+    // Initialize
+    function init() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          tickets = JSON.parse(saved);
+        } catch (e) {
+          tickets = [...DEFAULT_TICKETS];
+        }
+      } else {
+        tickets = [...DEFAULT_TICKETS];
+        saveTickets();
+      }
+
+      setupFilterTabs();
+      renderTickets();
+    }
+
+    function saveTickets() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(tickets));
+    }
+
+    function loadDemoTickets() {
+      if (confirm('Reset repair jobs to workshop demo records? Any custom tickets will be replaced.')) {
+        tickets = JSON.parse(JSON.stringify(DEFAULT_TICKETS));
+        saveTickets();
+        renderTickets();
+      }
+    }
+
+    // Filter Tabs
+    function setupFilterTabs() {
+      const tabs = document.querySelectorAll('#status-filter-tabs .filter-tab');
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          tabs.forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          currentFilter = tab.dataset.filter;
+          renderTickets();
+        });
+      });
+    }
+
+    // Render Stats and Grid
+    function renderTickets() {
+      const search = (document.getElementById('search-input').value || '').toLowerCase().trim();
+      const priorityFilter = document.getElementById('priority-filter').value;
+      const categoryFilter = document.getElementById('category-filter').value;
+
+      // Update badge counts
+      const counts = {
+        all: tickets.length,
+        booked: tickets.filter(t => t.status === 'Booked In').length,
+        diag: tickets.filter(t => t.status === 'Under Diagnosis').length,
+        parts: tickets.filter(t => t.status === 'Awaiting Parts').length,
+        progress: tickets.filter(t => t.status === 'Repair In Progress').length,
+        ready: tickets.filter(t => t.status === 'Ready for Collection').length,
+        collected: tickets.filter(t => t.status === 'Collected').length,
+      };
+
+      document.getElementById('count-all').textContent = counts.all;
+      document.getElementById('count-booked').textContent = counts.booked;
+      document.getElementById('count-diag').textContent = counts.diag;
+      document.getElementById('count-parts').textContent = counts.parts;
+      document.getElementById('count-progress').textContent = counts.progress;
+      document.getElementById('count-ready').textContent = counts.ready;
+      document.getElementById('count-collected').textContent = counts.collected;
+
+      // Summary Grid stats
+      const activeJobs = tickets.filter(t => t.status !== 'Collected');
+      document.getElementById('stat-active-count').textContent = activeJobs.length;
+      document.getElementById('stat-parts-count').textContent = counts.parts;
+      document.getElementById('stat-ready-count').textContent = counts.ready;
+
+      const totalQuote = activeJobs.reduce((sum, t) => sum + (Number(t.quote) || 0), 0);
+      const totalDeposit = activeJobs.reduce((sum, t) => sum + (Number(t.deposit) || 0), 0);
+      document.getElementById('stat-quote-val').textContent = '£' + totalQuote.toFixed(2);
+      document.getElementById('stat-deposit-val').textContent = '£' + totalDeposit.toFixed(2) + ' deposits received';
+
+      // Filter tickets
+      const filtered = tickets.filter(t => {
+        // Status filter
+        if (currentFilter !== 'all' && t.status !== currentFilter) return false;
+
+        // Priority filter
+        if (priorityFilter !== 'all' && t.priority !== priorityFilter) return false;
+
+        // Category filter
+        if (categoryFilter !== 'all' && t.device.category !== categoryFilter) return false;
+
+        // Search text
+        if (search) {
+          const match =
+            t.id.toLowerCase().includes(search) ||
+            t.customer.name.toLowerCase().includes(search) ||
+            t.customer.phone.toLowerCase().includes(search) ||
+            t.device.model.toLowerCase().includes(search) ||
+            (t.device.serial && t.device.serial.toLowerCase().includes(search)) ||
+            t.fault.toLowerCase().includes(search);
+          if (!match) return false;
+        }
+
+        return true;
+      });
+
+      const container = document.getElementById('tickets-container');
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <h3>No repair tickets found</h3>
+            <p>No jobs match your current filter or search criteria. Click <strong>+ Book In New Repair</strong> to create one.</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = filtered.map(t => {
+        const balance = Math.max(0, (Number(t.quote) || 0) - (Number(t.deposit) || 0));
+        const priorityClass = t.priority === 'Express' ? 'priority-express' : (t.priority === 'Priority' ? 'priority-priority' : 'priority-standard');
+        const accList = (t.device.accessories && t.device.accessories.length > 0) ? t.device.accessories.join(', ') : 'None left';
+
+        return `
+          <div class="ticket-card" id="card-${t.id}">
+            <div class="ticket-top">
+              <div>
+                <span class="ticket-ref">${escapeHtml(t.id)}</span>
+                <div class="ticket-date">${escapeHtml(t.createdAt)}</div>
+              </div>
+              <span class="priority-badge ${priorityClass}">${escapeHtml(t.priority)}</span>
+            </div>
+
+            <div class="customer-info">
+              <div class="customer-name">${escapeHtml(t.customer.name)}</div>
+              <div class="customer-contact">
+                <span>&#128222; ${escapeHtml(t.customer.phone)}</span>
+                ${t.customer.email ? `<span>&#9993; ${escapeHtml(t.customer.email)}</span>` : ''}
+              </div>
+            </div>
+
+            <div class="device-info">
+              <div class="device-title">
+                ${getCategoryIcon(t.device.category)} ${escapeHtml(t.device.model)}
+              </div>
+              <div class="device-meta">
+                ${t.device.serial ? `Serial/IMEI: <strong>${escapeHtml(t.device.serial)}</strong> · ` : ''}
+                Passcode: <strong>${escapeHtml(t.device.passcode || 'None')}</strong>
+              </div>
+              <div class="accessories-tag">Accessories: ${escapeHtml(accList)}</div>
+            </div>
+
+            <div class="fault-box">
+              <strong>Fault:</strong> ${escapeHtml(t.fault)}
+            </div>
+
+            <div class="financials-row">
+              <div>Quote: <span class="quote-badge">£${Number(t.quote).toFixed(2)}</span></div>
+              <div>Deposit: <span class="deposit-badge">£${Number(t.deposit || 0).toFixed(2)}</span></div>
+              <div>Balance: <span class="balance-badge">£${balance.toFixed(2)}</span></div>
+            </div>
+
+            <div class="status-select-wrap">
+              <select class="status-select" onchange="quickUpdateStatus('${t.id}', this.value)">
+                <option value="Booked In" ${t.status === 'Booked In' ? 'selected' : ''}>Booked In</option>
+                <option value="Under Diagnosis" ${t.status === 'Under Diagnosis' ? 'selected' : ''}>Under Diagnosis</option>
+                <option value="Awaiting Parts" ${t.status === 'Awaiting Parts' ? 'selected' : ''}>Awaiting Parts</option>
+                <option value="Repair In Progress" ${t.status === 'Repair In Progress' ? 'selected' : ''}>Repair In Progress</option>
+                <option value="Ready for Collection" ${t.status === 'Ready for Collection' ? 'selected' : ''}>Ready for Collection</option>
+                <option value="Collected" ${t.status === 'Collected' ? 'selected' : ''}>Collected &amp; Closed</option>
+              </select>
+            </div>
+
+            <div class="ticket-actions">
+              <button class="btn btn-sm" onclick="printTicket('${t.id}')" title="Print Job Sheet / Receipt">&#128438; Print</button>
+              <button class="btn btn-sm" onclick="editTicket('${t.id}')">&#9998; Edit</button>
+              <button class="btn btn-sm" onclick="deleteTicket('${t.id}')" style="color:var(--danger)">&#128465;</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function getCategoryIcon(cat) {
+      switch (cat) {
+        case 'Console': return '&#127918;';
+        case 'Phone': return '&#128241;';
+        case 'Tablet': return '&#128187;';
+        case 'Controller': return '&#127918;';
+        case 'Laptop/PC': return '&#128187;';
+        default: return '&#128295;';
+      }
+    }
+
+    function quickUpdateStatus(id, newStatus) {
+      const ticket = tickets.find(t => t.id === id);
+      if (ticket) {
+        ticket.status = newStatus;
+        saveTickets();
+        renderTickets();
+      }
+    }
+
+    // Modal Handling
+    function openNewTicketModal() {
+      document.getElementById('modal-title').textContent = 'Book In New Repair Ticket';
+      document.getElementById('edit-ticket-id').value = '';
+      document.getElementById('ticket-form').reset();
+      document.getElementById('calc-balance-due').textContent = '£0.00';
+      document.getElementById('ticket-modal').style.display = 'flex';
+    }
+
+    function closeTicketModal() {
+      document.getElementById('ticket-modal').style.display = 'none';
+    }
+
+    function updateBalanceCalc() {
+      const quote = parseFloat(document.getElementById('quote-price').value) || 0;
+      const deposit = parseFloat(document.getElementById('deposit-paid').value) || 0;
+      const balance = Math.max(0, quote - deposit);
+      document.getElementById('calc-balance-due').textContent = '£' + balance.toFixed(2);
+    }
+
+    function editTicket(id) {
+      const t = tickets.find(item => item.id === id);
+      if (!t) return;
+
+      document.getElementById('modal-title').textContent = 'Edit Repair Ticket (' + t.id + ')';
+      document.getElementById('edit-ticket-id').value = t.id;
+
+      // Customer
+      document.getElementById('cust-name').value = t.customer.name;
+      document.getElementById('cust-phone').value = t.customer.phone;
+      document.getElementById('cust-email').value = t.customer.email || '';
+
+      // Device
+      document.getElementById('device-category').value = t.device.category;
+      document.getElementById('device-model').value = t.device.model;
+      document.getElementById('device-serial').value = t.device.serial || '';
+      document.getElementById('device-color').value = t.device.color || '';
+      document.getElementById('device-passcode').value = t.device.passcode || '';
+      document.getElementById('job-priority').value = t.priority || 'Standard';
+
+      // Accessories
+      const acc = t.device.accessories || [];
+      document.getElementById('acc-power').checked = acc.includes('Power Cable');
+      document.getElementById('acc-controller').checked = acc.includes('Controller');
+      document.getElementById('acc-hdmi').checked = acc.includes('HDMI Lead');
+      document.getElementById('acc-case').checked = acc.includes('Case / Cover');
+      document.getElementById('acc-disc').checked = acc.includes('Game Disc in tray');
+      document.getElementById('acc-box').checked = acc.includes('Original Box');
+
+      // Fault
+      document.getElementById('fault-description').value = t.fault;
+      document.getElementById('existing-damage').value = t.existingDamage || '';
+      document.getElementById('tech-notes').value = t.techNotes || '';
+
+      // Pricing
+      document.getElementById('quote-price').value = t.quote;
+      document.getElementById('deposit-paid').value = t.deposit || 0;
+      document.getElementById('job-status').value = t.status;
+
+      updateBalanceCalc();
+      document.getElementById('ticket-modal').style.display = 'flex';
+    }
+
+    function handleSaveTicket(event) {
+      event.preventDefault();
+
+      const editId = document.getElementById('edit-ticket-id').value;
+      const accessories = [];
+      if (document.getElementById('acc-power').checked) accessories.push('Power Cable');
+      if (document.getElementById('acc-controller').checked) accessories.push('Controller');
+      if (document.getElementById('acc-hdmi').checked) accessories.push('HDMI Lead');
+      if (document.getElementById('acc-case').checked) accessories.push('Case / Cover');
+      if (document.getElementById('acc-disc').checked) accessories.push('Game Disc in tray');
+      if (document.getElementById('acc-box').checked) accessories.push('Original Box');
+
+      const ticketData = {
+        customer: {
+          name: document.getElementById('cust-name').value.trim(),
+          phone: document.getElementById('cust-phone').value.trim(),
+          email: document.getElementById('cust-email').value.trim(),
+        },
+        device: {
+          category: document.getElementById('device-category').value,
+          model: document.getElementById('device-model').value.trim(),
+          serial: document.getElementById('device-serial').value.trim(),
+          color: document.getElementById('device-color').value.trim(),
+          passcode: document.getElementById('device-passcode').value.trim(),
+          accessories: accessories,
+        },
+        fault: document.getElementById('fault-description').value.trim(),
+        existingDamage: document.getElementById('existing-damage').value.trim(),
+        techNotes: document.getElementById('tech-notes').value.trim(),
+        quote: parseFloat(document.getElementById('quote-price').value) || 0,
+        deposit: parseFloat(document.getElementById('deposit-paid').value) || 0,
+        priority: document.getElementById('job-priority').value,
+        status: document.getElementById('job-status').value,
+      };
+
+      if (editId) {
+        // Edit existing
+        const index = tickets.findIndex(t => t.id === editId);
+        if (index !== -1) {
+          tickets[index] = {
+            ...tickets[index],
+            ...ticketData,
+          };
+        }
+      } else {
+        // Create new
+        const newRef = 'SOS-REP-' + Math.floor(2050 + Math.random() * 8000);
+        const now = new Date();
+        const dateStr = now.toISOString().slice(0, 10) + ' ' + now.toTimeString().slice(0, 5);
+        tickets.unshift({
+          id: newRef,
+          createdAt: dateStr,
+          ...ticketData,
+        });
+      }
+
+      saveTickets();
+      renderTickets();
+      closeTicketModal();
+    }
+
+    function deleteTicket(id) {
+      if (confirm(`Are you sure you want to delete repair ticket ${id}?`)) {
+        tickets = tickets.filter(t => t.id !== id);
+        saveTickets();
+        renderTickets();
+      }
+    }
+
+    // Presets
+    function applyPreset(key) {
+      switch (key) {
+        case 'ps5-hdmi':
+          document.getElementById('device-category').value = 'Console';
+          document.getElementById('device-model').value = 'Sony PlayStation 5 Disc Edition';
+          document.getElementById('device-serial').value = 'CFI-1216A / ' + Math.floor(10000000 + Math.random() * 90000000);
+          document.getElementById('device-color').value = 'Standard White';
+          document.getElementById('device-passcode').value = 'No passcode';
+          document.getElementById('job-priority').value = 'Priority';
+          document.getElementById('acc-power').checked = true;
+          document.getElementById('acc-hdmi').checked = false;
+          document.getElementById('fault-description').value = 'HDMI port broken pins. Console boots with white light but no picture on TV.';
+          document.getElementById('existing-damage').value = 'Light surface dust, no shell cracks';
+          document.getElementById('quote-price').value = '79.99';
+          document.getElementById('deposit-paid').value = '20.00';
+          break;
+        case 'iphone-screen':
+          document.getElementById('device-category').value = 'Phone';
+          document.getElementById('device-model').value = 'Apple iPhone 14 Pro 128GB';
+          document.getElementById('device-serial').value = 'IMEI: 35' + Math.floor(1000000000000 + Math.random() * 9000000000000);
+          document.getElementById('device-color').value = 'Deep Purple';
+          document.getElementById('device-passcode').value = '1984';
+          document.getElementById('job-priority').value = 'Express';
+          document.getElementById('acc-case').checked = true;
+          document.getElementById('fault-description').value = 'Shattered front OLED glass after impact. Touch non-responsive in lower quadrant.';
+          document.getElementById('existing-damage').value = 'Dent on bottom-right corner';
+          document.getElementById('quote-price').value = '149.99';
+          document.getElementById('deposit-paid').value = '50.00';
+          break;
+        case 'switch-drift':
+          document.getElementById('device-category').value = 'Console';
+          document.getElementById('device-model').value = 'Nintendo Switch OLED';
+          document.getElementById('device-serial').value = 'XAW' + Math.floor(100000000 + Math.random() * 900000000);
+          document.getElementById('device-color').value = 'Neon Blue / Neon Red';
+          document.getElementById('device-passcode').value = 'None';
+          document.getElementById('job-priority').value = 'Standard';
+          document.getElementById('acc-case').checked = true;
+          document.getElementById('fault-description').value = 'Left stick drifts upwards intermittently during Mario Kart gameplay. Fan noisy under load.';
+          document.getElementById('existing-damage').value = 'Light screen protector scratches';
+          document.getElementById('quote-price').value = '45.00';
+          document.getElementById('deposit-paid').value = '0.00';
+          break;
+        case 'series-x-power':
+          document.getElementById('device-category').value = 'Console';
+          document.getElementById('device-model').value = 'Microsoft Xbox Series X 1TB';
+          document.getElementById('device-serial').value = 'SN: ' + Math.floor(100000000000 + Math.random() * 900000000000);
+          document.getElementById('device-color').value = 'Matte Black';
+          document.getElementById('device-passcode').value = 'None';
+          document.getElementById('job-priority').value = 'Standard';
+          document.getElementById('acc-power').checked = true;
+          document.getElementById('fault-description').value = 'Shuts off immediately 1 second after pressing power button. Chime sounds, then dead silence.';
+          document.getElementById('existing-damage').value = 'Clean casing';
+          document.getElementById('quote-price').value = '89.99';
+          document.getElementById('deposit-paid').value = '30.00';
+          break;
+        case 'dualsense-drift':
+          document.getElementById('device-category').value = 'Controller';
+          document.getElementById('device-model').value = 'Sony DualSense PS5 Wireless Controller';
+          document.getElementById('device-serial').value = 'CFI-ZCT1W';
+          document.getElementById('device-color').value = 'White / Black';
+          document.getElementById('device-passcode').value = 'N/A';
+          document.getElementById('job-priority').value = 'Standard';
+          document.getElementById('fault-description').value = 'Left analog stick drifts left in neutral position. Tested on Gamepad Diagnostic.';
+          document.getElementById('existing-damage').value = 'Slight rubber wear on L3';
+          document.getElementById('quote-price').value = '25.00';
+          document.getElementById('deposit-paid').value = '0.00';
+          break;
+      }
+      updateBalanceCalc();
+    }
+
+    // Print Modal
+    function printTicket(id) {
+      const t = tickets.find(item => item.id === id);
+      if (!t) return;
+
+      const balance = Math.max(0, (Number(t.quote) || 0) - (Number(t.deposit) || 0));
+      const accList = (t.device.accessories && t.device.accessories.length > 0) ? t.device.accessories.join(', ') : 'None';
+
+      document.getElementById('print-ticket-barcode').textContent = '*' + t.id + '*';
+      document.getElementById('print-ticket-ref').textContent = '#' + t.id + ' (' + t.status + ')';
+      document.getElementById('print-ticket-date').textContent = 'Date: ' + t.createdAt;
+
+      document.getElementById('print-cust-name').textContent = t.customer.name;
+      document.getElementById('print-cust-phone').textContent = t.customer.phone;
+      document.getElementById('print-device-name').textContent = t.device.model;
+      document.getElementById('print-device-serial').textContent = t.device.serial || 'N/A';
+      document.getElementById('print-device-passcode').textContent = t.device.passcode || 'None';
+      document.getElementById('print-device-acc').textContent = accList;
+
+      document.getElementById('print-fault-desc').textContent = t.fault;
+      document.getElementById('print-quote-price').textContent = '£' + Number(t.quote).toFixed(2);
+      document.getElementById('print-deposit-paid').textContent = '£' + Number(t.deposit || 0).toFixed(2);
+      document.getElementById('print-balance-due').textContent = '£' + balance.toFixed(2);
+
+      document.getElementById('print-modal').style.display = 'flex';
+    }
+
+    function closePrintModal() {
+      document.getElementById('print-modal').style.display = 'none';
+    }
+
+    // Exports
+    function exportTicketsCsv() {
+      if (tickets.length === 0) {
+        alert('No tickets to export.');
+        return;
+      }
+
+      const headers = ['TicketID', 'Date', 'CustomerName', 'Phone', 'Email', 'Category', 'Device', 'Serial', 'Fault', 'Quote', 'Deposit', 'Balance', 'Priority', 'Status'];
+      const rows = tickets.map(t => {
+        const balance = Math.max(0, (Number(t.quote) || 0) - (Number(t.deposit) || 0));
+        return [
+          t.id,
+          t.createdAt,
+          `"${(t.customer.name || '').replace(/"/g, '""')}"`,
+          `"${(t.customer.phone || '').replace(/"/g, '""')}"`,
+          `"${(t.customer.email || '').replace(/"/g, '""')}"`,
+          `"${(t.device.category || '').replace(/"/g, '""')}"`,
+          `"${(t.device.model || '').replace(/"/g, '""')}"`,
+          `"${(t.device.serial || '').replace(/"/g, '""')}"`,
+          `"${(t.fault || '').replace(/"/g, '""')}"`,
+          Number(t.quote).toFixed(2),
+          Number(t.deposit || 0).toFixed(2),
+          balance.toFixed(2),
+          t.priority,
+          t.status
+        ].join(',');
+      });
+
+      const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows].join('\n');
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', `sos_repair_tickets_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function exportBackupJson() {
+      const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(tickets, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute('href', dataStr);
+      downloadAnchor.setAttribute('download', `sos_repairs_backup_${new Date().toISOString().slice(0, 10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // Auto-init
+    window.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

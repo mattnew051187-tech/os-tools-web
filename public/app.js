@@ -5,6 +5,7 @@ const TAB_LABELS = {
   'gamepad-tester': 'Gamepad Tester',
   'game-library': 'Game Library',
   'product-search': 'Product Search',
+  'repair-book-in': 'Repair Book In',
 };
 const VALID_THEMES = ['yellow', 'light', 'dark', 'blue'];
 

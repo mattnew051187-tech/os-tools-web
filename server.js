@@ -19,8 +19,8 @@ const store = require('./store');
 const APP_VERSION = '1.1.0';
 const APP_ROOT = __dirname;
 
-const PORT = 3000;
-const TAB_IDS = ['phone-tablets', 'gamepad-tester', 'game-library', 'product-search'];
+const PORT = process.env.PORT || 3000;
+const TAB_IDS = ['phone-tablets', 'gamepad-tester', 'game-library', 'product-search', 'repair-book-in'];
 const VALID_THEMES = ['yellow', 'light', 'dark', 'blue'];
 const SESSION_COOKIE = 'sos_session';
 const SESSION_MAX_AGE_MS = 12 * 60 * 60 * 1000; // absolute 12h expiry; idle lock is client-side
@@ -81,7 +81,12 @@ function loadSettings() {
     store.setSettings(defaults);
     return defaults;
   }
-  return { ...defaultSettings(), ...stored };
+  const merged = { ...defaultSettings(), ...stored };
+  if (!merged.modules) merged.modules = {};
+  for (const id of TAB_IDS) {
+    if (!merged.modules[id]) merged.modules[id] = { type: 'builtin', source: '' };
+  }
+  return merged;
 }
 
 function saveSettings(settings) {

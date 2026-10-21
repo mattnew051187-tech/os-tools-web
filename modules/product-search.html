@@ -1,17 +1,827 @@
 <!doctype html>
-<html><head><meta charset="utf-8"><style>
-  body{font-family:"Segoe UI",Arial,sans-serif;background:var(--frame-bg,#fffdf2);color:var(--text,#3b2f0b);display:flex;align-items:center;justify-content:center;height:100vh;margin:0}
-  .box{text-align:center;max-width:460px}
-  .icon{font-size:52px}
-  h1{font-size:24px;margin:10px 0 6px}
-  p{color:var(--muted,#8a7a45);line-height:1.6;font-size:14px}
-  .pill{display:inline-block;margin-top:14px;padding:6px 14px;border:1px solid var(--accent,#b45309);border-radius:999px;color:var(--accent,#b45309);font-size:12.5px}
-</style></head>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Product Search &amp; Barcode Inventory Suite</title>
+  <style>
+    :root {
+      --bg: #f7efcf;
+      --panel: #fffdf2;
+      --panel-2: #f3e5ae;
+      --border: #ddc87c;
+      --text: #3b2f0b;
+      --muted: #8a7a45;
+      --accent: #b45309;
+      --accent-contrast: #ffffff;
+      --danger: #b91c1c;
+      --danger-bg: rgba(185, 28, 28, 0.12);
+      --success: #15803d;
+      --success-bg: rgba(21, 128, 61, 0.12);
+      --shadow: rgba(120, 90, 20, 0.18);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      transition: background 0.25s, color 0.25s;
+    }
+
+    /* Ambient glow */
+    .glow-header {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 1200px;
+      height: 250px;
+      background: radial-gradient(ellipse at top, rgba(180, 83, 9, 0.12) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Header */
+    header {
+      position: relative;
+      z-index: 10;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 20px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      box-shadow: 0 2px 10px var(--shadow);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      font-size: 26px;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent);
+    }
+
+    .brand-text h1 {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: var(--text);
+    }
+
+    .brand-text p {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn {
+      padding: 7px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s;
+    }
+
+    .btn:hover {
+      border-color: var(--accent);
+      filter: brightness(0.97);
+    }
+
+    .btn.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--accent-contrast, #ffffff);
+    }
+
+    .btn.primary:hover {
+      filter: brightness(1.1);
+    }
+
+    .btn.success {
+      background: var(--success);
+      border-color: var(--success);
+      color: #fff;
+    }
+
+    .btn.subtle {
+      background: transparent;
+      border-color: var(--border);
+      color: var(--muted);
+    }
+
+    .btn.subtle:hover {
+      color: var(--text);
+      border-color: var(--accent);
+    }
+
+    .btn.danger {
+      color: var(--danger);
+      border-color: var(--danger);
+      background: transparent;
+    }
+
+    .btn.danger:hover {
+      background: var(--danger-bg);
+    }
+
+    /* Main Container */
+    main {
+      position: relative;
+      z-index: 5;
+      flex: 1;
+      max-width: 1260px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      box-shadow: 0 4px 18px var(--shadow);
+    }
+
+    /* Search & Barcode Bar */
+    .search-hero-box {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .search-input-wrap {
+      flex: 1;
+      position: relative;
+      min-width: 280px;
+    }
+
+    .search-input-wrap input {
+      width: 100%;
+      padding: 12px 16px 12px 42px;
+      border-radius: 10px;
+      border: 2px solid var(--border);
+      background: var(--panel-2);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 500;
+      outline: none;
+      transition: border 0.15s;
+    }
+
+    .search-input-wrap input:focus {
+      border-color: var(--accent);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 16px;
+      color: var(--muted);
+    }
+
+    /* Category Filter Pills */
+    .filter-pills {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+    }
+
+    .pill {
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--text);
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+
+    .pill:hover {
+      border-color: var(--accent);
+    }
+
+    .pill.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--accent-contrast, #ffffff);
+    }
+
+    /* Quick stats */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .stat-card {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .stat-value {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--text);
+      margin-top: 2px;
+    }
+
+    /* Table */
+    table.data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+    }
+
+    table.data-table th, table.data-table td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    table.data-table th {
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 11px;
+      background: var(--panel);
+    }
+
+    table.data-table tr:hover td {
+      background: var(--panel-2);
+    }
+
+    .stock-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 11px;
+    }
+
+    .stock-badge.in-stock {
+      background: var(--success-bg);
+      color: var(--success);
+    }
+
+    .stock-badge.low-stock {
+      background: rgba(180, 83, 9, 0.12);
+      color: var(--accent);
+    }
+
+    .stock-badge.out-stock {
+      background: var(--danger-bg);
+      color: var(--danger);
+    }
+
+    /* Modals */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      backdrop-filter: blur(4px);
+    }
+
+    .modal-box {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      width: 90%;
+      max-width: 620px;
+      max-height: 85vh;
+      overflow-y: auto;
+      padding: 24px;
+      box-shadow: 0 10px 40px var(--shadow);
+      color: var(--text);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .form-group label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--accent);
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--panel);
+      border: 1px solid var(--success);
+      color: var(--text);
+      padding: 12px 18px;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px var(--shadow);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      z-index: 200;
+    }
+  </style>
+</head>
 <body>
-  <div class="box">
-    <div class="icon">&#128269;</div>
-    <h1>Product Search</h1>
-    <p>This module is under construction. It will be built as its own project and plugged into the SOS Tools launchpad.</p>
-    <div class="pill">Module slot: product-search</div>
+  <div class="glow-header"></div>
+
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">&#128269;</div>
+      <div class="brand-text">
+        <h1>SOS Product &amp; Inventory Search</h1>
+        <p>Live Workshop Stock, SKU &amp; Barcode Lookup</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button id="btn-open-add-product" class="btn primary">&#43; Add Product</button>
+      <button id="btn-export-csv" class="btn">&#128196; Export CSV</button>
+      <button id="btn-reset-demo" class="btn subtle">&#8635; Reset Catalog</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="card">
+      <!-- Search & Barcode Bar -->
+      <div class="search-hero-box">
+        <div class="search-input-wrap">
+          <span class="search-icon">&#128269;</span>
+          <input type="text" id="product-query" placeholder="Search product name, SKU, barcode (EAN), or shelf location..." autofocus />
+        </div>
+        <button id="btn-scan-sim" class="btn" title="Simulate Barcode Scanner">&#128247; Scan Barcode</button>
+      </div>
+
+      <!-- Category Filter Pills -->
+      <div class="filter-pills" id="category-pills">
+        <div class="pill active" data-cat="all">All Inventory (<span id="count-all">0</span>)</div>
+        <div class="pill" data-cat="Consoles">🎮 Consoles</div>
+        <div class="pill" data-cat="Controllers">🕹️ Controllers</div>
+        <div class="pill" data-cat="Phones & Tablets">📱 Phones &amp; Tablets</div>
+        <div class="pill" data-cat="Games">💿 Video Games</div>
+        <div class="pill" data-cat="Repair Parts">🔧 Repair Parts &amp; Tools</div>
+        <div class="pill" data-cat="Accessories">🎧 Accessories</div>
+      </div>
+
+      <!-- Quick Metrics -->
+      <div class="stats-row" style="margin-top:14px;">
+        <div class="stat-card">
+          <div class="stat-label">Total SKUs in Catalog</div>
+          <div class="stat-value" id="stat-total-skus">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total Stock Units</div>
+          <div class="stat-value" id="stat-total-units">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total Retail Value</div>
+          <div class="stat-value" id="stat-total-val" style="color:var(--accent)">&pound;0.00</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Est. Cost Basis</div>
+          <div class="stat-value" id="stat-total-cost">&pound;0.00</div>
+        </div>
+      </div>
+
+      <!-- Table of Products -->
+      <div style="overflow-x:auto;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Product Name</th>
+              <th>Category</th>
+              <th>SKU / Barcode</th>
+              <th>Location</th>
+              <th>Cost (&pound;)</th>
+              <th>Retail (&pound;)</th>
+              <th>CeX Market</th>
+              <th>Stock</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="product-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Add / Edit Product Modal -->
+  <div id="product-modal" class="modal-backdrop" style="display:none">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-title">&#43; Add Product to Inventory</h3>
+        <button id="btn-close-product-modal" class="btn subtle">&times;</button>
+      </div>
+
+      <form id="product-form">
+        <input type="hidden" id="edit-prod-id" />
+        <div class="form-grid">
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label>Product Title / Description</label>
+            <input type="text" id="prod-name" required placeholder="e.g. PlayStation 5 DualSense Wireless Controller" />
+          </div>
+
+          <div class="form-group">
+            <label>Category</label>
+            <select id="prod-cat">
+              <option value="Consoles">Consoles</option>
+              <option value="Controllers">Controllers</option>
+              <option value="Phones & Tablets">Phones &amp; Tablets</option>
+              <option value="Games">Games</option>
+              <option value="Repair Parts">Repair Parts &amp; Tools</option>
+              <option value="Accessories">Accessories</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>SKU (Stock Keeping Unit)</label>
+            <input type="text" id="prod-sku" placeholder="SKU-PS5-CTL-01" />
+          </div>
+
+          <div class="form-group">
+            <label>Barcode / EAN</label>
+            <input type="text" id="prod-barcode" placeholder="711719548231" />
+          </div>
+
+          <div class="form-group">
+            <label>Shelf / Storage Location</label>
+            <input type="text" id="prod-location" placeholder="e.g. Shelf A-2, Drawer 4, Counter Display" value="Shelf A-1" />
+          </div>
+
+          <div class="form-group">
+            <label>Purchase / Trade Cost (&pound;)</label>
+            <input type="number" id="prod-cost" step="0.01" min="0" placeholder="25.00" />
+          </div>
+
+          <div class="form-group">
+            <label>Retail Selling Price (&pound;)</label>
+            <input type="number" id="prod-price" step="0.01" min="0" required placeholder="44.99" />
+          </div>
+
+          <div class="form-group">
+            <label>CeX / Market Target (&pound;)</label>
+            <input type="number" id="prod-cex" step="0.01" min="0" placeholder="45.00" />
+          </div>
+
+          <div class="form-group">
+            <label>Quantity In Stock</label>
+            <input type="number" id="prod-qty" min="0" value="1" />
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:20px;">
+          <button type="button" id="btn-cancel-prod" class="btn subtle">Cancel</button>
+          <button type="submit" class="btn primary">&#10003; Save Product</button>
+        </div>
+      </form>
+    </div>
   </div>
-</body></html>
+
+  <!-- Toast -->
+  <div id="toast" class="toast" style="display:none">
+    <span>&#10003;</span>
+    <span id="toast-text">Action successful</span>
+  </div>
+
+  <script>
+    const INITIAL_CATALOG = [
+      { id: 'p-1', name: 'PlayStation 5 Slim 1TB Console (White)', category: 'Consoles', sku: 'SKU-PS5-SLM-01', barcode: '711719572458', location: 'Top Cabinet 1', cost: 320.00, price: 399.99, cex: 410.00, qty: 3 },
+      { id: 'p-2', name: 'Xbox Series X 1TB Console (Carbon Black)', category: 'Consoles', sku: 'SKU-XBX-X1T-01', barcode: '889842640725', location: 'Top Cabinet 2', cost: 280.00, price: 349.99, cex: 360.00, qty: 2 },
+      { id: 'p-3', name: 'Nintendo Switch OLED Model (White)', category: 'Consoles', sku: 'SKU-SWT-OLD-01', barcode: '045496453435', location: 'Glass Display 3', cost: 180.00, price: 249.99, cex: 255.00, qty: 4 },
+      { id: 'p-4', name: 'DualSense Wireless Controller (Midnight Black)', category: 'Controllers', sku: 'SKU-CTL-PS5-BLK', barcode: '711719541386', location: 'Shelf B-2', cost: 25.00, price: 44.99, cex: 45.00, qty: 6 },
+      { id: 'p-5', name: 'Xbox Wireless Controller (Robot White)', category: 'Controllers', sku: 'SKU-CTL-XBX-WHT', barcode: '889842611565', location: 'Shelf B-2', cost: 22.00, price: 39.99, cex: 42.00, qty: 5 },
+      { id: 'p-6', name: 'Apple iPhone 14 Pro 128GB (Deep Purple, Unlocked)', category: 'Phones & Tablets', sku: 'SKU-PHN-IP14P-128', barcode: '194253401294', location: 'Safe Drawer 2', cost: 420.00, price: 549.99, cex: 560.00, qty: 2 },
+      { id: 'p-7', name: 'Samsung Galaxy S23 256GB (Phantom Black)', category: 'Phones & Tablets', sku: 'SKU-PHN-S23-256', barcode: '8806094728192', location: 'Safe Drawer 2', cost: 290.00, price: 399.99, cex: 410.00, qty: 1 },
+      { id: 'p-8', name: 'iPad 10th Gen 64GB Wi-Fi (Silver)', category: 'Phones & Tablets', sku: 'SKU-TAB-IPAD10-64', barcode: '194253362915', location: 'Glass Display 1', cost: 210.00, price: 299.99, cex: 310.00, qty: 3 },
+      { id: 'p-9', name: "Marvel's Spider-Man 2 (PS5)", category: 'Games', sku: 'SKU-GAM-PS5-SP2', barcode: '711719548231', location: 'Wall Rack A-1', cost: 18.00, price: 34.99, cex: 38.00, qty: 4 },
+      { id: 'p-10', name: 'Super Mario Bros. Wonder (Switch)', category: 'Games', sku: 'SKU-GAM-SWT-WND', barcode: '045496429980', location: 'Wall Rack C-2', cost: 20.00, price: 36.99, cex: 38.00, qty: 5 },
+      { id: 'p-11', name: 'HDMI 2.1 Replacement Port Socket (PS5/Xbox)', category: 'Repair Parts', sku: 'SKU-REP-HDMI-PS5', barcode: '505628109841', location: 'Parts Bin D-4', cost: 2.50, price: 8.99, cex: 0.00, qty: 18 },
+      { id: 'p-12', name: 'OEM iPhone 13 Replacement Battery (3227mAh)', category: 'Repair Parts', sku: 'SKU-REP-BAT-IP13', barcode: '505628109927', location: 'Parts Bin E-1', cost: 8.50, price: 24.99, cex: 0.00, qty: 12 },
+      { id: 'p-13', name: 'Kingbo RMA-218 BGA Solder Flux Paste (100g)', category: 'Repair Parts', sku: 'SKU-TLS-FLUX-100', barcode: '693821094821', location: 'Bench Drawer 1', cost: 6.00, price: 14.99, cex: 0.00, qty: 8 }
+    ];
+
+    let products = [];
+    try {
+      products = JSON.parse(localStorage.getItem('sos_products_catalog') || '[]');
+      if (products.length === 0) products = INITIAL_CATALOG;
+    } catch (e) {
+      products = INITIAL_CATALOG;
+    }
+
+    let activeCategory = 'all';
+
+    function saveProducts() {
+      try {
+        localStorage.setItem('sos_products_catalog', JSON.stringify(products));
+      } catch (e) {}
+      render();
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      document.getElementById('toast-text').textContent = msg;
+      t.style.display = 'flex';
+      setTimeout(() => { t.style.display = 'none'; }, 2800);
+    }
+
+    function render() {
+      const q = document.getElementById('product-query').value.trim().toLowerCase();
+      let list = products;
+
+      if (activeCategory !== 'all') {
+        list = list.filter(p => p.category === activeCategory);
+      }
+
+      if (q) {
+        list = list.filter(p => 
+          p.name.toLowerCase().includes(q) ||
+          p.sku.toLowerCase().includes(q) ||
+          (p.barcode && p.barcode.includes(q)) ||
+          p.location.toLowerCase().includes(q)
+        );
+      }
+
+      // Stats
+      const totalUnits = products.reduce((acc, p) => acc + (p.qty || 0), 0);
+      const totalVal = products.reduce((acc, p) => acc + ((p.price || 0) * (p.qty || 0)), 0);
+      const totalCost = products.reduce((acc, p) => acc + ((p.cost || 0) * (p.qty || 0)), 0);
+
+      document.getElementById('stat-total-skus').textContent = products.length;
+      document.getElementById('stat-total-units').textContent = totalUnits;
+      document.getElementById('stat-total-val').textContent = `£${totalVal.toFixed(2)}`;
+      document.getElementById('stat-total-cost').textContent = `£${totalCost.toFixed(2)}`;
+      document.getElementById('count-all').textContent = products.length;
+
+      // Table
+      const tbody = document.getElementById('product-tbody');
+      tbody.innerHTML = '';
+
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:24px; color:var(--muted)">No products found matching "${q}".</td></tr>`;
+        return;
+      }
+
+      list.forEach(p => {
+        const tr = document.createElement('tr');
+        let badgeClass = 'in-stock';
+        let badgeText = `${p.qty} in stock`;
+        if (p.qty <= 0) { badgeClass = 'out-stock'; badgeText = 'Out of Stock'; }
+        else if (p.qty <= 2) { badgeClass = 'low-stock'; badgeText = `${p.qty} left (Low)`; }
+
+        tr.innerHTML = `
+          <td><strong>${p.name}</strong></td>
+          <td><span style="font-size:11.5px; color:var(--muted)">${p.category}</span></td>
+          <td><code>${p.sku}</code>${p.barcode ? `<div style="font-size:11px; color:var(--muted)">${p.barcode}</div>` : ''}</td>
+          <td><span style="font-size:11.5px; font-weight:600">${p.location || 'Shelf'}</span></td>
+          <td>£${(p.cost || 0).toFixed(2)}</td>
+          <td><strong style="color:var(--text)">£${(p.price || 0).toFixed(2)}</strong></td>
+          <td>£${(p.cex || p.price || 0).toFixed(2)}</td>
+          <td>
+            <span class="stock-badge ${badgeClass}">${badgeText}</span>
+          </td>
+          <td>
+            <div style="display:flex; gap:4px">
+              <button class="btn subtle" style="padding:2px 6px; font-size:11px" onclick="adjustQty('${p.id}', 1)" title="Add unit">+1</button>
+              <button class="btn subtle" style="padding:2px 6px; font-size:11px" onclick="adjustQty('${p.id}', -1)" title="Minus unit">-1</button>
+              <button class="btn subtle" style="padding:2px 6px; font-size:11px" onclick="openEditModal('${p.id}')">Edit</button>
+              <button class="btn danger" style="padding:2px 6px; font-size:11px" onclick="deleteProduct('${p.id}')">&times;</button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    window.adjustQty = function(id, delta) {
+      const p = products.find(i => i.id === id);
+      if (p) {
+        p.qty = Math.max(0, (p.qty || 0) + delta);
+        saveProducts();
+        showToast(`Stock updated: ${p.name} (${p.qty})`);
+      }
+    };
+
+    window.deleteProduct = function(id) {
+      if (!confirm('Remove this product from catalog?')) return;
+      products = products.filter(i => i.id !== id);
+      saveProducts();
+      showToast('Product removed.');
+    };
+
+    // Filter Pills
+    document.querySelectorAll('#category-pills .pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        document.querySelectorAll('#category-pills .pill').forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        activeCategory = pill.dataset.cat;
+        render();
+      });
+    });
+
+    document.getElementById('product-query').addEventListener('input', render);
+
+    // Barcode Scan Simulation
+    document.getElementById('btn-scan-sim').addEventListener('click', () => {
+      const sampleBarcodes = ['711719548231', '889842611565', '194253401294', '045496453435', '505628109841'];
+      const picked = sampleBarcodes[Math.floor(Math.random() * sampleBarcodes.length)];
+      document.getElementById('product-query').value = picked;
+      render();
+      showToast(`Scanned barcode: ${picked}`);
+    });
+
+    // Add / Edit Modal
+    function openProductModal(prod = null) {
+      const modal = document.getElementById('product-modal');
+      if (prod) {
+        document.getElementById('modal-title').textContent = '✎ Edit Product';
+        document.getElementById('edit-prod-id').value = prod.id;
+        document.getElementById('prod-name').value = prod.name;
+        document.getElementById('prod-cat').value = prod.category;
+        document.getElementById('prod-sku').value = prod.sku;
+        document.getElementById('prod-barcode').value = prod.barcode || '';
+        document.getElementById('prod-location').value = prod.location || '';
+        document.getElementById('prod-cost').value = prod.cost || '';
+        document.getElementById('prod-price').value = prod.price || '';
+        document.getElementById('prod-cex').value = prod.cex || '';
+        document.getElementById('prod-qty').value = prod.qty || 1;
+      } else {
+        document.getElementById('modal-title').textContent = '+ Add Product to Inventory';
+        document.getElementById('edit-prod-id').value = '';
+        document.getElementById('prod-name').value = '';
+        document.getElementById('prod-cat').value = 'Consoles';
+        document.getElementById('prod-sku').value = `SKU-${Date.now().toString(36).toUpperCase()}`;
+        document.getElementById('prod-barcode').value = '';
+        document.getElementById('prod-location').value = 'Shelf A-1';
+        document.getElementById('prod-cost').value = '';
+        document.getElementById('prod-price').value = '';
+        document.getElementById('prod-cex').value = '';
+        document.getElementById('prod-qty').value = 1;
+      }
+      modal.style.display = 'flex';
+    }
+
+    window.openEditModal = function(id) {
+      const p = products.find(i => i.id === id);
+      if (p) openProductModal(p);
+    };
+
+    document.getElementById('btn-open-add-product').addEventListener('click', () => openProductModal());
+    document.getElementById('btn-close-product-modal').addEventListener('click', () => {
+      document.getElementById('product-modal').style.display = 'none';
+    });
+    document.getElementById('btn-cancel-prod').addEventListener('click', () => {
+      document.getElementById('product-modal').style.display = 'none';
+    });
+
+    document.getElementById('product-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const id = document.getElementById('edit-prod-id').value;
+      const name = document.getElementById('prod-name').value.trim();
+      const category = document.getElementById('prod-cat').value;
+      const sku = document.getElementById('prod-sku').value.trim();
+      const barcode = document.getElementById('prod-barcode').value.trim();
+      const location = document.getElementById('prod-location').value.trim();
+      const cost = parseFloat(document.getElementById('prod-cost').value) || 0;
+      const price = parseFloat(document.getElementById('prod-price').value) || 0;
+      const cex = parseFloat(document.getElementById('prod-cex').value) || price;
+      const qty = parseInt(document.getElementById('prod-qty').value, 10) || 0;
+
+      if (id) {
+        products = products.map(p => p.id === id ? { ...p, name, category, sku, barcode, location, cost, price, cex, qty } : p);
+        showToast('Product updated!');
+      } else {
+        products.unshift({
+          id: `p-${Date.now()}`,
+          name, category, sku, barcode, location, cost, price, cex, qty
+        });
+        showToast('Product added to catalog!');
+      }
+
+      saveProducts();
+      document.getElementById('product-modal').style.display = 'none';
+    });
+
+    // Export CSV
+    document.getElementById('btn-export-csv').addEventListener('click', () => {
+      let csv = 'Name,Category,SKU,Barcode,Location,Cost,Price,CeX,Qty\n';
+      products.forEach(p => {
+        csv += `"${p.name}","${p.category}","${p.sku}","${p.barcode || ''}","${p.location || ''}",${p.cost || 0},${p.price || 0},${p.cex || 0},${p.qty || 0}\n`;
+      });
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `inventory-catalog-${Date.now()}.csv`;
+      a.click();
+      showToast('Exported catalog CSV');
+    });
+
+    // Reset Catalog
+    document.getElementById('btn-reset-demo').addEventListener('click', () => {
+      if (!confirm('Reset catalog to sample inventory?')) return;
+      products = INITIAL_CATALOG;
+      saveProducts();
+      showToast('Reset to default inventory catalog');
+    });
+
+    // Initial render
+    render();
+  </script>
+</body>
+</html>
