@@ -542,7 +542,7 @@
 
         <div class="form-group">
           <label>Technician ID / Name</label>
-          <input type="text" id="dev-tech" value="Senior Tech 01" placeholder="e.g. Alex M." />
+          <input type="text" id="dev-tech" value="Matt" placeholder="e.g. Matt" />
         </div>
         <div class="form-group">
           <label>Brand / Manufacturer</label>
@@ -559,7 +559,7 @@
         </div>
         <div class="form-group">
           <label>Device Model</label>
-          <input type="text" id="dev-model" placeholder="e.g. iPhone 15 Pro, Galaxy S24 Ultra" value="iPhone 14 Pro" />
+          <input type="text" id="dev-model" placeholder="e.g. iPhone 15 Pro, Galaxy S24 Ultra" value="" />
         </div>
         <div class="form-group">
           <label>Storage Capacity</label>
@@ -574,7 +574,7 @@
         </div>
         <div class="form-group">
           <label>Colorway / Finish</label>
-          <input type="text" id="dev-color" value="Deep Purple" placeholder="e.g. Space Black, Titanium" />
+          <input type="text" id="dev-color" value="" placeholder="e.g. Space Black, Titanium" />
         </div>
         <div class="form-group">
           <label>Network Carrier Lock</label>
@@ -601,7 +601,7 @@
         <div class="form-group">
           <label>15-Digit IMEI Number</label>
           <div style="display:flex; gap:6px;">
-            <input type="text" id="dev-imei" maxlength="15" placeholder="352093081294812" value="356842109845123" />
+            <input type="text" id="dev-imei" maxlength="15" placeholder="352093081294812" value="" />
             <button id="btn-verify-imei" class="btn primary">&#10003; Verify</button>
           </div>
         </div>
@@ -611,7 +611,7 @@
           <button type="button" class="btn danger" style="padding:3px 7px; font-size:11px" onclick="setImeiState('BLACKLISTED')">Simulate Blacklist</button>
         </div>
         <div id="imei-feedback" style="margin-top:10px; font-size:12px; color:var(--muted); line-height:1.5;">
-          &#10003; Luhn algorithm checksum valid. No active GSMA lost/stolen flags detected.
+          Enter 15-digit IMEI to verify Luhn checksum &amp; GSMA blacklist registry.
         </div>
       </section>
 
@@ -624,7 +624,7 @@
         <div class="form-group">
           <label>Serial Number (Apple / Samsung)</label>
           <div style="display:flex; gap:6px;">
-            <input type="text" id="dev-serial" placeholder="e.g. F2LLN89VJCL" value="F2LZ9018DNW" />
+            <input type="text" id="dev-serial" placeholder="e.g. F2LLN89VJCL" value="" />
             <button id="btn-verify-serial" class="btn primary">&#10003; Check</button>
           </div>
         </div>
@@ -714,11 +714,11 @@
         </div>
         <div class="form-group">
           <label>Screen Glass Condition</label>
-          <input type="text" id="cos-screen" value="Clean, oleophobic coating intact" placeholder="e.g. Micro-scratches near speaker" />
+          <input type="text" id="cos-screen" value="" placeholder="e.g. Micro-scratches near speaker" />
         </div>
         <div class="form-group">
           <label>Frame &amp; Rear Glass</label>
-          <input type="text" id="cos-housing" value="Minor pocket scuff near USB-C port" placeholder="e.g. Corner dent near camera" />
+          <input type="text" id="cos-housing" value="" placeholder="e.g. Corner dent near camera" />
         </div>
       </div>
     </section>

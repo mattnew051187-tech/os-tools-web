@@ -434,7 +434,7 @@
     <div class="header-actions">
       <button id="btn-open-add-product" class="btn primary">&#43; Add Product</button>
       <button id="btn-export-csv" class="btn">&#128196; Export CSV</button>
-      <button id="btn-reset-demo" class="btn subtle">&#8635; Reset Catalog</button>
+      <button id="btn-reset-demo" class="btn subtle danger" style="color:var(--danger)">&#128465; Clear All</button>
     </div>
   </header>
 
@@ -581,28 +581,14 @@
   </div>
 
   <script>
-    const INITIAL_CATALOG = [
-      { id: 'p-1', name: 'PlayStation 5 Slim 1TB Console (White)', category: 'Consoles', sku: 'SKU-PS5-SLM-01', barcode: '711719572458', location: 'Top Cabinet 1', cost: 320.00, price: 399.99, cex: 410.00, qty: 3 },
-      { id: 'p-2', name: 'Xbox Series X 1TB Console (Carbon Black)', category: 'Consoles', sku: 'SKU-XBX-X1T-01', barcode: '889842640725', location: 'Top Cabinet 2', cost: 280.00, price: 349.99, cex: 360.00, qty: 2 },
-      { id: 'p-3', name: 'Nintendo Switch OLED Model (White)', category: 'Consoles', sku: 'SKU-SWT-OLD-01', barcode: '045496453435', location: 'Glass Display 3', cost: 180.00, price: 249.99, cex: 255.00, qty: 4 },
-      { id: 'p-4', name: 'DualSense Wireless Controller (Midnight Black)', category: 'Controllers', sku: 'SKU-CTL-PS5-BLK', barcode: '711719541386', location: 'Shelf B-2', cost: 25.00, price: 44.99, cex: 45.00, qty: 6 },
-      { id: 'p-5', name: 'Xbox Wireless Controller (Robot White)', category: 'Controllers', sku: 'SKU-CTL-XBX-WHT', barcode: '889842611565', location: 'Shelf B-2', cost: 22.00, price: 39.99, cex: 42.00, qty: 5 },
-      { id: 'p-6', name: 'Apple iPhone 14 Pro 128GB (Deep Purple, Unlocked)', category: 'Phones & Tablets', sku: 'SKU-PHN-IP14P-128', barcode: '194253401294', location: 'Safe Drawer 2', cost: 420.00, price: 549.99, cex: 560.00, qty: 2 },
-      { id: 'p-7', name: 'Samsung Galaxy S23 256GB (Phantom Black)', category: 'Phones & Tablets', sku: 'SKU-PHN-S23-256', barcode: '8806094728192', location: 'Safe Drawer 2', cost: 290.00, price: 399.99, cex: 410.00, qty: 1 },
-      { id: 'p-8', name: 'iPad 10th Gen 64GB Wi-Fi (Silver)', category: 'Phones & Tablets', sku: 'SKU-TAB-IPAD10-64', barcode: '194253362915', location: 'Glass Display 1', cost: 210.00, price: 299.99, cex: 310.00, qty: 3 },
-      { id: 'p-9', name: "Marvel's Spider-Man 2 (PS5)", category: 'Games', sku: 'SKU-GAM-PS5-SP2', barcode: '711719548231', location: 'Wall Rack A-1', cost: 18.00, price: 34.99, cex: 38.00, qty: 4 },
-      { id: 'p-10', name: 'Super Mario Bros. Wonder (Switch)', category: 'Games', sku: 'SKU-GAM-SWT-WND', barcode: '045496429980', location: 'Wall Rack C-2', cost: 20.00, price: 36.99, cex: 38.00, qty: 5 },
-      { id: 'p-11', name: 'HDMI 2.1 Replacement Port Socket (PS5/Xbox)', category: 'Repair Parts', sku: 'SKU-REP-HDMI-PS5', barcode: '505628109841', location: 'Parts Bin D-4', cost: 2.50, price: 8.99, cex: 0.00, qty: 18 },
-      { id: 'p-12', name: 'OEM iPhone 13 Replacement Battery (3227mAh)', category: 'Repair Parts', sku: 'SKU-REP-BAT-IP13', barcode: '505628109927', location: 'Parts Bin E-1', cost: 8.50, price: 24.99, cex: 0.00, qty: 12 },
-      { id: 'p-13', name: 'Kingbo RMA-218 BGA Solder Flux Paste (100g)', category: 'Repair Parts', sku: 'SKU-TLS-FLUX-100', barcode: '693821094821', location: 'Bench Drawer 1', cost: 6.00, price: 14.99, cex: 0.00, qty: 8 }
-    ];
+    const INITIAL_CATALOG = [];
 
     let products = [];
     try {
-      products = JSON.parse(localStorage.getItem('sos_products_catalog') || '[]');
-      if (products.length === 0) products = INITIAL_CATALOG;
+      const stored = JSON.parse(localStorage.getItem('sos_products_catalog') || '[]');
+      products = Array.isArray(stored) ? stored.filter(p => !p.id?.startsWith('p-')) : [];
     } catch (e) {
-      products = INITIAL_CATALOG;
+      products = [];
     }
 
     let activeCategory = 'all';
@@ -812,12 +798,12 @@
       showToast('Exported catalog CSV');
     });
 
-    // Reset Catalog
+    // Clear Catalog
     document.getElementById('btn-reset-demo').addEventListener('click', () => {
-      if (!confirm('Reset catalog to sample inventory?')) return;
-      products = INITIAL_CATALOG;
+      if (!confirm('Clear all products from inventory catalog?')) return;
+      products = [];
       saveProducts();
-      showToast('Reset to default inventory catalog');
+      showToast('Inventory catalog cleared');
     });
 
     // Initial render

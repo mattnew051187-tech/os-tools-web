@@ -614,6 +614,7 @@
     <div class="header-actions">
       <button id="btn-add-game" class="btn primary">&#43; Add Game</button>
       <button id="btn-batch-add" class="btn">&#128203; Batch Paste</button>
+      <button id="btn-clear-all" class="btn subtle danger" style="color:var(--danger)" title="Wipe all inventory">&#128465; Clear All</button>
       <button id="btn-manage-consoles" class="btn subtle">&#9881; Consoles</button>
       <button id="btn-hub" class="btn subtle" title="Back to Hub">&#127968; Hub</button>
     </div>
@@ -912,24 +913,8 @@
       'Retro / Other'
     ];
 
-    const INITIAL_STORE_GAMES = [
-      { id: 'st-1', name: "Marvel's Spider-Man 2", console: 'PlayStation 5', storePrice: 34.99, cexPrice: 38.00, quantity: 2, condition: 'Boxed Mint', barcode: '711719548231', notes: 'Top shelf display' },
-      { id: 'st-2', name: 'Elden Ring', console: 'PlayStation 5', storePrice: 28.00, cexPrice: 32.00, quantity: 1, condition: 'Boxed', barcode: '3391892015820', notes: '' },
-      { id: 'st-3', name: 'God of War Ragnarok', console: 'PlayStation 5', storePrice: 32.00, cexPrice: 30.00, quantity: 3, condition: 'Boxed', barcode: '711719548545', notes: 'Slightly overpriced' },
-      { id: 'st-4', name: 'The Last of Us Part I', console: 'PlayStation 5', storePrice: 38.00, cexPrice: 42.00, quantity: 1, condition: 'Boxed Mint', barcode: '711719548675', notes: '' },
-      { id: 'st-5', name: 'Bloodborne', console: 'PlayStation 4', storePrice: 12.00, cexPrice: 15.00, quantity: 2, condition: 'Boxed', barcode: '711719452316', notes: '' },
-      { id: 'st-6', name: 'Red Dead Redemption 2', console: 'PlayStation 4', storePrice: 15.00, cexPrice: 16.00, quantity: 4, condition: 'Boxed', barcode: '5026555424265', notes: 'Map included' },
-      { id: 'st-7', name: 'Forza Horizon 5', console: 'Xbox Series X', storePrice: 24.99, cexPrice: 28.00, quantity: 2, condition: 'Boxed', barcode: '889842880015', notes: '' },
-      { id: 'st-8', name: 'Halo Infinite', console: 'Xbox Series X', storePrice: 14.99, cexPrice: 12.00, quantity: 3, condition: 'Boxed', barcode: '889842698740', notes: 'Needs price drop' },
-      { id: 'st-9', name: 'Super Mario Odyssey', console: 'Nintendo Switch', storePrice: 32.00, cexPrice: 35.00, quantity: 2, condition: 'Boxed Mint', barcode: '045496420871', notes: '' },
-      { id: 'st-10', name: 'The Legend of Zelda: Tears of the Kingdom', console: 'Nintendo Switch', storePrice: 39.99, cexPrice: 42.00, quantity: 1, condition: 'Boxed', barcode: '045496429386', notes: '' }
-    ];
-
-    const INITIAL_OVERFLOW_GAMES = [
-      { id: 'ov-1', name: 'FIFA 23', console: 'PlayStation 4', storePrice: 6.00, cexPrice: 5.00, quantity: 6, condition: 'Boxed', barcode: '5030932124545', notes: 'Backroom bin A' },
-      { id: 'ov-2', name: 'Call of Duty: Modern Warfare', console: 'PlayStation 4', storePrice: 12.00, cexPrice: 14.00, quantity: 3, condition: 'Boxed', barcode: '5030917285513', notes: 'Drawer 3' },
-      { id: 'ov-3', name: 'Gears 5', console: 'Xbox One', storePrice: 8.00, cexPrice: 7.00, quantity: 4, condition: 'Boxed', barcode: '889842475648', notes: 'Shelf overflow' }
-    ];
+    const INITIAL_STORE_GAMES = [];
+    const INITIAL_OVERFLOW_GAMES = [];
 
     // CeX Catalog Benchmark DB for Lookup Tool
     const CEX_LOOKUP_DB = [
@@ -957,14 +942,16 @@
     let filterStatus = 'all'; // 'all' | 'increase' | 'decrease'
     let currentTab = 'spreadsheet'; // 'spreadsheet' | 'report' | 'lookup'
 
-    // Load LocalStorage
+    // Load LocalStorage - discard legacy demo records if present
     try {
-      storeGames = JSON.parse(localStorage.getItem('stock_tracker_store_games')) || INITIAL_STORE_GAMES;
-    } catch (e) { storeGames = INITIAL_STORE_GAMES; }
+      const savedStore = JSON.parse(localStorage.getItem('stock_tracker_store_games') || '[]');
+      storeGames = Array.isArray(savedStore) ? savedStore.filter(g => !g.id?.startsWith('st-')) : [];
+    } catch (e) { storeGames = []; }
 
     try {
-      overflowGames = JSON.parse(localStorage.getItem('stock_tracker_overflow_games')) || INITIAL_OVERFLOW_GAMES;
-    } catch (e) { overflowGames = INITIAL_OVERFLOW_GAMES; }
+      const savedOverflow = JSON.parse(localStorage.getItem('stock_tracker_overflow_games') || '[]');
+      overflowGames = Array.isArray(savedOverflow) ? savedOverflow.filter(g => !g.id?.startsWith('ov-')) : [];
+    } catch (e) { overflowGames = []; }
 
     try {
       consoles = JSON.parse(localStorage.getItem('stock_tracker_consoles')) || INITIAL_CONSOLES;
@@ -975,6 +962,21 @@
       localStorage.setItem('stock_tracker_store_games', JSON.stringify(storeGames));
       localStorage.setItem('stock_tracker_overflow_games', JSON.stringify(overflowGames));
       localStorage.setItem('stock_tracker_consoles', JSON.stringify(consoles));
+    }
+
+    // Clear all inventory handler
+    const clearBtn = document.getElementById('btn-clear-all');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => {
+        if (confirm('Clear all game titles from both Store Stock and Overflow Reserve?')) {
+          storeGames = [];
+          overflowGames = [];
+          saveState();
+          renderLanding();
+          renderAll();
+          showToast('All inventory cleared — ready for fresh stock entry.');
+        }
+      });
     }
 
     function getActiveGames() {

@@ -479,18 +479,6 @@ function escapeAttr(s) {
 /* ---------------- Boot ---------------- */
 buildKeypad();
 
-/* Always land on the login screen. If a valid session exists, offer a
-   one-click continue instead of silently re-entering the app. */
-(async () => {
-  show('screen-login');
-  const res = await window.sos.getCurrentUser();
-  if (res && res.ok && res.user) {
-    window._validSession = res.user;
-    $('#continue-name').textContent = res.user.username;
-    $('#btn-continue').classList.remove('hidden');
-  }
-})();
+/* Always land cleanly on the login screen requiring credentials */
+show('screen-login');
 
-$('#btn-continue').addEventListener('click', () => {
-  if (window._validSession) enterApp(window._validSession, { via: 'restore' });
-});

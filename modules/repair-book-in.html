@@ -702,8 +702,8 @@
       <button class="btn btn-primary" onclick="openNewTicketModal()">
         &#43; Book In New Repair
       </button>
-      <button class="btn btn-sm" onclick="loadDemoTickets()">
-        &#9881; Reset Demo Jobs
+      <button class="btn btn-sm" style="color:var(--danger)" onclick="clearAllTickets()">
+        &#128465; Clear All Tickets
       </button>
       <button class="btn btn-sm" onclick="exportTicketsCsv()">
         &#128190; Export CSV
@@ -1002,145 +1002,34 @@
     // Storage Key
     const STORAGE_KEY = 'sos_repair_tickets';
 
-    // Initial Demo Dataset
-    const DEFAULT_TICKETS = [
-      {
-        id: 'SOS-REP-2041',
-        createdAt: '2026-10-21 10:15',
-        customer: {
-          name: 'Marcus Vance',
-          phone: '07891 234567',
-          email: 'marcus.v@outlook.com'
-        },
-        device: {
-          category: 'Console',
-          model: 'PlayStation 5 Disc Edition',
-          serial: 'CFI-1116A / 03-27451992',
-          color: 'Standard White',
-          passcode: 'No passcode',
-          accessories: ['Power Cable', 'HDMI Lead']
-        },
-        fault: 'HDMI port pins visibly bent inside socket. No video signal output to TV; TV shows "No Signal" with solid blue/white power indicator light.',
-        existingDamage: 'Minor scuff on bottom glossy plastic stand mount.',
-        techNotes: 'Replacement OEM HDMI socket soldered on hot air rework station. Pin traces verified on microscope with continuity check. Testing 4K 120Hz output.',
-        quote: 79.99,
-        deposit: 20.00,
-        priority: 'Priority',
-        status: 'Repair In Progress'
-      },
-      {
-        id: 'SOS-REP-2042',
-        createdAt: '2026-10-20 15:40',
-        customer: {
-          name: 'Sarah Jenkins',
-          phone: '07700 900543',
-          email: 'sjenkins@gmail.com'
-        },
-        device: {
-          category: 'Phone',
-          model: 'Apple iPhone 14 Pro 128GB',
-          serial: 'IMEI: 358941098234112',
-          color: 'Deep Purple',
-          passcode: '4826',
-          accessories: ['Case / Cover']
-        },
-        fault: 'Cracked front OLED glass after drop. Vertical green line visible on right half of display. Touch screen erratic near bottom edge.',
-        existingDamage: 'Impact dent on bottom-right stainless steel corner bezel.',
-        techNotes: 'Fitted premium refurbished OEM OLED display. True Tone programmed from original display IC. 100% passed touch digitizer 32-zone grid test.',
-        quote: 149.99,
-        deposit: 50.00,
-        priority: 'Express',
-        status: 'Ready for Collection'
-      },
-      {
-        id: 'SOS-REP-2043',
-        createdAt: '2026-10-21 11:30',
-        customer: {
-          name: 'Callum Wright',
-          phone: '07945 678120',
-          email: 'cwright99@yahoo.co.uk'
-        },
-        device: {
-          category: 'Console',
-          model: 'Nintendo Switch OLED',
-          serial: 'XAW400129841',
-          color: 'White Joy-Cons',
-          passcode: 'None',
-          accessories: ['Case / Cover', 'Game Disc in tray']
-        },
-        fault: 'Both left and right Joy-Con analog sticks suffer from severe upward drift in game menus. Internal fan rattles loudly during intensive gameplay.',
-        existingDamage: 'Minor scratches on kickstand.',
-        techNotes: 'Installing Hall Effect magnetic analog joystick modules to prevent future drift. Clean fan exhaust and replace thermal paste.',
-        quote: 45.00,
-        deposit: 0.00,
-        priority: 'Standard',
-        status: 'Under Diagnosis'
-      },
-      {
-        id: 'SOS-REP-2044',
-        createdAt: '2026-10-19 14:10',
-        customer: {
-          name: 'Liam Gallagher',
-          phone: '07812 345678',
-          email: 'liam.g@btinternet.com'
-        },
-        device: {
-          category: 'Console',
-          model: 'Xbox Series X 1TB',
-          serial: '084291837491',
-          color: 'Matte Black',
-          passcode: 'None',
-          accessories: ['Power Cable']
-        },
-        fault: 'Console beeps when power button is pressed, power LED lights up for 2 seconds then immediately shuts down. No fan spin.',
-        existingDamage: 'Intact warranty sticker, clean exterior.',
-        techNotes: 'Multimeter diagnostics show short circuit on 12V rail of internal power supply module (Model 1882). Waiting on replacement power board from supplier.',
-        quote: 89.99,
-        deposit: 30.00,
-        priority: 'Standard',
-        status: 'Awaiting Parts'
-      },
-      {
-        id: 'SOS-REP-2045',
-        createdAt: '2026-10-21 13:05',
-        customer: {
-          name: 'Emma Harrison',
-          phone: '07788 112233',
-          email: 'emma.harrison@icloud.com'
-        },
-        device: {
-          category: 'Controller',
-          model: 'Sony DualSense Wireless Controller',
-          serial: 'CFI-ZCT1W',
-          color: 'Midnight Black',
-          passcode: 'N/A',
-          accessories: []
-        },
-        fault: 'Left stick drifts to top-left when in neutral resting position. Character constantly walks in games without touching stick.',
-        existingDamage: 'Good condition, light thumbstick rubber wear.',
-        techNotes: 'Booked in for potentiometer potentiometer replacement or Hall Effect upgrade.',
-        quote: 25.00,
-        deposit: 0.00,
-        priority: 'Standard',
-        status: 'Booked In'
-      }
-    ];
+    // Initial Demo Dataset - Blank for custom workshop entry
+    const DEFAULT_TICKETS = [];
 
     // State
     let tickets = [];
     let currentFilter = 'all';
+
+    // Clear All Tickets
+    function clearAllTickets() {
+      if (confirm('Clear all repair tickets from the workshop register?')) {
+        tickets = [];
+        saveTickets();
+        renderTickets();
+      }
+    }
 
     // Initialize
     function init() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         try {
-          tickets = JSON.parse(saved);
+          const parsed = JSON.parse(saved);
+          tickets = Array.isArray(parsed) ? parsed.filter(t => !t.id?.startsWith('SOS-REP-204')) : [];
         } catch (e) {
-          tickets = [...DEFAULT_TICKETS];
+          tickets = [];
         }
       } else {
-        tickets = [...DEFAULT_TICKETS];
+        tickets = [];
         saveTickets();
       }
 
