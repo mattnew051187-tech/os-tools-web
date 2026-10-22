@@ -33,6 +33,7 @@ const state = {
   idleTimer: null,
   pinBuffer: '',
   pinFails: 0,
+  pinVerifying: false,
   activeTab: 'phone-tablets',
   lastRefresh: 0,
 };
@@ -201,16 +202,36 @@ function resetIdleTimer() {
 
 function lockSession() {
   if (!state.user) return;
+  clearTimeout(state.idleTimer);
   state.pinBuffer = '';
+  state.pinVerifying = false;
   updatePinDisplay();
   $('#lock-error').textContent = '';
   $('#lock-user').textContent = 'Signed in as ' + state.user.username;
   show('screen-lock');
-  logClientEvent('lock-shown', 'Idle timeout reached');
+  if (document.activeElement && typeof document.activeElement.blur === 'function') {
+    document.activeElement.blur();
+  }
+  const screenLock = $('#screen-lock');
+  if (screenLock && typeof screenLock.focus === 'function') {
+    screenLock.focus();
+  }
+  window.focus();
+  logClientEvent('lock-shown', 'Session locked');
 }
 
 function updatePinDisplay() {
   $('#pin-display').textContent = '\u25CF'.repeat(state.pinBuffer.length).padEnd(4, '\u25CB');
+}
+
+function highlightKey(key) {
+  let selectorKey = key;
+  if (key === 'Backspace') selectorKey = '\u232B';
+  if (key === 'Escape' || key === 'Clear' || key === 'c' || key === 'C') selectorKey = 'C';
+  const btn = document.querySelector(`#keypad button[data-key="${selectorKey}"]`);
+  if (!btn) return;
+  btn.classList.add('key-pressed');
+  setTimeout(() => btn.classList.remove('key-pressed'), 120);
 }
 
 function buildKeypad() {
@@ -219,25 +240,37 @@ function buildKeypad() {
   keypad.innerHTML = '';
   for (const key of keys) {
     const btn = document.createElement('button');
+    btn.type = 'button';
     btn.textContent = key;
-    btn.addEventListener('click', () => handlePinKey(key));
+    btn.dataset.key = key;
+    if (key === 'C') btn.title = 'Clear (Escape, C)';
+    else if (key === '\u232B') btn.title = 'Backspace (Backspace, Delete)';
+    else btn.title = `Number ${key}`;
+    btn.addEventListener('click', () => {
+      highlightKey(key);
+      handlePinKey(key);
+    });
     keypad.appendChild(btn);
   }
 }
 
 async function handlePinKey(key) {
+  if (state.pinVerifying) return;
   if (key === 'C') {
     state.pinBuffer = '';
-  } else if (key === '\u232B') {
+  } else if (key === '\u232B' || key === 'Backspace') {
     state.pinBuffer = state.pinBuffer.slice(0, -1);
-  } else if (state.pinBuffer.length < 4) {
+  } else if (/^[0-9]$/.test(key) && state.pinBuffer.length < 4) {
     state.pinBuffer += key;
   }
   updatePinDisplay();
   if (state.pinBuffer.length === 4) {
-    const res = await window.sos.verifyPin(state.pinBuffer);
+    state.pinVerifying = true;
+    const pin = state.pinBuffer;
+    const res = await window.sos.verifyPin(pin);
     state.pinBuffer = '';
     updatePinDisplay();
+    state.pinVerifying = false;
     if (res.ok) {
       state.pinFails = 0;
       $('#lock-error').textContent = '';
@@ -252,6 +285,58 @@ async function handlePinKey(key) {
     }
   }
 }
+
+/* Physical keyboard / numpad support for lock screen */
+window.addEventListener('keydown', (e) => {
+  const lockScreen = $('#screen-lock');
+  if (!lockScreen || lockScreen.classList.contains('hidden')) return;
+
+  const activeEl = document.activeElement;
+  const isInput = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA');
+  if (isInput) return;
+
+  // Physical numpad or top-row number keys
+  let digit = null;
+  if (e.key >= '0' && e.key <= '9') {
+    digit = e.key;
+  } else if (e.code && /^Numpad[0-9]$/.test(e.code)) {
+    digit = e.code.replace('Numpad', '');
+  }
+
+  if (digit !== null) {
+    e.preventDefault();
+    highlightKey(digit);
+    handlePinKey(digit);
+    return;
+  }
+
+  // Backspace / Delete
+  if (e.key === 'Backspace' || e.key === 'Delete') {
+    e.preventDefault();
+    highlightKey('\u232B');
+    handlePinKey('\u232B');
+    return;
+  }
+
+  // Clear (Escape, 'c', 'C', Clear)
+  if (e.key === 'Escape' || e.key === 'c' || e.key === 'C' || e.key === 'Clear') {
+    e.preventDefault();
+    highlightKey('C');
+    handlePinKey('C');
+    return;
+  }
+
+  // Enter / NumpadEnter
+  if (e.key === 'Enter') {
+    if (activeEl && activeEl.id === 'lock-logout') {
+      return;
+    }
+    e.preventDefault();
+    if (state.pinBuffer.length === 4 && !state.pinVerifying) {
+      handlePinKey('');
+    }
+  }
+});
 
 $('#lock-logout').addEventListener('click', () => signOut());
 
@@ -272,6 +357,11 @@ async function signOut() {
 }
 
 $('#btn-logout').addEventListener('click', signOut);
+
+const btnLock = $('#btn-lock');
+if (btnLock) {
+  btnLock.addEventListener('click', () => lockSession());
+}
 
 $('#btn-reload').addEventListener('click', async () => {
   await refreshModules();

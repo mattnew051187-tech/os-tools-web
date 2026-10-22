@@ -187,8 +187,17 @@ input:focus, select:focus { border-color: var(--accent); }
   background: var(--panel-2);
   color: var(--text);
   cursor: pointer;
+  transition: transform 0.08s ease, background-color 0.08s ease, border-color 0.08s ease;
+  user-select: none;
 }
 .keypad button:hover { border-color: var(--accent); }
+.keypad button:active,
+.keypad button.key-pressed {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-color: var(--accent);
+  transform: scale(0.92);
+}
 
 .brand-logo {
   max-width: 250px;

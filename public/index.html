@@ -30,13 +30,14 @@
   </div>
 
   <!-- ============ LOCK SCREEN (PIN) ============ -->
-  <div id="screen-lock" class="screen centered hidden">
+  <div id="screen-lock" class="screen centered hidden" tabindex="-1">
     <div class="card login-card">
       <div class="lock-icon">&#128274;</div>
       <h2>Session locked</h2>
       <p class="tagline" id="lock-user"></p>
-      <div id="pin-display" class="pin-display">&#9679;&#9679;&#9679;&#9679;</div>
+      <div id="pin-display" class="pin-display" aria-label="PIN entry">&#9679;&#9679;&#9679;&#9679;</div>
       <div class="keypad" id="keypad"></div>
+      <p class="hint" style="margin-top:6px;font-size:12px;">Enter PIN using physical keypad / keyboard, or tap buttons</p>
       <p id="lock-error" class="error"></p>
       <button id="lock-logout" class="btn subtle block">Sign out instead</button>
     </div>
@@ -50,6 +51,7 @@
       <div class="user-box">
         <span id="whoami"></span>
         <button id="btn-reload" class="btn subtle" title="Reload modules now">&#10227; Reload</button>
+        <button id="btn-lock" class="btn subtle" title="Lock session">&#128274; Lock</button>
         <button id="btn-account" class="btn subtle" title="Account">Account</button>
         <button id="btn-logout" class="btn subtle">Sign out</button>
       </div>
