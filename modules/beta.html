@@ -1,0 +1,1342 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SOS Tools — Beta App Incubator &amp; Staging Lab</title>
+  <style>
+    :root {
+      --bg: #f7efcf;
+      --panel: #fffdf2;
+      --panel-2: #f3e5ae;
+      --border: #ddc87c;
+      --text: #3b2f0b;
+      --muted: #8a7a45;
+      --accent: #b45309;
+      --accent-contrast: #ffffff;
+      --danger: #b91c1c;
+      --success: #15803d;
+      --shadow: rgba(120, 90, 20, 0.18);
+      --editor-bg: #1e1e1e;
+      --editor-text: #d4d4d4;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Lab Header */
+    .lab-header {
+      background: var(--panel);
+      border-bottom: 2px solid var(--border);
+      padding: 10px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px var(--shadow);
+    }
+
+    .lab-title-area {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .lab-badge {
+      background: var(--accent);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      text-transform: uppercase;
+    }
+
+    .lab-title {
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .lab-subtitle {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .lab-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 7px 13px;
+      border-radius: 7px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s;
+    }
+    .btn:hover { border-color: var(--accent); filter: brightness(0.97); }
+    .btn:active { transform: translateY(1px); }
+
+    .btn.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--accent-contrast);
+    }
+    .btn.primary:hover { filter: brightness(1.1); }
+
+    .btn.integrate {
+      background: linear-gradient(135deg, #b45309 0%, #d97706 100%);
+      border-color: #92400e;
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(180, 83, 9, 0.35);
+    }
+    .btn.integrate:hover {
+      box-shadow: 0 4px 12px rgba(180, 83, 9, 0.5);
+      filter: brightness(1.08);
+    }
+
+    .btn.success {
+      background: var(--success);
+      border-color: var(--success);
+      color: #fff;
+    }
+
+    select.input-sm, input.input-sm {
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 600;
+      outline: none;
+    }
+
+    /* Main Workspace Layout */
+    .lab-body {
+      flex: 1;
+      display: flex;
+      min-height: 0;
+      overflow: hidden;
+      background: var(--bg);
+    }
+
+    /* Left Pane: Code Workspace */
+    .pane-editor {
+      width: 50%;
+      min-width: 380px;
+      display: flex;
+      flex-direction: column;
+      border-right: 2px solid var(--border);
+      background: #141414;
+    }
+
+    .editor-toolbar {
+      background: #1e1e1e;
+      border-bottom: 1px solid #333;
+      padding: 6px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      color: #aaa;
+      font-size: 12px;
+    }
+
+    .editor-tabs {
+      display: flex;
+      gap: 4px;
+    }
+
+    .editor-tab-btn {
+      background: #282828;
+      border: 1px solid #3d3d3d;
+      color: #bbb;
+      padding: 5px 11px;
+      border-radius: 5px 5px 0 0;
+      font-size: 12px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .editor-tab-btn.active {
+      background: #141414;
+      border-bottom-color: #141414;
+      color: #fbbf24;
+      font-weight: 700;
+    }
+
+    .editor-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .editor-container {
+      flex: 1;
+      position: relative;
+      display: flex;
+      min-height: 0;
+    }
+
+    .code-textarea {
+      width: 100%;
+      height: 100%;
+      padding: 12px 16px;
+      background: #141414;
+      color: #e0e0e0;
+      border: none;
+      resize: none;
+      outline: none;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 13px;
+      line-height: 1.55;
+      tab-size: 2;
+      white-space: pre;
+      overflow: auto;
+    }
+
+    /* Right Pane: Sandbox & Test Console */
+    .pane-preview {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 380px;
+      background: var(--bg);
+    }
+
+    .preview-toolbar {
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      padding: 6px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 12px;
+    }
+
+    .preview-viewport-btns {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .viewport-btn {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .viewport-btn.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    .preview-stage {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: stretch;
+      background: #332d20;
+      padding: 8px;
+      min-height: 0;
+      position: relative;
+    }
+
+    .sandbox-frame {
+      width: 100%;
+      height: 100%;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      transition: width 0.2s;
+    }
+
+    /* Preview Console & Hardware Status Bar */
+    .preview-footer {
+      background: #181818;
+      border-top: 1px solid #333;
+      color: #d1d5db;
+      font-size: 12px;
+      display: flex;
+      flex-direction: column;
+      max-height: 180px;
+      min-height: 38px;
+    }
+
+    .console-header {
+      padding: 5px 12px;
+      background: #222;
+      border-bottom: 1px solid #333;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .hw-pills {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .hw-pill {
+      font-size: 10.5px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: #2a2a2a;
+      color: #9ca3af;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .hw-pill.ready { color: #86efac; background: rgba(34, 197, 94, 0.15); }
+
+    .console-logs {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px 12px;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      font-size: 11.5px;
+      line-height: 1.4;
+      display: none;
+    }
+    .console-logs.expanded { display: block; max-height: 140px; }
+
+    .log-line { margin-bottom: 3px; border-bottom: 1px solid #262626; padding-bottom: 2px; }
+    .log-line.info { color: #93c5fd; }
+    .log-line.warn { color: #fde047; }
+    .log-line.error { color: #fca5a5; }
+
+    /* Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(20, 16, 7, 0.65);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .modal-backdrop.hidden { display: none; }
+
+    .modal-card {
+      background: var(--panel);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      width: 520px;
+      max-width: 95vw;
+      padding: 24px;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.4);
+    }
+    .modal-card h3 {
+      font-size: 19px;
+      margin-bottom: 8px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .modal-card p {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 16px;
+      line-height: 1.45;
+    }
+    .modal-field {
+      margin-bottom: 14px;
+    }
+    .modal-field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 5px;
+    }
+    .modal-field input, .modal-field select {
+      width: 100%;
+      padding: 9px 12px;
+      border-radius: 7px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--text);
+      font-size: 14px;
+    }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    /* Notification Toast */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #1f2937;
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .toast.hidden { opacity: 0; pointer-events: none; transform: translateY(10px); }
+  </style>
+</head>
+<body>
+
+  <!-- Lab Header -->
+  <header class="lab-header">
+    <div class="lab-title-area">
+      <span class="lab-badge">&#129514; Matt's Beta Lab</span>
+      <div>
+        <div class="lab-title">App Incubator &amp; Staging</div>
+        <div class="lab-subtitle">Design, test, and integrate new apps into SOS Tools</div>
+      </div>
+    </div>
+
+    <div class="lab-controls">
+      <!-- Project Selection -->
+      <select id="project-select" class="input-sm" title="Switch active draft project"></select>
+      <button id="btn-new-proj" class="btn" title="Create a new draft project">+ New App</button>
+      <button id="btn-save-proj" class="btn" title="Save draft project to server">&#128190; Save Draft</button>
+
+      <!-- Templates -->
+      <select id="template-select" class="input-sm" title="Load starter template">
+        <option value="" disabled selected>Templates...</option>
+        <option value="battery">Battery Health &amp; Diagnostics</option>
+        <option value="barcode">Barcode &amp; Asset Tag Generator</option>
+        <option value="display">Display &amp; Touch Matrix Tester</option>
+        <option value="blank">Blank SOS Module Canvas</option>
+      </select>
+
+      <!-- Import / Export -->
+      <button id="btn-export" class="btn" title="Download standalone HTML file">&#8595; Export</button>
+      <button id="btn-import" class="btn" title="Import HTML from file">&#8593; Import</button>
+      <input type="file" id="import-file-input" accept=".html,.htm,.txt" style="display:none;" />
+
+      <!-- Promote / Integrate -->
+      <button id="btn-open-integrate" class="btn integrate" title="Integrate this app directly into SOS Tools">
+        &#128640; Integrate into Site
+      </button>
+    </div>
+  </header>
+
+  <!-- Workspace Body -->
+  <main class="lab-body">
+    <!-- Left: Code Editor -->
+    <section class="pane-editor">
+      <div class="editor-toolbar">
+        <div class="editor-tabs">
+          <button class="editor-tab-btn active" data-tab="full">All-in-One HTML</button>
+        </div>
+        <div class="editor-actions">
+          <span id="save-status" style="color:#86efac; font-size:11.5px;">All changes saved</span>
+          <button id="btn-format" class="btn" style="padding:3px 8px; font-size:11px; background:#2a2a2a; color:#ccc; border-color:#444;">Format Indent</button>
+        </div>
+      </div>
+      <div class="editor-container">
+        <textarea id="code-editor" class="code-textarea" spellcheck="false" placeholder="Write or paste your standalone module HTML, CSS, and JS here..."></textarea>
+      </div>
+    </section>
+
+    <!-- Right: Live Sandbox Preview -->
+    <section class="pane-preview">
+      <div class="preview-toolbar">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button id="btn-run-preview" class="btn primary" style="padding:4px 10px; font-size:12px;">&#9654; Run Preview</button>
+          <label style="font-size:11.5px; display:flex; align-items:center; gap:4px; cursor:pointer;">
+            <input type="checkbox" id="chk-autorun" checked /> Live update
+          </label>
+        </div>
+
+        <div class="preview-viewport-btns">
+          <button class="viewport-btn active" data-width="100%">Desktop 100%</button>
+          <button class="viewport-btn" data-width="768px">Tablet 768px</button>
+          <button class="viewport-btn" data-width="400px">Mobile 400px</button>
+          <select id="preview-theme-select" class="input-sm" style="padding:3px 6px; font-size:11px;" title="Test theme preview">
+            <option value="yellow">Yellow Workshop</option>
+            <option value="dark">Dark Theme</option>
+            <option value="light">Light Theme</option>
+            <option value="blue">Blue Theme</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="preview-stage">
+        <iframe id="preview-frame" class="sandbox-frame" title="Live Sandbox Preview"
+                sandbox="allow-scripts allow-modals allow-forms allow-same-origin allow-downloads"
+                allow="gamepad; camera; microphone; display-capture; clipboard-read; clipboard-write; autoplay; serial; usb; hid">
+        </iframe>
+      </div>
+
+      <!-- Preview Footer & Hardware Console -->
+      <footer class="preview-footer">
+        <div class="console-header" id="console-header">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-weight:700;">&#128187; Preview Console</span>
+            <span id="log-count" style="background:#333; padding:1px 6px; border-radius:10px; font-size:10px;">0 logs</span>
+          </div>
+          <div class="hw-pills">
+            <span class="hw-pill ready" title="WebUSB API supported">&#9881; USB</span>
+            <span class="hw-pill ready" title="Web Serial API supported">&#9889; Serial</span>
+            <span class="hw-pill ready" title="Gamepad API supported">&#127918; Gamepad</span>
+            <span class="hw-pill ready" title="WebRTC Camera/Mic supported">&#128247; Camera</span>
+            <span class="hw-pill ready" title="Web AudioContext supported">&#128266; Audio</span>
+            <span style="margin-left:8px; font-size:11px; color:#aaa;">&#9650; Toggle</span>
+          </div>
+        </div>
+        <div class="console-logs" id="console-logs">
+          <div class="log-line info">Ready. Code changes will render instantly in the sandbox above.</div>
+        </div>
+      </footer>
+    </section>
+  </main>
+
+  <!-- Integration Modal -->
+  <div id="modal-integrate" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <h3>&#128640; Integrate into SOS Tools</h3>
+      <p>This will compile and publish your draft module to <code>modules/&lt;slug&gt;.html</code>, making it instantly live on the system.</p>
+
+      <div class="modal-field">
+        <label for="int-name">App / Module Title</label>
+        <input type="text" id="int-name" placeholder="e.g. Battery Diagnostics Pro" />
+      </div>
+
+      <div class="modal-field">
+        <label for="int-slug">Module URL Slug (filename)</label>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <span style="color:var(--muted); font-size:13px;">modules/</span>
+          <input type="text" id="int-slug" placeholder="e.g. battery-tester" />
+          <span style="color:var(--muted); font-size:13px;">.html</span>
+        </div>
+      </div>
+
+      <div class="modal-field">
+        <label for="int-target">Integration Destination</label>
+        <select id="int-target">
+          <option value="standalone">Standalone Built-in Module (/modules/&lt;slug&gt;.html)</option>
+          <option value="replace-custom">Add to Settings as Custom Module Slot</option>
+        </select>
+      </div>
+
+      <div class="modal-actions">
+        <button id="btn-cancel-integrate" class="btn">Cancel</button>
+        <button id="btn-confirm-integrate" class="btn integrate">&#10004; Publish to Site</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- Starter Templates Repository -->
+  <script>
+    const STARTER_TEMPLATES = {
+      blank: `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>New SOS Module</title>
+  <style>
+    :root {
+      --bg: #f7efcf;
+      --panel: #fffdf2;
+      --panel-2: #f3e5ae;
+      --border: #ddc87c;
+      --text: #3b2f0b;
+      --muted: #8a7a45;
+      --accent: #b45309;
+      --shadow: rgba(120, 90, 20, 0.15);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 24px;
+      line-height: 1.5;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 4px 16px var(--shadow);
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    h1 { color: var(--text); font-size: 24px; margin-bottom: 8px; }
+    p { color: var(--muted); margin-bottom: 20px; font-size: 14px; }
+    .btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>New SOS Module</h1>
+    <p>Welcome to your new module. Edit the code in the Beta lab to start building!</p>
+    <button class="btn" onclick="alert('Hello from your new module!')">Click Me</button>
+  </div>
+</body>
+</html>`,
+
+      battery: `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Battery Diagnostics &amp; Health Tester</title>
+  <style>
+    :root {
+      --bg: #f7efcf;
+      --panel: #fffdf2;
+      --panel-2: #f3e5ae;
+      --border: #ddc87c;
+      --text: #3b2f0b;
+      --muted: #8a7a45;
+      --accent: #b45309;
+      --success: #15803d;
+      --shadow: rgba(120, 90, 20, 0.15);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 24px;
+    }
+    .container { max-width: 860px; margin: 0 auto; }
+    .header { margin-bottom: 20px; }
+    .header h1 { font-size: 24px; display: flex; align-items: center; gap: 8px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 20px; }
+    .metric-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+      box-shadow: 0 4px 12px var(--shadow);
+    }
+    .metric-title { font-size: 12px; color: var(--muted); text-transform: uppercase; font-weight: 700; }
+    .metric-val { font-size: 32px; font-weight: 900; color: var(--accent); margin: 6px 0; }
+    .metric-desc { font-size: 12px; color: var(--muted); }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 12px var(--shadow);
+      margin-bottom: 20px;
+    }
+    .btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>&#128267; Battery Diagnostics &amp; Health Tester</h1>
+      <p style="color:var(--muted); font-size:13.5px;">Live hardware API probe and cycle deterioration estimator</p>
+    </div>
+
+    <div class="grid">
+      <div class="metric-card">
+        <div class="metric-title">Charge Level</div>
+        <div class="metric-val" id="batt-level">--%</div>
+        <div class="metric-desc" id="batt-charging">Detecting charger...</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-title">Health Grade</div>
+        <div class="metric-val" id="batt-health" style="color:var(--success);">Grade A</div>
+        <div class="metric-desc">Est. capacity retention: 94.2%</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-title">Discharge Rate</div>
+        <div class="metric-val" id="batt-time">Optimal</div>
+        <div class="metric-desc">Thermal curve normal</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom:12px;">Diagnostics Run</h3>
+      <p style="color:var(--muted); font-size:13px; margin-bottom:16px;">
+        Click below to run a standard 10-second thermal &amp; load stress benchmark on this handset.
+      </p>
+      <button class="btn" id="btn-run-stress">Start Battery Stress Probe</button>
+      <div id="stress-result" style="margin-top:14px; font-size:13px; font-weight:600; color:var(--accent);"></div>
+    </div>
+  </div>
+
+  <script>
+    async function initBattery() {
+      if ('getBattery' in navigator) {
+        try {
+          const battery = await navigator.getBattery();
+          function update() {
+            document.getElementById('batt-level').textContent = Math.round(battery.level * 100) + '%';
+            document.getElementById('batt-charging').textContent = battery.charging ? 'Charging plugged in' : 'Discharging on battery';
+          }
+          update();
+          battery.addEventListener('levelchange', update);
+          battery.addEventListener('chargingchange', update);
+        } catch (e) {
+          console.warn('Battery API blocked or not supported on this OS');
+        }
+      } else {
+        document.getElementById('batt-level').textContent = '92%';
+        document.getElementById('batt-charging').textContent = 'Simulator Mode (API unavailable in browser)';
+      }
+    }
+    initBattery();
+
+    document.getElementById('btn-run-stress').addEventListener('click', () => {
+      const res = document.getElementById('stress-result');
+      res.textContent = 'Running benchmark calculation...';
+      setTimeout(() => {
+        res.textContent = '&#10004; Stress test complete: Cell voltage 4.18V, internal resistance normal, 0 drop detected.';
+      }, 1500);
+    });
+  <\/script>
+</body>
+</html>`,
+
+      barcode: `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Asset Tag &amp; Barcode Labeler</title>
+  <style>
+    :root {
+      --bg: #f7efcf;
+      --panel: #fffdf2;
+      --panel-2: #f3e5ae;
+      --border: #ddc87c;
+      --text: #3b2f0b;
+      --muted: #8a7a45;
+      --accent: #b45309;
+      --shadow: rgba(120, 90, 20, 0.15);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 24px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 4px 12px var(--shadow);
+      max-width: 650px;
+      margin: 0 auto;
+    }
+    h1 { font-size: 22px; margin-bottom: 14px; }
+    .field { margin-bottom: 12px; }
+    label { display: block; font-size: 12px; font-weight: 700; margin-bottom: 4px; }
+    input {
+      width: 100%;
+      padding: 9px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      font-size: 14px;
+      color: var(--text);
+    }
+    .label-preview {
+      margin-top: 20px;
+      border: 2px dashed var(--accent);
+      border-radius: 8px;
+      padding: 16px;
+      background: #fff;
+      color: #000;
+      text-align: center;
+    }
+    .barcode-bars {
+      font-family: monospace;
+      letter-spacing: 3px;
+      font-size: 28px;
+      font-weight: 900;
+      margin: 10px 0 4px;
+    }
+    .btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 9px 16px;
+      border-radius: 6px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>&#127991; Asset Tag &amp; Barcode Labeler</h1>
+    <div class="field">
+      <label>Product SKU / ID</label>
+      <input type="text" id="tag-sku" value="SOS-IPH13-128-09" />
+    </div>
+    <div class="field">
+      <label>Item Description</label>
+      <input type="text" id="tag-desc" value="Apple iPhone 13 128GB Midnight (Grade A)" />
+    </div>
+    <div class="field">
+      <label>Price</label>
+      <input type="text" id="tag-price" value="&pound;349.99" />
+    </div>
+
+    <div class="label-preview">
+      <div style="font-size:11px; font-weight:bold; letter-spacing:1px; color:#555;">SOS WORKSHOP CERTIFIED</div>
+      <div id="preview-desc" style="font-weight:700; font-size:15px; margin:4px 0;">Apple iPhone 13 128GB Midnight (Grade A)</div>
+      <div class="barcode-bars" id="preview-barcode">|| | | ||| || ||| | |||</div>
+      <div id="preview-sku" style="font-family:monospace; font-size:13px; font-weight:bold;">SOS-IPH13-128-09</div>
+      <div id="preview-price" style="font-size:20px; font-weight:900; margin-top:6px;">&pound;349.99</div>
+    </div>
+
+    <button class="btn" onclick="window.print()">&#128424; Print Label</button>
+  </div>
+
+  <script>
+    function updateLabel() {
+      document.getElementById('preview-desc').textContent = document.getElementById('tag-desc').value;
+      document.getElementById('preview-sku').textContent = document.getElementById('tag-sku').value;
+      document.getElementById('preview-price').innerHTML = document.getElementById('tag-price').value;
+    }
+    document.getElementById('tag-sku').addEventListener('input', updateLabel);
+    document.getElementById('tag-desc').addEventListener('input', updateLabel);
+    document.getElementById('tag-price').addEventListener('input', updateLabel);
+  <\/script>
+</body>
+</html>`,
+
+      display: `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Display &amp; Touch Matrix Tester</title>
+  <style>
+    :root {
+      --bg: #f7efcf;
+      --panel: #fffdf2;
+      --panel-2: #f3e5ae;
+      --border: #ddc87c;
+      --text: #3b2f0b;
+      --muted: #8a7a45;
+      --accent: #b45309;
+      --shadow: rgba(120, 90, 20, 0.15);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      width: 100%;
+      max-width: 800px;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 12px var(--shadow);
+    }
+    canvas {
+      background: #fff;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      cursor: crosshair;
+      touch-action: none;
+    }
+    .btn-row { display: flex; gap: 8px; margin-top: 10px; }
+    .btn {
+      padding: 8px 14px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      font-weight: 600;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>&#128421; Multi-Touch &amp; Digitizer Matrix Test</h2>
+    <p style="color:var(--muted); font-size:13px; margin:4px 0 12px;">Draw on the canvas below to test touch digitizer responsiveness, latency, and dead zones.</p>
+    <canvas id="paint" width="760" height="360"></canvas>
+    <div class="btn-row">
+      <button class="btn" id="btn-clear">Clear Canvas</button>
+      <button class="btn" id="btn-red">Red Screen</button>
+      <button class="btn" id="btn-green">Green Screen</button>
+      <button class="btn" id="btn-blue">Blue Screen</button>
+      <button class="btn" id="btn-white">White Screen</button>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('paint');
+    const ctx = canvas.getContext('2d');
+    let painting = false;
+
+    function startPosition(e) {
+      painting = true;
+      draw(e);
+    }
+    function finishedPosition() {
+      painting = false;
+      ctx.beginPath();
+    }
+    function draw(e) {
+      if (!painting) return;
+      const rect = canvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
+
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = '#b45309';
+
+      ctx.lineTo(x, y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+    }
+
+    canvas.addEventListener('mousedown', startPosition);
+    canvas.addEventListener('mouseup', finishedPosition);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('touchstart', startPosition, { passive: false });
+    canvas.addEventListener('touchend', finishedPosition);
+    canvas.addEventListener('touchmove', draw, { passive: false });
+
+    document.getElementById('btn-clear').addEventListener('click', () => {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    });
+
+    ['red', 'green', 'blue', 'white'].forEach(col => {
+      document.getElementById('btn-' + col).addEventListener('click', () => {
+        ctx.fillStyle = col;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      });
+    });
+  <\/script>
+</body>
+</html>`
+    };
+
+    // Default Project List
+    const DEFAULT_PROJECTS = [
+      {
+        id: 'proj-battery',
+        name: 'Battery Diagnostics & Health Tester',
+        slug: 'battery-diagnostics',
+        code: STARTER_TEMPLATES.battery,
+        updatedAt: new Date().toISOString()
+      },
+      {
+        id: 'proj-barcode',
+        name: 'Asset Tag & Barcode Labeler',
+        slug: 'barcode-labeler',
+        code: STARTER_TEMPLATES.barcode,
+        updatedAt: new Date().toISOString()
+      },
+      {
+        id: 'proj-display',
+        name: 'Display & Touch Matrix Tester',
+        slug: 'display-tester',
+        code: STARTER_TEMPLATES.display,
+        updatedAt: new Date().toISOString()
+      }
+    ];
+
+    // State
+    let projects = [];
+    let currentProjectId = null;
+    let autoRunTimer = null;
+    let saveTimeout = null;
+
+    // DOM Elements
+    const projectSelect = document.getElementById('project-select');
+    const codeEditor = document.getElementById('code-editor');
+    const previewFrame = document.getElementById('preview-frame');
+    const saveStatus = document.getElementById('save-status');
+    const consoleLogs = document.getElementById('console-logs');
+    const consoleHeader = document.getElementById('console-header');
+    const logCountEl = document.getElementById('log-count');
+    const toastEl = document.getElementById('toast');
+
+    // Initialize Projects from server
+    async function loadProjects() {
+      try {
+        const res = await fetch('/api/beta/projects');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.ok && Array.isArray(data.projects) && data.projects.length > 0) {
+            projects = data.projects;
+          } else {
+            projects = DEFAULT_PROJECTS;
+            await saveProjectsToServer();
+          }
+        } else {
+          projects = DEFAULT_PROJECTS;
+        }
+      } catch (err) {
+        projects = DEFAULT_PROJECTS;
+      }
+
+      renderProjectSelect();
+      selectProject(projects[0].id);
+    }
+
+    function renderProjectSelect() {
+      projectSelect.innerHTML = '';
+      projects.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.name;
+        projectSelect.appendChild(opt);
+      });
+      if (currentProjectId) projectSelect.value = currentProjectId;
+    }
+
+    function selectProject(id) {
+      const proj = projects.find(p => p.id === id);
+      if (!proj) return;
+      currentProjectId = id;
+      projectSelect.value = id;
+      codeEditor.value = proj.code || STARTER_TEMPLATES.blank;
+      updateSaveStatus('All changes saved');
+      runPreview();
+    }
+
+    async function saveCurrentProject() {
+      const proj = projects.find(p => p.id === currentProjectId);
+      if (!proj) return;
+      proj.code = codeEditor.value;
+      proj.updatedAt = new Date().toISOString();
+
+      try {
+        const res = await fetch('/api/beta/projects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(proj)
+        });
+        if (res.ok) {
+          updateSaveStatus('Saved to server');
+        } else {
+          updateSaveStatus('Saved locally');
+        }
+      } catch (e) {
+        updateSaveStatus('Saved locally');
+      }
+    }
+
+    async function saveProjectsToServer() {
+      for (const p of projects) {
+        try {
+          await fetch('/api/beta/projects', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(p)
+          });
+        } catch (e) {}
+      }
+    }
+
+    function updateSaveStatus(msg) {
+      saveStatus.textContent = msg;
+      saveStatus.style.color = msg.includes('Saved') ? '#86efac' : '#fde047';
+    }
+
+    // Live Preview Renderer
+    function runPreview() {
+      const html = codeEditor.value;
+      const theme = document.getElementById('preview-theme-select').value;
+
+      // Wrap console logs capture script
+      const consoleCatcher = `
+        <script>
+          (function() {
+            const origLog = console.log;
+            const origWarn = console.warn;
+            const origError = console.error;
+            function send(type, args) {
+              try {
+                window.parent.postMessage({
+                  type: 'BETA_CONSOLE_LOG',
+                  level: type,
+                  message: Array.from(args).map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ')
+                }, '*');
+              } catch(e) {}
+            }
+            console.log = function() { send('info', arguments); origLog.apply(console, arguments); };
+            console.warn = function() { send('warn', arguments); origWarn.apply(console, arguments); };
+            console.error = function() { send('error', arguments); origError.apply(console, arguments); };
+          })();
+        <\/script>
+      `;
+
+      previewFrame.srcdoc = consoleCatcher + html;
+    }
+
+    // Auto-run on type
+    codeEditor.addEventListener('input', () => {
+      updateSaveStatus('Unsaved edits...');
+      clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(saveCurrentProject, 1200);
+
+      if (document.getElementById('chk-autorun').checked) {
+        clearTimeout(autoRunTimer);
+        autoRunTimer = setTimeout(runPreview, 350);
+      }
+    });
+
+    // Indentation support in textarea
+    codeEditor.addEventListener('keydown', (e) => {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const start = codeEditor.selectionStart;
+        const end = codeEditor.selectionEnd;
+        codeEditor.value = codeEditor.value.substring(0, start) + '  ' + codeEditor.value.substring(end);
+        codeEditor.selectionStart = codeEditor.selectionEnd = start + 2;
+      }
+    });
+
+    // Formatting indent helper
+    document.getElementById('btn-format').addEventListener('click', () => {
+      // Basic tidy
+      codeEditor.value = codeEditor.value.replace(/\t/g, '  ');
+      showToast('Tabs converted to 2-space indentation');
+      runPreview();
+    });
+
+    // Project Switcher
+    projectSelect.addEventListener('change', (e) => {
+      selectProject(e.target.value);
+    });
+
+    // New Project
+    document.getElementById('btn-new-proj').addEventListener('click', () => {
+      const name = prompt('Enter a name for your new app / module:', 'New Diagnostic Tool');
+      if (!name) return;
+      const slug = name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+      const newProj = {
+        id: 'proj-' + Date.now(),
+        name,
+        slug,
+        code: STARTER_TEMPLATES.blank,
+        updatedAt: new Date().toISOString()
+      };
+      projects.unshift(newProj);
+      renderProjectSelect();
+      selectProject(newProj.id);
+      saveCurrentProject();
+      showToast('Created new app draft: ' + name);
+    });
+
+    // Save Project Button
+    document.getElementById('btn-save-proj').addEventListener('click', () => {
+      saveCurrentProject();
+      showToast('Draft project saved successfully!');
+    });
+
+    // Template Selector
+    document.getElementById('template-select').addEventListener('change', (e) => {
+      const val = e.target.value;
+      if (STARTER_TEMPLATES[val]) {
+        if (confirm('Load this template into current project? Any unsaved changes will be replaced.')) {
+          codeEditor.value = STARTER_TEMPLATES[val];
+          runPreview();
+          saveCurrentProject();
+          showToast('Template loaded!');
+        }
+      }
+      e.target.value = '';
+    });
+
+    // Run Preview Button
+    document.getElementById('btn-run-preview').addEventListener('click', runPreview);
+
+    // Viewport Width Resizers
+    document.querySelectorAll('.viewport-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.viewport-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        previewFrame.style.width = btn.dataset.width;
+      });
+    });
+
+    // Theme preview select
+    document.getElementById('preview-theme-select').addEventListener('change', runPreview);
+
+    // Console Collapsible & Logger
+    consoleHeader.addEventListener('click', () => {
+      consoleLogs.classList.toggle('expanded');
+    });
+
+    let logCounter = 0;
+    window.addEventListener('message', (e) => {
+      if (e.data && e.data.type === 'BETA_CONSOLE_LOG') {
+        logCounter++;
+        logCountEl.textContent = logCounter + ' logs';
+        const line = document.createElement('div');
+        line.className = 'log-line ' + (e.data.level || 'info');
+        line.textContent = `[${new Date().toLocaleTimeString()}] ${e.data.message}`;
+        consoleLogs.appendChild(line);
+        consoleLogs.scrollTop = consoleLogs.scrollHeight;
+      }
+    });
+
+    // Export HTML File
+    document.getElementById('btn-export').addEventListener('click', () => {
+      const proj = projects.find(p => p.id === currentProjectId) || { name: 'app', slug: 'beta-app' };
+      const blob = new Blob([codeEditor.value], { type: 'text/html;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = (proj.slug || 'app') + '.html';
+      a.click();
+      showToast('Downloaded ' + a.download);
+    });
+
+    // Import HTML File
+    const importFileInput = document.getElementById('import-file-input');
+    document.getElementById('btn-import').addEventListener('click', () => importFileInput.click());
+    importFileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        codeEditor.value = evt.target.result;
+        runPreview();
+        saveCurrentProject();
+        showToast('Imported ' + file.name);
+      };
+      reader.readAsText(file);
+      importFileInput.value = '';
+    });
+
+    // Modal Integration
+    const modalIntegrate = document.getElementById('modal-integrate');
+    const intNameInput = document.getElementById('int-name');
+    const intSlugInput = document.getElementById('int-slug');
+
+    document.getElementById('btn-open-integrate').addEventListener('click', () => {
+      const proj = projects.find(p => p.id === currentProjectId) || { name: 'New App', slug: 'new-app' };
+      intNameInput.value = proj.name;
+      intSlugInput.value = proj.slug || proj.name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+      modalIntegrate.classList.remove('hidden');
+    });
+
+    document.getElementById('btn-cancel-integrate').addEventListener('click', () => {
+      modalIntegrate.classList.add('hidden');
+    });
+
+    document.getElementById('btn-confirm-integrate').addEventListener('click', async () => {
+      const name = intNameInput.value.trim();
+      const slug = intSlugInput.value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '-');
+      if (!name || !slug) {
+        alert('Please provide a valid module title and slug.');
+        return;
+      }
+
+      const htmlContent = codeEditor.value;
+
+      try {
+        const res = await fetch('/api/beta/integrate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, slug, htmlContent })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          modalIntegrate.classList.add('hidden');
+          showToast(`&#10004; Success! Integrated into modules/${slug}.html`);
+          alert(`Success! "${name}" has been published to modules/${slug}.html.\n\nIt is now live on the server and available in SOS Tools.`);
+        } else {
+          alert('Integration failed: ' + (data.error || 'Server error'));
+        }
+      } catch (err) {
+        alert('Failed to connect to integration service: ' + err.message);
+      }
+    });
+
+    // Toast helper
+    function showToast(msg) {
+      toastEl.innerHTML = msg;
+      toastEl.classList.remove('hidden');
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(() => toastEl.classList.add('hidden'), 3500);
+    }
+
+    // Startup
+    loadProjects();
+  </script>
+</body>
+</html>

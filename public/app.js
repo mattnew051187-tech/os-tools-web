@@ -104,9 +104,87 @@ async function enterApp(user, { via }) {
   show('screen-main');
   $('#whoami').textContent = user.username;
   $('#must-change').classList.toggle('hidden', !user.mustChangePassword);
+
+  // Beta placeholder is strictly exclusive to Matt
+  const isMatt = user && user.username && user.username.toLowerCase() === 'matt';
+  const betaTile = $('#tile-beta');
+  if (betaTile) {
+    betaTile.classList.toggle('hidden', !isMatt);
+  }
+
   selectTab('home');
+  loadBullionRates();
+  startBullionTimer();
 
   if (via === 'pin') flashBanner('Session unlocked — content refreshed.');
+}
+
+/* ---------------- Lois Bullion Live Rates (30m auto-refresh) ---------------- */
+let bullionInterval = null;
+
+async function loadBullionRates(force = false) {
+  const refreshBtn = document.getElementById('btn-refresh-bullion');
+  const updatedEl = document.getElementById('bullion-updated');
+  if (refreshBtn) refreshBtn.classList.add('spinning');
+  if (updatedEl && force) updatedEl.textContent = 'Updating...';
+
+  try {
+    const res = await fetch(`/api/bullion-rates${force ? '?force=1' : ''}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.ok && data.rates) {
+        const r = data.rates;
+        const b9 = document.getElementById('bullion-9ct');
+        const b14 = document.getElementById('bullion-14ct');
+        const b18 = document.getElementById('bullion-18ct');
+        const b24 = document.getElementById('bullion-24ct');
+        const bSil = document.getElementById('bullion-silver');
+
+        if (r.gold9ct !== undefined && b9) {
+          b9.innerHTML = `&pound;${Number(r.gold9ct).toFixed(2)}<small>/g</small>`;
+        }
+        if (r.gold14ct !== undefined && b14) {
+          b14.innerHTML = `&pound;${Number(r.gold14ct).toFixed(2)}<small>/g</small>`;
+        }
+        if (r.gold18ct !== undefined && b18) {
+          b18.innerHTML = `&pound;${Number(r.gold18ct).toFixed(2)}<small>/g</small>`;
+        }
+        if (r.gold24ct !== undefined && b24) {
+          b24.innerHTML = `&pound;${Number(r.gold24ct).toFixed(2)}<small>/g</small>`;
+        }
+        if (r.silver925 !== undefined && bSil) {
+          bSil.innerHTML = `&pound;${Number(r.silver925).toFixed(2)}<small>/g</small>`;
+        }
+
+        if (updatedEl) {
+          const fetchDate = data.lastFetched ? new Date(data.lastFetched) : new Date();
+          const timeStr = fetchDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          updatedEl.textContent = `${timeStr} (30m auto-refresh)`;
+          updatedEl.title = data.sourceDate ? `Source: Lois Bullion (${data.sourceDate})` : 'Source: Lois Bullion';
+        }
+      }
+    }
+  } catch (err) {
+    if (updatedEl) updatedEl.textContent = 'Offline (cached)';
+  } finally {
+    if (refreshBtn) {
+      setTimeout(() => refreshBtn.classList.remove('spinning'), 400);
+    }
+  }
+}
+
+function startBullionTimer() {
+  if (bullionInterval) clearInterval(bullionInterval);
+  bullionInterval = setInterval(() => {
+    if (state.user && !document.getElementById('screen-main').classList.contains('hidden')) {
+      loadBullionRates();
+    }
+  }, 30 * 60 * 1000); // 30 minutes
+}
+
+const refreshBullionBtn = document.getElementById('btn-refresh-bullion');
+if (refreshBullionBtn) {
+  refreshBullionBtn.addEventListener('click', () => loadBullionRates(true));
 }
 
 async function refreshModules() {
@@ -131,14 +209,21 @@ async function refreshModules() {
 async function buildTabNav() {
   const nav = $('#tab-nav');
   nav.innerHTML = '';
+  const isMatt = state.user && state.user.username && state.user.username.toLowerCase() === 'matt';
   const tabs = ['home', ...Object.keys(TAB_LABELS)];
+  if (isMatt) tabs.push('beta');
   if (state.user.role === 'admin') tabs.push(...ADMIN_TABS.map((t) => t.id), 'account');
   else tabs.push('account');
 
   for (const id of tabs) {
     const btn = document.createElement('button');
     btn.dataset.tab = id;
-    btn.textContent = TAB_LABELS[id] || (id === 'account' ? 'Account' : id.charAt(0).toUpperCase() + id.slice(1));
+    if (id === 'beta') {
+      btn.textContent = '🧪 Beta';
+      btn.classList.add('beta-tab');
+    } else {
+      btn.textContent = TAB_LABELS[id] || (id === 'account' ? 'Account' : id.charAt(0).toUpperCase() + id.slice(1));
+    }
     if (ADMIN_TABS.some((t) => t.id === id)) btn.classList.add('admin-tab');
     btn.addEventListener('click', () => selectTab(id));
     nav.appendChild(btn);
@@ -146,6 +231,10 @@ async function buildTabNav() {
 }
 
 function selectTab(id) {
+  const isMatt = state.user && state.user.username && state.user.username.toLowerCase() === 'matt';
+  if (id === 'beta' && !isMatt) {
+    id = 'home';
+  }
   state.activeTab = id;
   document.querySelectorAll('#tab-nav button').forEach((b) => b.classList.toggle('active', b.dataset.tab === id));
   document.querySelectorAll('.tab-pane').forEach((p) => p.classList.toggle('active', p.dataset.pane === id));
@@ -350,6 +439,8 @@ $('#lock-logout').addEventListener('click', () => signOut());
 /* ---------------- Sign out ---------------- */
 async function signOut() {
   clearTimeout(state.idleTimer);
+  const betaTile = $('#tile-beta');
+  if (betaTile) betaTile.classList.add('hidden');
   await window.sos.logout();
   state.user = null;
   show('screen-login');

@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "express": "^4.19.2",
+    "jspdf": "^4.2.1",
     "mongodb": "^7.7.0"
   }
 }

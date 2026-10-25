@@ -594,6 +594,157 @@
       padding-top: 16px;
       border-top: 1px solid var(--border);
     }
+
+    /* Linear Form Layout */
+    .form-linear {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .form-linear .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-linear .form-group label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+    }
+
+    .checkbox-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .checkbox-card {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 14px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      user-select: none;
+      transition: all 0.15s;
+    }
+
+    .checkbox-card:hover {
+      border-color: var(--accent);
+    }
+
+    .checkbox-card input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--accent);
+      margin: 0;
+      cursor: pointer;
+    }
+
+    .barcode-status {
+      margin-top: 6px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      line-height: 1.4;
+    }
+
+    .barcode-status.success {
+      background: var(--success-bg);
+      color: var(--success);
+      border: 1px solid var(--success);
+    }
+
+    .barcode-status.warn {
+      background: rgba(180, 83, 9, 0.12);
+      color: var(--accent);
+      border: 1px solid var(--accent);
+    }
+
+    .barcode-status.loading {
+      background: var(--panel-2);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    .cex-manual-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--accent);
+      text-decoration: underline;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .cex-manual-link:hover {
+      filter: brightness(1.15);
+    }
+
+    /* Condition Badges */
+    .cond-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 7px;
+      border-radius: 5px;
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .cond-badge.both {
+      background: var(--success-bg);
+      color: var(--success);
+    }
+
+    .cond-badge.case-only {
+      background: rgba(180, 83, 9, 0.12);
+      color: var(--accent);
+    }
+
+    .cond-badge.booklet-only {
+      background: rgba(59, 130, 246, 0.12);
+      color: #2563eb;
+    }
+
+    .cond-badge.disc-only {
+      background: var(--danger-bg);
+      color: var(--danger);
+    }
+
+    .overflow-notice {
+      background: rgba(180, 83, 9, 0.1);
+      border: 1px dashed var(--accent);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 12px;
+      color: var(--accent);
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
@@ -612,12 +763,12 @@
     <nav class="header-nav" id="header-nav">
       <button class="nav-btn active" data-tab="spreadsheet">&#128202; Inventory Table</button>
       <button class="nav-btn" data-tab="report">&#128221; Repricing Report</button>
+      <button class="nav-btn" data-tab="multi-add">&#9889; Multiple Add</button>
       <button class="nav-btn" data-tab="lookup">&#128269; CeX / Barcode Lookup</button>
     </nav>
 
     <div class="header-actions">
       <button id="btn-add-game" class="btn primary">&#43; Add Game</button>
-      <button id="btn-batch-add" class="btn">&#128203; Batch Paste</button>
       <button id="btn-clear-all" class="btn subtle danger" style="color:var(--danger)" title="Wipe all inventory">&#128465; Clear All</button>
       <button id="btn-manage-consoles" class="btn subtle">&#9881; Consoles</button>
       <button id="btn-hub" class="btn subtle" title="Back to Hub">&#127968; Hub</button>
@@ -778,6 +929,98 @@
         <div id="lookup-results" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:12px;"></div>
       </div>
 
+      <!-- Tab 4: Multiple Add & Continuous Barcode Batch Scanner -->
+      <div id="tab-pane-multi-add" class="card" style="display:none">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+          <div>
+            <h3 style="font-size:17px; font-weight:800; display:flex; align-items:center; gap:8px;">
+              <span>&#9889;</span> Multiple Add &amp; Barcode Batch Scanner
+            </h3>
+            <p style="font-size:12px; color:var(--muted); margin-top:4px;">
+              Scan multiple games in sequence for the same console. Each barcode automatically checks against CeX. Review and edit the live report below, then add all items to stock together.
+            </p>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span class="badge" style="background:var(--panel-2); border:1px solid var(--border); padding:6px 12px; border-radius:8px; font-size:12px; font-weight:700;">
+              Batch count: <strong id="multi-badge-count" style="color:var(--accent);">0</strong>
+            </span>
+          </div>
+        </div>
+
+        <!-- Configuration Bar -->
+        <div style="display:flex; flex-wrap:wrap; gap:14px; background:var(--panel-2); border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:16px;">
+          <div class="form-group" style="flex:1; min-width:220px;">
+            <label style="font-weight:700; font-size:12px; color:var(--text); margin-bottom:4px;">Game Console for this Batch</label>
+            <select id="multi-console" style="background:var(--panel); font-weight:600;"></select>
+          </div>
+          <div class="form-group" style="flex:1; min-width:220px;">
+            <label style="font-weight:700; font-size:12px; color:var(--text); margin-bottom:4px;">Target Inventory Destination</label>
+            <select id="multi-destination" style="background:var(--panel); font-weight:600;">
+              <option value="store">&#127978; Store Stock (Retail Floor)</option>
+              <option value="overflow">&#128230; Overflow Stock (Reserve &mdash; Price &pound;0.00)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Continuous Scanner Input Card -->
+        <div style="background:var(--panel); border:2px dashed var(--accent); border-radius:12px; padding:16px; margin-bottom:18px;">
+          <label style="font-size:13px; font-weight:700; color:var(--text); display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+            <span>&#128247; Continuous Barcode Scanner (Press Enter or trigger handheld scanner)</span>
+            <span style="font-size:11px; font-weight:400; color:var(--muted);">Auto-focuses after every scan</span>
+          </label>
+          <div style="display:flex; gap:10px;">
+            <input type="text" id="multi-barcode-input" class="search-input" style="flex:1; font-size:15px; font-weight:700; padding:10px 14px;" placeholder="Scan or type barcode (e.g. 711719548231) and hit Enter..." autofocus autocomplete="off" />
+            <button id="btn-multi-scan-add" class="btn primary" style="padding:9px 18px; font-size:13px; white-space:nowrap;">&#43; Scan / Lookup</button>
+          </div>
+          <div id="multi-scan-status" style="margin-top:8px; font-size:12px; min-height:18px;"></div>
+        </div>
+
+        <!-- Scanned Batch Verification Report -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <h4 style="font-size:14px; font-weight:700;">Scanned Batch Verification Report</h4>
+          <button id="btn-multi-clear-batch" class="btn subtle danger" style="font-size:11px;">&#128465; Clear Batch</button>
+        </div>
+
+        <div class="table-responsive" style="margin-bottom:16px;">
+          <table class="data-table" id="multi-report-table">
+            <thead>
+              <tr>
+                <th style="width:36px">#</th>
+                <th style="width:130px">Barcode</th>
+                <th>Game Name</th>
+                <th style="width:130px">Console</th>
+                <th style="width:90px">CeX (&pound;)</th>
+                <th style="width:90px">Store (&pound;)</th>
+                <th style="width:140px">Condition</th>
+                <th style="width:110px">SKU (Opt)</th>
+                <th style="width:160px">CeX Status</th>
+                <th style="width:60px">Action</th>
+              </tr>
+            </thead>
+            <tbody id="multi-table-body">
+              <tr>
+                <td colspan="10" style="text-align:center; color:var(--muted); padding:32px;">
+                  No games scanned yet in this batch. Scan a barcode above to populate this report.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Batch Report Summary & Commitment -->
+        <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:14px; background:var(--panel-2); border:1px solid var(--border); border-radius:12px; padding:14px 18px;">
+          <div>
+            <div style="font-size:11.5px; color:var(--muted); text-transform:uppercase; font-weight:700;">Batch Report Ready</div>
+            <div style="font-size:17px; font-weight:800; color:var(--text); margin-top:2px;">
+              <span id="multi-summary-count">0</span> games &bull; CeX Target Total: <span id="multi-summary-val" style="color:var(--emerald)">&pound;0.00</span>
+            </div>
+          </div>
+          <button id="btn-multi-commit" class="btn emerald" style="padding:10px 22px; font-size:13.5px; font-weight:700;">
+            &#10003; Add All Scanned Games to Stock
+          </button>
+        </div>
+      </div>
+
       <!-- Bottom Utility Bar -->
       <div class="bottom-bar">
         <div style="display:flex; flex-wrap:wrap; gap:8px;">
@@ -797,9 +1040,9 @@
     </div>
   </main>
 
-  <!-- Add / Edit Modal -->
+  <!-- Add / Edit Modal (Linear A-B Layout) -->
   <div id="game-modal" class="modal-backdrop" style="display:none">
-    <div class="modal-box">
+    <div class="modal-box" style="max-width:540px;">
       <div class="modal-header">
         <h3 id="modal-game-title">&#43; Add Game to Inventory</h3>
         <button id="btn-close-game-modal" class="btn subtle">&times;</button>
@@ -807,54 +1050,79 @@
 
       <form id="game-form">
         <input type="hidden" id="edit-game-id" />
-        <div class="form-grid">
-          <div class="form-group" style="grid-column: 1 / -1">
-            <label>Game Title</label>
-            <input type="text" id="form-name" required placeholder="e.g. Marvel's Spider-Man 2" />
+        <div class="form-linear">
+          <!-- 1. Barcode -->
+          <div class="form-group">
+            <label for="form-barcode">
+              <span>Barcode</span>
+              <span style="font-weight:400; font-size:11px; color:var(--muted);">(Autochecks CeX on scan or entry)</span>
+            </label>
+            <div style="display:flex; gap:8px;">
+              <input type="text" id="form-barcode" placeholder="Scan or type barcode (e.g. 711719548231)" autocomplete="off" />
+              <button type="button" id="btn-form-check-cex" class="btn" style="white-space:nowrap">&#128269; Check CeX</button>
+            </div>
+            <div id="form-barcode-status" class="barcode-status" style="display:none"></div>
           </div>
 
+          <!-- 2. Game Name -->
           <div class="form-group">
-            <label>Console Platform</label>
+            <label for="form-name">Game Name</label>
+            <input type="text" id="form-name" required placeholder="Pre-populates from CeX lookup or enter manually" />
+          </div>
+
+          <!-- 3. Game Console -->
+          <div class="form-group">
+            <label for="form-console">Game Console</label>
             <select id="form-console"></select>
           </div>
 
+          <!-- 4. Condition (Case & Booklet tick boxes) -->
           <div class="form-group">
-            <label>In-Store Retail Price (&pound;)</label>
-            <input type="number" id="form-store-price" step="0.01" min="0" required placeholder="34.99" />
+            <label>Condition</label>
+            <div class="checkbox-row">
+              <label class="checkbox-card">
+                <input type="checkbox" id="form-cond-case" checked />
+                <span>1 - Case</span>
+              </label>
+              <label class="checkbox-card">
+                <input type="checkbox" id="form-cond-booklet" checked />
+                <span>2 - Booklet</span>
+              </label>
+            </div>
           </div>
 
+          <!-- 5. SKU (Optional) -->
           <div class="form-group">
-            <label>CeX Market Target Price (&pound;)</label>
-            <input type="number" id="form-cex-price" step="0.01" min="0" required placeholder="38.00" />
+            <label for="form-sku">
+              <span>SKU</span>
+              <span style="font-weight:400; font-size:11px; color:var(--muted);">(Optional &mdash; only assigned when moved to shopfloor stock)</span>
+            </label>
+            <input type="text" id="form-sku" placeholder="e.g. SKU-10492 (optional, leave blank if not assigned)" />
           </div>
 
-          <div class="form-group">
-            <label>Stock Quantity</label>
-            <input type="number" id="form-quantity" min="1" value="1" />
-          </div>
+          <!-- 6. Pricing & Quantity -->
+          <div class="form-row">
+            <div class="form-group" id="group-store-price">
+              <label id="label-store-price">In-Store Retail Price (&pound;)</label>
+              <input type="number" id="form-store-price" step="0.01" min="0" required placeholder="34.99" />
+              <div id="hint-overflow-price" class="overflow-notice" style="display:none">
+                Overflow stock price is fixed at <strong>&pound;0.00</strong> until moved to shopfloor.
+              </div>
+            </div>
 
-          <div class="form-group">
-            <label>Disc / Box Condition</label>
-            <select id="form-condition">
-              <option value="Boxed Mint">Boxed Mint (Grade A)</option>
-              <option value="Boxed">Boxed (Normal)</option>
-              <option value="Unboxed">Disc Only / Unboxed</option>
-              <option value="Damaged Case">Damaged Case</option>
-            </select>
-          </div>
+            <div class="form-group">
+              <label>CeX Market Target Price (&pound;)</label>
+              <input type="number" id="form-cex-price" step="0.01" min="0" required placeholder="38.00" />
+            </div>
 
-          <div class="form-group">
-            <label>Barcode / SKU</label>
-            <input type="text" id="form-barcode" placeholder="e.g. 711719548231" />
+            <div class="form-group" style="max-width:110px;">
+              <label>Quantity</label>
+              <input type="number" id="form-quantity" min="1" value="1" />
+            </div>
           </div>
         </div>
 
-        <div class="form-group" style="margin-top:14px;">
-          <label>Staff Notes</label>
-          <textarea id="form-notes" rows="2" placeholder="e.g. Cleaned disc, replaced case art..."></textarea>
-        </div>
-
-        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:20px;">
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:22px; padding-top:14px; border-top:1px solid var(--border);">
           <button type="button" id="btn-cancel-game" class="btn subtle">Cancel</button>
           <button type="submit" class="btn primary">&#10003; Save Game</button>
         </div>
@@ -862,21 +1130,44 @@
     </div>
   </div>
 
-  <!-- Batch Add Modal -->
-  <div id="batch-modal" class="modal-backdrop" style="display:none">
-    <div class="modal-box">
+  <!-- Move to Floor Modal -->
+  <div id="move-modal" class="modal-backdrop" style="display:none">
+    <div class="modal-box" style="max-width:440px;">
       <div class="modal-header">
-        <h3>&#128203; Quick Batch Paste Games</h3>
-        <button id="btn-close-batch-modal" class="btn subtle">&times;</button>
+        <h3>&#127978; Move Game to Shopfloor Stock</h3>
+        <button id="btn-close-move-modal" class="btn subtle">&times;</button>
       </div>
-      <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px">
-        Paste lines in format: <code>Title, Console, StorePrice, CeXPrice</code> (or just Title and Price).
-      </p>
-      <textarea id="batch-text" rows="8" placeholder="Marvel's Spider-Man 2, PlayStation 5, 34.99, 38.00&#10;Elden Ring, PlayStation 5, 29.99, 32.00&#10;Halo Infinite, Xbox Series X, 14.99, 18.00&#10;Super Mario Odyssey, Nintendo Switch, 32.99, 35.00"></textarea>
 
-      <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
-        <button id="btn-cancel-batch" class="btn subtle">Cancel</button>
-        <button id="btn-confirm-batch" class="btn primary">&#43; Add Batch Games</button>
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        <p style="font-size:12.5px; color:var(--muted); line-height:1.4;">
+          Assign retail shelf price and optional SKU before placing on the shop floor.
+        </p>
+
+        <div style="background:var(--panel-2); border:1px solid var(--border); border-radius:10px; padding:12px 14px;">
+          <h4 id="move-game-title" style="font-size:14px; font-weight:700;">-</h4>
+          <p id="move-game-console" style="font-size:11.5px; color:var(--muted); margin-top:2px;">-</p>
+          <div style="font-size:12px; margin-top:6px; color:var(--text);">
+            CeX Target: <strong id="move-cex-target" style="color:var(--emerald)">&pound;0.00</strong>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label style="font-size:12px; font-weight:700;">In-Store Shelf Selling Price (&pound;)</label>
+          <input type="number" id="move-store-price" step="0.01" min="0" required placeholder="19.99" />
+        </div>
+
+        <div class="form-group">
+          <label style="font-size:12px; font-weight:700;">
+            SKU
+            <span style="font-weight:400; font-size:11px; color:var(--muted); margin-left:4px;">(Optional)</span>
+          </label>
+          <input type="text" id="move-sku" placeholder="e.g. SKU-10492" />
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
+          <button type="button" id="btn-cancel-move" class="btn subtle">Cancel</button>
+          <button type="button" id="btn-confirm-move" class="btn primary">&#10003; Move to Floor</button>
+        </div>
       </div>
     </div>
   </div>
@@ -905,7 +1196,7 @@
   </div>
 
   <script>
-    // Initial Stock Data
+    // Initial Consoles
     const INITIAL_CONSOLES = [
       'PlayStation 5',
       'PlayStation 4',
@@ -920,21 +1211,41 @@
     const INITIAL_STORE_GAMES = [];
     const INITIAL_OVERFLOW_GAMES = [];
 
-    // CeX Catalog Benchmark DB for Lookup Tool
+    // Expanded CeX Catalog Benchmark DB for Instant Barcode Matching
     const CEX_LOOKUP_DB = [
       { name: "Marvel's Spider-Man 2", console: 'PlayStation 5', sell: 38.00, cash: 19.00, voucher: 24.00, barcode: '711719548231' },
       { name: 'Elden Ring', console: 'PlayStation 5', sell: 32.00, cash: 16.00, voucher: 20.00, barcode: '3391892015820' },
       { name: 'God of War Ragnarok', console: 'PlayStation 5', sell: 30.00, cash: 15.00, voucher: 19.00, barcode: '711719548545' },
       { name: 'The Last of Us Part I', console: 'PlayStation 5', sell: 42.00, cash: 21.00, voucher: 26.00, barcode: '711719548675' },
       { name: 'Final Fantasy VII Rebirth', console: 'PlayStation 5', sell: 44.00, cash: 22.00, voucher: 28.00, barcode: '5021290098451' },
+      { name: 'Demon\'s Souls', console: 'PlayStation 5', sell: 28.00, cash: 14.00, voucher: 18.00, barcode: '711719541386' },
+      { name: 'Ratchet & Clank: Rift Apart', console: 'PlayStation 5', sell: 25.00, cash: 12.00, voucher: 15.00, barcode: '711719543885' },
+      { name: 'Horizon Forbidden West', console: 'PlayStation 5', sell: 24.00, cash: 12.00, voucher: 15.00, barcode: '711719546053' },
+      { name: 'Returnal', console: 'PlayStation 5', sell: 22.00, cash: 11.00, voucher: 14.00, barcode: '711719541539' },
       { name: 'Bloodborne', console: 'PlayStation 4', sell: 15.00, cash: 7.50, voucher: 9.50, barcode: '711719452316' },
+      { name: 'Grand Theft Auto V', console: 'PlayStation 4', sell: 12.00, cash: 6.00, voucher: 8.00, barcode: '5026555416970' },
+      { name: 'Red Dead Redemption 2', console: 'PlayStation 4', sell: 16.00, cash: 8.00, voucher: 10.00, barcode: '5026555423046' },
+      { name: 'The Witcher 3: Wild Hunt GOTY', console: 'PlayStation 4', sell: 14.00, cash: 7.00, voucher: 9.00, barcode: '5060418460520' },
+      { name: 'Uncharted 4: A Thief\'s End', console: 'PlayStation 4', sell: 8.00, cash: 4.00, voucher: 5.00, barcode: '711719827596' },
+      { name: 'God of War', console: 'PlayStation 4', sell: 10.00, cash: 5.00, voucher: 6.50, barcode: '711719714858' },
+      { name: 'The Last of Us Remastered', console: 'PlayStation 4', sell: 12.00, cash: 6.00, voucher: 7.50, barcode: '711719452668' },
+      { name: 'Spider-Man', console: 'PlayStation 4', sell: 12.00, cash: 6.00, voucher: 7.50, barcode: '711719816569' },
+      { name: 'Ghost of Tsushima', console: 'PlayStation 4', sell: 18.00, cash: 9.00, voucher: 11.00, barcode: '711719817658' },
       { name: 'Forza Horizon 5', console: 'Xbox Series X', sell: 28.00, cash: 14.00, voucher: 18.00, barcode: '889842880015' },
       { name: 'Starfield', console: 'Xbox Series X', sell: 22.00, cash: 11.00, voucher: 14.00, barcode: '093155175227' },
+      { name: 'Halo Infinite', console: 'Xbox Series X', sell: 14.00, cash: 7.00, voucher: 9.00, barcode: '889842636599' },
+      { name: 'Gears Tactics', console: 'Xbox Series X', sell: 10.00, cash: 5.00, voucher: 6.50, barcode: '889842646277' },
       { name: 'Super Mario Odyssey', console: 'Nintendo Switch', sell: 35.00, cash: 18.00, voucher: 22.00, barcode: '045496420871' },
       { name: 'Mario Kart 8 Deluxe', console: 'Nintendo Switch', sell: 38.00, cash: 20.00, voucher: 24.00, barcode: '045496420284' },
       { name: 'Super Smash Bros. Ultimate', console: 'Nintendo Switch', sell: 40.00, cash: 21.00, voucher: 25.00, barcode: '045496422899' },
       { name: 'Pokemon Legends: Arceus', console: 'Nintendo Switch', sell: 32.00, cash: 16.00, voucher: 20.00, barcode: '045496429119' },
-      { name: 'Grand Theft Auto V', console: 'PlayStation 4', sell: 12.00, cash: 6.00, voucher: 8.00, barcode: '5026555416970' }
+      { name: 'The Legend of Zelda: Tears of the Kingdom', console: 'Nintendo Switch', sell: 42.00, cash: 22.00, voucher: 27.00, barcode: '045496429980' },
+      { name: 'The Legend of Zelda: Breath of the Wild', console: 'Nintendo Switch', sell: 38.00, cash: 20.00, voucher: 24.00, barcode: '045496420062' },
+      { name: 'Animal Crossing: New Horizons', console: 'Nintendo Switch', sell: 32.00, cash: 16.00, voucher: 20.00, barcode: '045496425487' },
+      { name: 'Luigi\'s Mansion 3', console: 'Nintendo Switch', sell: 30.00, cash: 15.00, voucher: 19.00, barcode: '045496424886' },
+      { name: 'Super Mario Bros. Wonder', console: 'Nintendo Switch', sell: 36.00, cash: 18.00, voucher: 23.00, barcode: '045496431327' },
+      { name: 'Metal Gear Solid 4: Guns of the Patriots', console: 'PlayStation 3', sell: 8.00, cash: 4.00, voucher: 5.00, barcode: '4012927042571' },
+      { name: 'Red Dead Redemption', console: 'Xbox 360', sell: 9.00, cash: 4.50, voucher: 6.00, barcode: '5026555403567' }
     ];
 
     // State
@@ -944,17 +1255,49 @@
     let consoles = [];
     let selectedConsole = 'all';
     let filterStatus = 'all'; // 'all' | 'increase' | 'decrease'
-    let currentTab = 'spreadsheet'; // 'spreadsheet' | 'report' | 'lookup'
+    let currentTab = 'spreadsheet'; // 'spreadsheet' | 'report' | 'multi-add' | 'lookup'
 
-    // Load LocalStorage - discard legacy demo records if present
+    // Multiple Add Batch State
+    let multiBatch = [];
+
+    // Pending game for Move to Floor
+    let pendingMoveGameId = null;
+
+    // Learned CeX barcode cache in localStorage
+    function getCeXCache() {
+      try {
+        return JSON.parse(localStorage.getItem('sos_cex_cache') || '{}');
+      } catch {
+        return {};
+      }
+    }
+
+    function saveCeXCache(barcode, data) {
+      if (!barcode || !data) return;
+      try {
+        const cache = getCeXCache();
+        cache[barcode.trim()] = {
+          name: data.name,
+          console: data.console,
+          sell: data.sell || data.cexPrice || 0,
+          cash: data.cash || data.cashPrice || 0,
+          savedAt: Date.now()
+        };
+        localStorage.setItem('sos_cex_cache', JSON.stringify(cache));
+      } catch {}
+    }
+
+    // Load LocalStorage
     try {
       const savedStore = JSON.parse(localStorage.getItem('stock_tracker_store_games') || '[]');
-      storeGames = Array.isArray(savedStore) ? savedStore.filter(g => !g.id?.startsWith('st-')) : [];
+      storeGames = Array.isArray(savedStore) ? savedStore : [];
     } catch (e) { storeGames = []; }
 
     try {
       const savedOverflow = JSON.parse(localStorage.getItem('stock_tracker_overflow_games') || '[]');
-      overflowGames = Array.isArray(savedOverflow) ? savedOverflow.filter(g => !g.id?.startsWith('ov-')) : [];
+      overflowGames = Array.isArray(savedOverflow) ? savedOverflow : [];
+      // Guarantee all overflow games have storePrice = 0 as required
+      overflowGames.forEach(g => { g.storePrice = 0; });
     } catch (e) { overflowGames = []; }
 
     try {
@@ -968,27 +1311,14 @@
       localStorage.setItem('stock_tracker_consoles', JSON.stringify(consoles));
     }
 
-    // Clear all inventory handler
-    const clearBtn = document.getElementById('btn-clear-all');
-    if (clearBtn) {
-      clearBtn.addEventListener('click', () => {
-        if (confirm('Clear all game titles from both Store Stock and Overflow Reserve?')) {
-          storeGames = [];
-          overflowGames = [];
-          saveState();
-          renderLanding();
-          renderAll();
-          showToast('All inventory cleared — ready for fresh stock entry.');
-        }
-      });
-    }
-
     function getActiveGames() {
       return stockMode === 'overflow' ? overflowGames : storeGames;
     }
 
     function setActiveGames(newGames) {
       if (stockMode === 'overflow') {
+        // Enforce storePrice = 0 in overflow stock
+        newGames.forEach(g => { g.storePrice = 0; });
         overflowGames = newGames;
       } else {
         storeGames = newGames;
@@ -1002,6 +1332,92 @@
       document.getElementById('toast-msg').textContent = msg;
       t.style.display = 'flex';
       setTimeout(() => { t.style.display = 'none'; }, 3500);
+    }
+
+    // Condition Formatter
+    function formatCondition(g) {
+      const hasCase = g.hasCase !== undefined ? !!g.hasCase : (!g.condition || !g.condition.toLowerCase().includes('unboxed'));
+      const hasBooklet = g.hasBooklet !== undefined ? !!g.hasBooklet : (!g.condition || g.condition.toLowerCase().includes('mint') || !g.condition.toLowerCase().includes('damaged'));
+
+      if (hasCase && hasBooklet) {
+        return '<span class="cond-badge both" title="Case & Booklet included">&#10003; Case + Booklet</span>';
+      } else if (hasCase && !hasBooklet) {
+        return '<span class="cond-badge case-only" title="Case included, booklet missing">Case Only</span>';
+      } else if (!hasCase && hasBooklet) {
+        return '<span class="cond-badge booklet-only" title="Booklet included, case missing">Booklet Only</span>';
+      } else {
+        return '<span class="cond-badge disc-only" title="Disc / Cartridge only">Disc Only</span>';
+      }
+    }
+
+    // CeX Lookup Engine: checks local cache, curated DB, and server proxy
+    async function lookupCeX(rawBarcode, preferredConsole = '') {
+      const barcode = String(rawBarcode || '').trim();
+      const manualUrl = `https://uk.webuy.com/search?stext=${encodeURIComponent(barcode)}`;
+      if (!barcode) return { found: false, barcode: '', manualUrl };
+
+      // 1. Check local learned cache
+      const cache = getCeXCache();
+      if (cache[barcode]) {
+        const item = cache[barcode];
+        return {
+          found: true,
+          name: item.name,
+          console: item.console || preferredConsole || consoles[0],
+          cexPrice: Number(item.sell) || 0,
+          cashPrice: Number(item.cash) || 0,
+          barcode,
+          manualUrl
+        };
+      }
+
+      // 2. Check curated database
+      const match = CEX_LOOKUP_DB.find(c => c.barcode && c.barcode === barcode);
+      if (match) {
+        saveCeXCache(barcode, match);
+        return {
+          found: true,
+          name: match.name,
+          console: match.console || preferredConsole || consoles[0],
+          cexPrice: Number(match.sell) || 0,
+          cashPrice: Number(match.cash) || 0,
+          barcode,
+          manualUrl
+        };
+      }
+
+      // 3. Try server proxy endpoint
+      try {
+        const resp = await fetch(`/api/cex-lookup?barcode=${encodeURIComponent(barcode)}`, {
+          signal: AbortSignal.timeout(4500)
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data && data.ok && data.item) {
+            // Match closest known console
+            let matchedConsole = preferredConsole || consoles[0];
+            const lowerCat = String(data.item.console || '').toLowerCase();
+            const lowerName = String(data.item.name || '').toLowerCase();
+            const foundCons = consoles.find(c => lowerCat.includes(c.toLowerCase()) || lowerName.includes(c.toLowerCase()));
+            if (foundCons) matchedConsole = foundCons;
+
+            const resData = {
+              name: data.item.name,
+              console: matchedConsole,
+              cexPrice: Number(data.item.cexPrice) || 0,
+              cashPrice: Number(data.item.cashPrice) || 0,
+              barcode,
+              manualUrl: data.manualUrl || manualUrl
+            };
+            saveCeXCache(barcode, resData);
+            return { found: true, ...resData };
+          }
+        }
+      } catch (e) {
+        // Fallback gracefully on timeout/network
+      }
+
+      return { found: false, barcode, manualUrl };
     }
 
     // Switch between Hub and Workspace
@@ -1021,8 +1437,8 @@
     }
 
     function renderLanding() {
-      const sVal = storeGames.reduce((acc, g) => acc + (g.storePrice * (g.quantity || 1)), 0);
-      const oVal = overflowGames.reduce((acc, g) => acc + (g.storePrice * (g.quantity || 1)), 0);
+      const sVal = storeGames.reduce((acc, g) => acc + ((Number(g.storePrice) || 0) * (g.quantity || 1)), 0);
+      const oVal = overflowGames.reduce((acc, g) => acc + ((Number(g.storePrice) || 0) * (g.quantity || 1)), 0);
       document.getElementById('hub-store-count').textContent = storeGames.length;
       document.getElementById('hub-store-val').textContent = `£${sVal.toFixed(2)}`;
       document.getElementById('hub-overflow-count').textContent = overflowGames.length;
@@ -1048,7 +1464,7 @@
       if (stockMode === 'overflow') {
         badge.className = 'stock-badge overflow';
         badge.children[0].textContent = '📦';
-        title.textContent = 'OVERFLOW STOCK (Backroom & Storage Reserve)';
+        title.textContent = 'OVERFLOW STOCK (Backroom Reserve — Price £0.00)';
         toggleBtn.textContent = 'Switch to Store Stock (Floor)';
         valTitle.textContent = 'Overflow Reserve Value';
       } else {
@@ -1069,7 +1485,12 @@
 
         document.getElementById('tab-pane-spreadsheet').style.display = currentTab === 'spreadsheet' ? 'block' : 'none';
         document.getElementById('tab-pane-report').style.display = currentTab === 'report' ? 'block' : 'none';
+        document.getElementById('tab-pane-multi-add').style.display = currentTab === 'multi-add' ? 'block' : 'none';
         document.getElementById('tab-pane-lookup').style.display = currentTab === 'lookup' ? 'block' : 'none';
+
+        if (currentTab === 'multi-add') {
+          initMultiAddTab();
+        }
       });
     });
 
@@ -1116,12 +1537,14 @@
 
       currentGames.forEach(g => {
         const qty = g.quantity || 1;
-        totalVal += g.storePrice * qty;
+        const sPrice = Number(g.storePrice) || 0;
+        const cPrice = Number(g.cexPrice) || 0;
+        totalVal += sPrice * qty;
         totalQty += qty;
-        const diff = (g.cexPrice || g.storePrice) - g.storePrice;
+        const diff = cPrice - sPrice;
         netVariance += diff * qty;
-        if (g.storePrice < g.cexPrice) incCount++;
-        else if (g.storePrice > g.cexPrice) decCount++;
+        if (sPrice < cPrice) incCount++;
+        else if (sPrice > cPrice) decCount++;
       });
 
       document.getElementById('val-total').textContent = `£${totalVal.toFixed(2)}`;
@@ -1142,7 +1565,7 @@
       });
     });
 
-    // Render Table
+    // Render Inventory Table
     function renderTable() {
       const tbody = document.getElementById('game-table-body');
       tbody.innerHTML = '';
@@ -1154,52 +1577,74 @@
       }
 
       if (filterStatus === 'increase') {
-        games = games.filter(g => g.storePrice < g.cexPrice);
+        games = games.filter(g => (Number(g.storePrice) || 0) < (Number(g.cexPrice) || 0));
       } else if (filterStatus === 'decrease') {
-        games = games.filter(g => g.storePrice > g.cexPrice);
+        games = games.filter(g => (Number(g.storePrice) || 0) > (Number(g.cexPrice) || 0));
       }
 
       if (query) {
         games = games.filter(g => 
           g.name.toLowerCase().includes(query) || 
           g.console.toLowerCase().includes(query) ||
-          (g.barcode && g.barcode.includes(query))
+          (g.barcode && g.barcode.includes(query)) ||
+          (g.sku && g.sku.toLowerCase().includes(query))
         );
       }
 
       if (games.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:24px">No games match this filter.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--muted); padding:28px">No games found matching current filters.</td></tr>';
         return;
       }
 
       games.forEach(g => {
         const tr = document.createElement('tr');
-        const diff = (g.cexPrice || g.storePrice) - g.storePrice;
+        const sPrice = Number(g.storePrice) || 0;
+        const cPrice = Number(g.cexPrice) || 0;
+        const diff = cPrice - sPrice;
         let pillClass = 'even';
         let pillText = 'Even (£0.00)';
 
-        if (diff > 0) {
+        if (stockMode === 'overflow') {
+          pillClass = 'even';
+          pillText = `Reserve (CeX £${cPrice.toFixed(2)})`;
+        } else if (diff > 0) {
           pillClass = 'increase';
-          pillText = `+£${diff.toFixed(2)} (Raise Price)`;
+          pillText = `+£${diff.toFixed(2)} (Raise)`;
         } else if (diff < 0) {
           pillClass = 'decrease';
-          pillText = `-£${Math.abs(diff).toFixed(2)} (Drop Price)`;
+          pillText = `-£${Math.abs(diff).toFixed(2)} (Drop)`;
         }
 
         const moveBtnHtml = stockMode === 'overflow' 
-          ? `<button class="btn emerald" style="padding:3px 7px; font-size:11px" onclick="moveToStore('${g.id}')" title="Move to Floor Stock">🏪 Move to Floor</button>`
+          ? `<button class="btn emerald" style="padding:3px 8px; font-size:11px; white-space:nowrap" onclick="openMoveModal('${g.id}')" title="Move to Shopfloor Stock">&#127978; Move to Floor</button>`
           : '';
 
+        const skuSnippet = g.sku 
+          ? `<div style="font-size:11px; color:var(--muted); font-family:monospace; margin-top:2px;">SKU: ${g.sku}</div>` 
+          : '';
+
+        const barcodeSnippet = g.barcode 
+          ? `<div style="font-size:10.5px; color:var(--muted); font-family:monospace;">EAN: ${g.barcode}</div>` 
+          : '';
+
+        const storePriceDisplay = stockMode === 'overflow'
+          ? `<span style="color:var(--muted); font-weight:700;">&pound;0.00 <small style="font-size:10px; font-weight:400;">(Overflow)</small></span>`
+          : `<strong>&pound;${sPrice.toFixed(2)}</strong>`;
+
         tr.innerHTML = `
-          <td><strong>${g.name}</strong>${g.notes ? `<div style="font-size:11px; color:var(--text-dim)">${g.notes}</div>` : ''}</td>
-          <td><span style="font-size:11.5px; color:var(--text-muted)">${g.console}</span></td>
-          <td><strong>£${g.storePrice.toFixed(2)}</strong></td>
-          <td>£${(g.cexPrice || g.storePrice).toFixed(2)}</td>
+          <td>
+            <strong>${g.name}</strong>
+            ${skuSnippet}
+            ${barcodeSnippet}
+          </td>
+          <td><span style="font-size:11.5px; color:var(--muted); font-weight:600;">${g.console}</span></td>
+          <td>${storePriceDisplay}</td>
+          <td>&pound;${cPrice.toFixed(2)}</td>
           <td><span class="variance-pill ${pillClass}">${pillText}</span></td>
           <td>${g.quantity || 1}</td>
-          <td><span style="font-size:11.5px; color:var(--text-dim)">${g.condition || 'Boxed'}</span></td>
+          <td>${formatCondition(g)}</td>
           <td>
-            <div style="display:flex; gap:4px">
+            <div style="display:flex; gap:4px; align-items:center;">
               ${moveBtnHtml}
               <button class="btn subtle" style="padding:3px 7px; font-size:11px" onclick="editGame('${g.id}')">Edit</button>
               <button class="btn danger" style="padding:3px 7px; font-size:11px" onclick="deleteGame('${g.id}')">&times;</button>
@@ -1221,25 +1666,30 @@
         games = games.filter(g => g.console === selectedConsole);
       }
 
-      const varianceList = games.filter(g => g.storePrice !== g.cexPrice);
+      const varianceList = games.filter(g => (Number(g.storePrice) || 0) !== (Number(g.cexPrice) || 0));
 
       if (varianceList.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--emerald); padding:24px">✓ All current sticker prices match target CeX market value!</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--emerald); padding:24px">&#10003; All current sticker prices match target CeX market value!</td></tr>';
         return;
       }
 
       varianceList.forEach(g => {
-        const diff = (g.cexPrice || g.storePrice) - g.storePrice;
+        const sPrice = Number(g.storePrice) || 0;
+        const cPrice = Number(g.cexPrice) || 0;
+        const diff = cPrice - sPrice;
         const isIncrease = diff > 0;
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td><span class="variance-pill ${isIncrease ? 'increase' : 'decrease'}">${isIncrease ? '▲ Underpriced' : '▼ Overpriced'}</span></td>
-          <td><strong>${g.name}</strong></td>
+          <td>
+            <strong>${g.name}</strong>
+            ${g.sku ? `<span style="font-size:10.5px; color:var(--muted); margin-left:6px; font-family:monospace;">[${g.sku}]</span>` : ''}
+          </td>
           <td>${g.console}</td>
-          <td>£${g.storePrice.toFixed(2)}</td>
-          <td><strong style="color:var(--emerald)">£${g.cexPrice.toFixed(2)}</strong></td>
+          <td>£${sPrice.toFixed(2)}</td>
+          <td><strong style="color:var(--emerald)">£${cPrice.toFixed(2)}</strong></td>
           <td><span style="font-weight:700; color:${isIncrease ? 'var(--emerald)' : 'var(--red)'}">${isIncrease ? '+' : '-'}£${Math.abs(diff).toFixed(2)}</span></td>
-          <td>${isIncrease ? `Print sticker for £${g.cexPrice.toFixed(2)} (Gain margin)` : `Discount sticker to £${g.cexPrice.toFixed(2)} to sell`}</td>
+          <td>${isIncrease ? `Print sticker for £${cPrice.toFixed(2)} (Gain margin)` : `Discount sticker to £${cPrice.toFixed(2)} to sell`}</td>
         `;
         tbody.appendChild(tr);
       });
@@ -1247,7 +1697,7 @@
 
     document.getElementById('btn-print-report').addEventListener('click', () => window.print());
 
-    // CeX Lookup Search
+    // CeX Live Search Tab
     function runLookup() {
       const q = document.getElementById('lookup-query').value.trim().toLowerCase();
       const container = document.getElementById('lookup-results');
@@ -1261,9 +1711,14 @@
 
       if (matches.length === 0) {
         container.innerHTML = `
-          <div style="grid-column: 1 / -1; padding:20px; background:var(--bg-card); border-radius:10px; text-align:center">
-            <p style="color:var(--text-muted); font-size:13px; margin-bottom:10px">No preloaded title match found for "${q}".</p>
-            <button class="btn primary" onclick="openAddModalWithTitle('${q}')">+ Add as Custom Game</button>
+          <div style="grid-column: 1 / -1; padding:22px; background:var(--panel-2); border-radius:10px; text-align:center">
+            <p style="color:var(--muted); font-size:13px; margin-bottom:12px">No preloaded title match found for "${q}".</p>
+            <div style="display:flex; justify-content:center; gap:8px;">
+              <a href="https://uk.webuy.com/search?stext=${encodeURIComponent(q)}" target="_blank" rel="noopener noreferrer" class="btn">
+                &#128269; Search CeX Manually on uk.webuy.com &#8599;
+              </a>
+              <button class="btn primary" onclick="openAddModalWithTitle('${q}')">+ Add as Custom Game</button>
+            </div>
           </div>
         `;
         return;
@@ -1272,10 +1727,9 @@
       matches.forEach(m => {
         const card = document.createElement('div');
         card.className = 'metric-card';
-        card.style.background = 'var(--bg-card)';
         card.innerHTML = `
           <h4 style="font-size:14px; font-weight:700; margin-bottom:4px;">${m.name}</h4>
-          <p style="font-size:11.5px; color:var(--text-muted); margin-bottom:10px;">${m.console}</p>
+          <p style="font-size:11.5px; color:var(--muted); margin-bottom:10px;">${m.console}</p>
           <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:12px;">
             <span>CeX Retail: <strong style="color:var(--emerald)">£${m.sell.toFixed(2)}</strong></span>
             <span>Cash Buy: <strong>£${m.cash.toFixed(2)}</strong></span>
@@ -1293,20 +1747,22 @@
 
     window.addFromCeX = function(name, consoleName, cexPrice, barcode) {
       const games = getActiveGames();
+      const sPrice = stockMode === 'overflow' ? 0 : cexPrice;
       const newGame = {
         id: `${stockMode === 'overflow' ? 'ov-' : 'st-'}${Date.now()}`,
         name,
         console: consoleName,
-        storePrice: cexPrice,
+        storePrice: sPrice,
         cexPrice: cexPrice,
         quantity: 1,
-        condition: 'Boxed',
-        barcode: barcode || '',
-        notes: 'Imported from CeX Lookup'
+        hasCase: true,
+        hasBooklet: true,
+        sku: '',
+        barcode: barcode || ''
       };
       games.unshift(newGame);
       setActiveGames(games);
-      showToast(`Added "${name}" to stock!`);
+      showToast(`Added "${name}" to ${stockMode === 'overflow' ? 'Overflow' : 'Store'} Stock!`);
     };
 
     window.openAddModalWithTitle = function(title) {
@@ -1314,22 +1770,52 @@
       document.getElementById('form-name').value = title;
     };
 
-    // Move to store
-    window.moveToStore = function(id) {
-      const gameToMove = overflowGames.find(g => g.id === id);
+    // Move to Shopfloor Modal
+    window.openMoveModal = function(id) {
+      const game = overflowGames.find(g => g.id === id);
+      if (!game) return;
+      pendingMoveGameId = id;
+      document.getElementById('move-game-title').textContent = game.name;
+      document.getElementById('move-game-console').textContent = game.console;
+      document.getElementById('move-cex-target').textContent = `£${(Number(game.cexPrice) || 0).toFixed(2)}`;
+      document.getElementById('move-store-price').value = game.cexPrice || 19.99;
+      document.getElementById('move-sku').value = game.sku || '';
+      document.getElementById('move-modal').style.display = 'flex';
+      setTimeout(() => document.getElementById('move-store-price').focus(), 80);
+    };
+
+    document.getElementById('btn-close-move-modal').addEventListener('click', () => {
+      document.getElementById('move-modal').style.display = 'none';
+      pendingMoveGameId = null;
+    });
+
+    document.getElementById('btn-cancel-move').addEventListener('click', () => {
+      document.getElementById('move-modal').style.display = 'none';
+      pendingMoveGameId = null;
+    });
+
+    document.getElementById('btn-confirm-move').addEventListener('click', () => {
+      if (!pendingMoveGameId) return;
+      const gameToMove = overflowGames.find(g => g.id === pendingMoveGameId);
       if (!gameToMove) return;
 
-      overflowGames = overflowGames.filter(g => g.id !== id);
+      const newStorePrice = parseFloat(document.getElementById('move-store-price').value) || 0;
+      const newSku = document.getElementById('move-sku').value.trim();
+
+      overflowGames = overflowGames.filter(g => g.id !== pendingMoveGameId);
       const moved = {
         ...gameToMove,
         id: `st-${Date.now()}`,
-        notes: gameToMove.notes ? `${gameToMove.notes} (From Overflow)` : 'Moved from Overflow'
+        storePrice: newStorePrice,
+        sku: newSku || gameToMove.sku || ''
       };
       storeGames.unshift(moved);
       saveState();
       renderAll();
-      showToast(`✓ Moved "${gameToMove.name}" to Store Shelf!`);
-    };
+      document.getElementById('move-modal').style.display = 'none';
+      pendingMoveGameId = null;
+      showToast(`✓ Moved "${gameToMove.name}" to Store Shelf at £${newStorePrice.toFixed(2)}!`);
+    });
 
     // Delete Game
     window.deleteGame = function(id) {
@@ -1339,7 +1825,11 @@
       showToast('Game removed.');
     };
 
-    // Add / Edit Modal Logic
+    // =========================================================================
+    // Linear Add / Edit Game Modal (Barcode First, CeX Autocheck, Case/Booklet)
+    // =========================================================================
+    let barcodeLookupTimeout = null;
+
     function openAddModal(game = null) {
       const modal = document.getElementById('game-modal');
       const select = document.getElementById('form-console');
@@ -1351,31 +1841,55 @@
         select.appendChild(opt);
       });
 
+      // Price field configuration based on stockMode
+      const groupStorePrice = document.getElementById('group-store-price');
+      const inputStorePrice = document.getElementById('form-store-price');
+      const hintOverflow = document.getElementById('hint-overflow-price');
+      const statusArea = document.getElementById('form-barcode-status');
+      statusArea.style.display = 'none';
+      statusArea.innerHTML = '';
+
+      if (stockMode === 'overflow') {
+        inputStorePrice.value = '0.00';
+        inputStorePrice.setAttribute('readonly', 'true');
+        inputStorePrice.style.background = 'var(--panel)';
+        inputStorePrice.style.opacity = '0.7';
+        hintOverflow.style.display = 'block';
+      } else {
+        inputStorePrice.removeAttribute('readonly');
+        inputStorePrice.style.background = 'var(--panel-2)';
+        inputStorePrice.style.opacity = '1';
+        hintOverflow.style.display = 'none';
+      }
+
       if (game) {
         document.getElementById('modal-game-title').textContent = '✎ Edit Game';
         document.getElementById('edit-game-id').value = game.id;
+        document.getElementById('form-barcode').value = game.barcode || '';
         document.getElementById('form-name').value = game.name;
         document.getElementById('form-console').value = game.console;
-        document.getElementById('form-store-price').value = game.storePrice;
-        document.getElementById('form-cex-price').value = game.cexPrice || game.storePrice;
+        document.getElementById('form-cond-case').checked = game.hasCase !== undefined ? !!game.hasCase : true;
+        document.getElementById('form-cond-booklet').checked = game.hasBooklet !== undefined ? !!game.hasBooklet : true;
+        document.getElementById('form-sku').value = game.sku || '';
+        document.getElementById('form-store-price').value = stockMode === 'overflow' ? '0.00' : (game.storePrice || 0);
+        document.getElementById('form-cex-price').value = game.cexPrice || game.storePrice || 0;
         document.getElementById('form-quantity').value = game.quantity || 1;
-        document.getElementById('form-condition').value = game.condition || 'Boxed';
-        document.getElementById('form-barcode').value = game.barcode || '';
-        document.getElementById('form-notes').value = game.notes || '';
       } else {
         document.getElementById('modal-game-title').textContent = '+ Add Game to Inventory';
         document.getElementById('edit-game-id').value = '';
+        document.getElementById('form-barcode').value = '';
         document.getElementById('form-name').value = '';
         if (selectedConsole !== 'all') document.getElementById('form-console').value = selectedConsole;
-        document.getElementById('form-store-price').value = '';
+        document.getElementById('form-cond-case').checked = true;
+        document.getElementById('form-cond-booklet').checked = true;
+        document.getElementById('form-sku').value = '';
+        document.getElementById('form-store-price').value = stockMode === 'overflow' ? '0.00' : '';
         document.getElementById('form-cex-price').value = '';
         document.getElementById('form-quantity').value = 1;
-        document.getElementById('form-condition').value = 'Boxed';
-        document.getElementById('form-barcode').value = '';
-        document.getElementById('form-notes').value = '';
       }
 
       modal.style.display = 'flex';
+      setTimeout(() => document.getElementById('form-barcode').focus(), 80);
     }
 
     window.editGame = function(id) {
@@ -1392,82 +1906,381 @@
       document.getElementById('game-modal').style.display = 'none';
     });
 
+    // Auto CeX Check on Barcode Input / Scan
+    async function triggerBarcodeAutoCheck() {
+      const barcodeInput = document.getElementById('form-barcode');
+      const barcode = barcodeInput.value.trim();
+      const statusArea = document.getElementById('form-barcode-status');
+
+      if (!barcode || barcode.length < 5) {
+        statusArea.style.display = 'none';
+        return;
+      }
+
+      statusArea.className = 'barcode-status loading';
+      statusArea.style.display = 'flex';
+      statusArea.innerHTML = `<span>&#8987; Checking CeX at uk.webuy.com for &ldquo;${barcode}&rdquo;...</span>`;
+
+      const curConsole = document.getElementById('form-console').value;
+      const res = await lookupCeX(barcode, curConsole);
+
+      if (res.found) {
+        statusArea.className = 'barcode-status success';
+        statusArea.innerHTML = `
+          <span>&#10003; <strong>Found on CeX:</strong> ${res.name} (&pound;${res.cexPrice.toFixed(2)})</span>
+        `;
+        document.getElementById('form-name').value = res.name;
+        if (res.console && consoles.includes(res.console)) {
+          document.getElementById('form-console').value = res.console;
+        }
+        document.getElementById('form-cex-price').value = res.cexPrice;
+        if (stockMode === 'store' && !document.getElementById('form-store-price').value) {
+          document.getElementById('form-store-price').value = res.cexPrice;
+        }
+      } else {
+        statusArea.className = 'barcode-status warn';
+        statusArea.innerHTML = `
+          <span>&#9888; Not known on CeX catalog.</span>
+          <a href="${res.manualUrl}" target="_blank" rel="noopener noreferrer" class="cex-manual-link">
+            &#128269; Search CeX manually for &ldquo;${barcode}&rdquo; &#8599;
+          </a>
+        `;
+      }
+    }
+
+    document.getElementById('btn-form-check-cex').addEventListener('click', triggerBarcodeAutoCheck);
+
+    const formBarcodeInput = document.getElementById('form-barcode');
+    formBarcodeInput.addEventListener('input', () => {
+      clearTimeout(barcodeLookupTimeout);
+      const val = formBarcodeInput.value.trim();
+      if (val.length >= 8) {
+        barcodeLookupTimeout = setTimeout(triggerBarcodeAutoCheck, 400);
+      }
+    });
+
+    formBarcodeInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        triggerBarcodeAutoCheck();
+      }
+    });
+
+    // Save Game Form
     document.getElementById('game-form').addEventListener('submit', (e) => {
       e.preventDefault();
       const id = document.getElementById('edit-game-id').value;
+      const barcode = document.getElementById('form-barcode').value.trim();
       const name = document.getElementById('form-name').value.trim();
       const consoleName = document.getElementById('form-console').value;
-      const storePrice = parseFloat(document.getElementById('form-store-price').value) || 0;
+      const hasCase = document.getElementById('form-cond-case').checked;
+      const hasBooklet = document.getElementById('form-cond-booklet').checked;
+      const sku = document.getElementById('form-sku').value.trim();
+      // In overflow stock, always set current price to £0
+      const storePrice = stockMode === 'overflow' ? 0 : (parseFloat(document.getElementById('form-store-price').value) || 0);
       const cexPrice = parseFloat(document.getElementById('form-cex-price').value) || storePrice;
       const quantity = parseInt(document.getElementById('form-quantity').value, 10) || 1;
-      const condition = document.getElementById('form-condition').value;
-      const barcode = document.getElementById('form-barcode').value.trim();
-      const notes = document.getElementById('form-notes').value.trim();
+
+      // Register barcode mapping in cache
+      if (barcode && name) {
+        saveCeXCache(barcode, { name, console: consoleName, sell: cexPrice });
+      }
 
       let games = getActiveGames();
 
       if (id) {
-        games = games.map(g => g.id === id ? { ...g, name, console: consoleName, storePrice, cexPrice, quantity, condition, barcode, notes } : g);
+        games = games.map(g => g.id === id ? { 
+          ...g, 
+          barcode, 
+          name, 
+          console: consoleName, 
+          hasCase, 
+          hasBooklet, 
+          sku, 
+          storePrice, 
+          cexPrice, 
+          quantity 
+        } : g);
         showToast('Game updated!');
       } else {
         const newGame = {
           id: `${stockMode === 'overflow' ? 'ov-' : 'st-'}${Date.now()}`,
-          name, console: consoleName, storePrice, cexPrice, quantity, condition, barcode, notes
+          barcode,
+          name,
+          console: consoleName,
+          hasCase,
+          hasBooklet,
+          sku,
+          storePrice,
+          cexPrice,
+          quantity
         };
         games.unshift(newGame);
-        showToast('Game added to inventory!');
+        showToast(`Game added to ${stockMode === 'overflow' ? 'Overflow' : 'Store'} Stock!`);
       }
 
       setActiveGames(games);
       document.getElementById('game-modal').style.display = 'none';
     });
 
-    // Batch Add Modal
-    document.getElementById('btn-batch-add').addEventListener('click', () => {
-      document.getElementById('batch-modal').style.display = 'flex';
-    });
-    document.getElementById('btn-close-batch-modal').addEventListener('click', () => {
-      document.getElementById('batch-modal').style.display = 'none';
-    });
-    document.getElementById('btn-cancel-batch').addEventListener('click', () => {
-      document.getElementById('batch-modal').style.display = 'none';
-    });
-
-    document.getElementById('btn-confirm-batch').addEventListener('click', () => {
-      const text = document.getElementById('batch-text').value.trim();
-      if (!text) return;
-      const lines = text.split('\n');
-      const games = getActiveGames();
-      let added = 0;
-
-      lines.forEach((line, idx) => {
-        const parts = line.split(',').map(s => s.trim());
-        if (parts[0]) {
-          const name = parts[0];
-          const consoleName = parts[1] || (selectedConsole !== 'all' ? selectedConsole : 'PlayStation 5');
-          const storePrice = parseFloat(parts[2]) || 19.99;
-          const cexPrice = parseFloat(parts[3]) || storePrice;
-          games.unshift({
-            id: `${stockMode === 'overflow' ? 'ov-' : 'st-'}${Date.now()}-${idx}`,
-            name,
-            console: consoleName,
-            storePrice,
-            cexPrice,
-            quantity: 1,
-            condition: 'Boxed',
-            notes: 'Batch imported'
-          });
-          added++;
-        }
+    // =========================================================================
+    // Multiple Add Tab & Fast Continuous Scanner Implementation
+    // =========================================================================
+    function initMultiAddTab() {
+      const select = document.getElementById('multi-console');
+      select.innerHTML = '';
+      consoles.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c;
+        opt.textContent = c;
+        if (selectedConsole !== 'all' && c === selectedConsole) opt.selected = true;
+        select.appendChild(opt);
       });
 
-      setActiveGames(games);
-      document.getElementById('batch-text').value = '';
-      document.getElementById('batch-modal').style.display = 'none';
-      showToast(`Batch added ${added} games!`);
+      document.getElementById('multi-destination').value = stockMode === 'overflow' ? 'overflow' : 'store';
+      renderMultiReport();
+      setTimeout(() => document.getElementById('multi-barcode-input').focus(), 80);
+    }
+
+    async function handleMultiScan() {
+      const input = document.getElementById('multi-barcode-input');
+      const barcode = input.value.trim();
+      if (!barcode) return;
+
+      const consoleName = document.getElementById('multi-console').value;
+      const destination = document.getElementById('multi-destination').value;
+      const statusArea = document.getElementById('multi-scan-status');
+
+      // Visual feedback
+      statusArea.innerHTML = `<span style="color:var(--muted); font-weight:600;">&#8987; Scanning &amp; querying CeX for barcode ${barcode}...</span>`;
+
+      // Clear input right away and keep focus for rapid scanning!
+      input.value = '';
+      input.focus();
+
+      // Look up against CeX
+      const res = await lookupCeX(barcode, consoleName);
+
+      const batchItem = {
+        id: `batch-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        barcode,
+        name: res.found ? res.name : '',
+        console: consoleName,
+        cexPrice: res.found ? res.cexPrice : 0,
+        storePrice: destination === 'overflow' ? 0 : (res.found ? res.cexPrice : 0),
+        hasCase: true,
+        hasBooklet: true,
+        sku: '',
+        found: res.found,
+        manualUrl: res.manualUrl
+      };
+
+      multiBatch.unshift(batchItem);
+      renderMultiReport();
+
+      if (res.found) {
+        statusArea.innerHTML = `<span style="color:var(--success); font-weight:700;">&#10003; Added &ldquo;${res.name}&rdquo; (&pound;${res.cexPrice.toFixed(2)}) to batch report!</span>`;
+      } else {
+        statusArea.innerHTML = `
+          <span style="color:var(--accent); font-weight:700;">
+            &#9888; Barcode ${barcode} not found on CeX. 
+            <a href="${res.manualUrl}" target="_blank" rel="noopener noreferrer" class="cex-manual-link" style="margin-left:6px;">
+              Check CeX manually &#8599;
+            </a>
+          </span>
+        `;
+      }
+    }
+
+    document.getElementById('btn-multi-scan-add').addEventListener('click', handleMultiScan);
+    document.getElementById('multi-barcode-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleMultiScan();
+      }
     });
 
-    // Console Manager Modal
+    function renderMultiReport() {
+      const tbody = document.getElementById('multi-table-body');
+      const countEl = document.getElementById('multi-badge-count');
+      const sumCountEl = document.getElementById('multi-summary-count');
+      const sumValEl = document.getElementById('multi-summary-val');
+      const destination = document.getElementById('multi-destination').value;
+
+      countEl.textContent = multiBatch.length;
+      sumCountEl.textContent = multiBatch.length;
+
+      let totalVal = 0;
+      multiBatch.forEach(b => { totalVal += (Number(b.cexPrice) || 0); });
+      sumValEl.textContent = `£${totalVal.toFixed(2)}`;
+
+      if (multiBatch.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="10" style="text-align:center; color:var(--muted); padding:32px;">
+              No games scanned yet in this batch. Scan a barcode above to populate this report.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = '';
+      multiBatch.forEach((item, idx) => {
+        const tr = document.createElement('tr');
+
+        const statusHtml = item.found 
+          ? `<span style="color:var(--success); font-weight:700; font-size:11.5px;">&#10003; CeX Verified</span>`
+          : `<span style="color:var(--accent); font-size:11.5px; font-weight:600;">
+              &#9888; Not in CeX
+              <a href="${item.manualUrl}" target="_blank" rel="noopener noreferrer" class="cex-manual-link" style="display:block; font-size:10.5px;">Search CeX &#8599;</a>
+            </span>`;
+
+        const isOverflow = destination === 'overflow';
+
+        tr.innerHTML = `
+          <td><strong>${idx + 1}</strong></td>
+          <td><code style="font-size:11.5px; font-weight:700;">${item.barcode}</code></td>
+          <td>
+            <input type="text" value="${item.name}" placeholder="Type game title..." 
+                   style="font-size:12px; padding:6px 8px; font-weight:600;" 
+                   onchange="updateMultiBatchItem('${item.id}', 'name', this.value)" />
+          </td>
+          <td><span style="font-size:11.5px; color:var(--muted); font-weight:600;">${item.console}</span></td>
+          <td>
+            <input type="number" step="0.01" min="0" value="${item.cexPrice || ''}" placeholder="0.00" 
+                   style="width:75px; font-size:12px; padding:6px 8px;" 
+                   onchange="updateMultiBatchItem('${item.id}', 'cexPrice', parseFloat(this.value) || 0)" />
+          </td>
+          <td>
+            <input type="number" step="0.01" min="0" value="${isOverflow ? '0.00' : (item.storePrice || '')}" 
+                   placeholder="0.00" ${isOverflow ? 'readonly title="Overflow stock is fixed to £0.00"' : ''} 
+                   style="width:75px; font-size:12px; padding:6px 8px; ${isOverflow ? 'opacity:0.6; background:var(--panel);' : ''}" 
+                   onchange="updateMultiBatchItem('${item.id}', 'storePrice', parseFloat(this.value) || 0)" />
+          </td>
+          <td>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <label style="font-size:11px; cursor:pointer; display:inline-flex; align-items:center; gap:3px;">
+                <input type="checkbox" ${item.hasCase ? 'checked' : ''} 
+                       onchange="updateMultiBatchItem('${item.id}', 'hasCase', this.checked)" /> Case
+              </label>
+              <label style="font-size:11px; cursor:pointer; display:inline-flex; align-items:center; gap:3px;">
+                <input type="checkbox" ${item.hasBooklet ? 'checked' : ''} 
+                       onchange="updateMultiBatchItem('${item.id}', 'hasBooklet', this.checked)" /> Booklet
+              </label>
+            </div>
+          </td>
+          <td>
+            <input type="text" value="${item.sku || ''}" placeholder="SKU (opt)" 
+                   style="width:85px; font-size:11px; padding:5px 6px;" 
+                   onchange="updateMultiBatchItem('${item.id}', 'sku', this.value.trim())" />
+          </td>
+          <td>${statusHtml}</td>
+          <td>
+            <button class="btn danger" style="padding:2px 7px; font-size:11px;" onclick="removeMultiBatchItem('${item.id}')">&times;</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    window.updateMultiBatchItem = function(id, field, value) {
+      const item = multiBatch.find(b => b.id === id);
+      if (item) {
+        item[field] = value;
+        // If name or price changed, update local cache
+        if (item.barcode && (field === 'name' || field === 'cexPrice')) {
+          saveCeXCache(item.barcode, { name: item.name, console: item.console, sell: item.cexPrice });
+        }
+        if (field === 'cexPrice') {
+          const sumValEl = document.getElementById('multi-summary-val');
+          let totalVal = 0;
+          multiBatch.forEach(b => { totalVal += (Number(b.cexPrice) || 0); });
+          sumValEl.textContent = `£${totalVal.toFixed(2)}`;
+        }
+      }
+    };
+
+    window.removeMultiBatchItem = function(id) {
+      multiBatch = multiBatch.filter(b => b.id !== id);
+      renderMultiReport();
+    };
+
+    document.getElementById('btn-multi-clear-batch').addEventListener('click', () => {
+      if (multiBatch.length === 0) return;
+      if (confirm('Clear all games from the current scanned batch report?')) {
+        multiBatch = [];
+        renderMultiReport();
+        document.getElementById('multi-scan-status').innerHTML = '';
+      }
+    });
+
+    document.getElementById('multi-destination').addEventListener('change', () => {
+      const dest = document.getElementById('multi-destination').value;
+      if (dest === 'overflow') {
+        multiBatch.forEach(b => { b.storePrice = 0; });
+      }
+      renderMultiReport();
+    });
+
+    // Commit All Scanned Games to Inventory
+    document.getElementById('btn-multi-commit').addEventListener('click', () => {
+      if (multiBatch.length === 0) {
+        return alert('Please scan at least one game before adding to stock.');
+      }
+
+      // Check if any item has empty name
+      const missingName = multiBatch.find(b => !b.name.trim());
+      if (missingName) {
+        if (!confirm(`Barcode "${missingName.barcode}" does not have a game name set yet. Add batch anyway?`)) {
+          return;
+        }
+      }
+
+      const destination = document.getElementById('multi-destination').value;
+      const targetGames = destination === 'overflow' ? overflowGames : storeGames;
+
+      multiBatch.forEach((item, idx) => {
+        const gameName = item.name.trim() || `Game (${item.barcode})`;
+        const sPrice = destination === 'overflow' ? 0 : (Number(item.storePrice) || Number(item.cexPrice) || 0);
+        const cPrice = Number(item.cexPrice) || sPrice;
+
+        if (item.barcode) {
+          saveCeXCache(item.barcode, { name: gameName, console: item.console, sell: cPrice });
+        }
+
+        targetGames.unshift({
+          id: `${destination === 'overflow' ? 'ov-' : 'st-'}${Date.now()}-${idx}`,
+          barcode: item.barcode,
+          name: gameName,
+          console: item.console,
+          storePrice: sPrice,
+          cexPrice: cPrice,
+          quantity: 1,
+          hasCase: item.hasCase !== false,
+          hasBooklet: item.hasBooklet !== false,
+          sku: item.sku || ''
+        });
+      });
+
+      const addedCount = multiBatch.length;
+      multiBatch = [];
+      saveState();
+      renderAll();
+      renderMultiReport();
+
+      const destName = destination === 'overflow' ? 'Overflow Reserve' : 'Store Floor Stock';
+      showToast(`✓ Successfully added ${addedCount} games to ${destName}!`);
+      document.getElementById('multi-scan-status').innerHTML = `
+        <span style="color:var(--success); font-weight:700;">
+          &#10003; Batch complete! Added ${addedCount} games to ${destName}. Ready for next batch.
+        </span>
+      `;
+    });
+
+    // =========================================================================
+    // Consoles Manager
+    // =========================================================================
     document.getElementById('btn-manage-consoles').addEventListener('click', () => {
       renderConsoleList();
       document.getElementById('console-modal').style.display = 'flex';
@@ -1485,10 +2298,10 @@
         li.style.justifyContent = 'space-between';
         li.style.alignItems = 'center';
         li.style.padding = '8px 12px';
-        li.style.background = 'var(--bg-card)';
+        li.style.background = 'var(--panel-2)';
         li.style.borderRadius = '8px';
         li.innerHTML = `
-          <span>${c}</span>
+          <span style="font-weight:600;">${c}</span>
           <button class="btn danger" style="padding:2px 8px; font-size:11px" onclick="deleteConsole('${c}')">&times;</button>
         `;
         ul.appendChild(li);
@@ -1518,17 +2331,21 @@
       renderTable();
     };
 
-    // CSV & JSON Exports
+    // =========================================================================
+    // CSV & JSON Exports (Updated with SKU, Case, Booklet, Barcode)
+    // =========================================================================
     document.getElementById('btn-export-csv').addEventListener('click', () => {
       const games = getActiveGames();
-      let csv = 'Name,Console,StorePrice,CeXPrice,Quantity,Condition,Barcode,Notes\n';
+      let csv = 'Barcode,Game Title,Console,Store Price,CeX Target,Case,Booklet,SKU,Quantity\n';
       games.forEach(g => {
-        csv += `"${g.name}","${g.console}",${g.storePrice},${g.cexPrice || g.storePrice},${g.quantity || 1},"${g.condition || ''}","${g.barcode || ''}","${g.notes || ''}"\n`;
+        const hasC = g.hasCase !== undefined ? (g.hasCase ? 'Yes' : 'No') : 'Yes';
+        const hasB = g.hasBooklet !== undefined ? (g.hasBooklet ? 'Yes' : 'No') : 'Yes';
+        csv += `"${g.barcode || ''}","${g.name}","${g.console}",${g.storePrice},${g.cexPrice || g.storePrice},"${hasC}","${hasB}","${g.sku || ''}",${g.quantity || 1}\n`;
       });
-      const blob = new Blob([csv], { type: 'text/csv' });
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = `game-stock-${stockMode}-${Date.now()}.csv`;
+      a.download = `sos-game-stock-${stockMode}-${Date.now()}.csv`;
       a.click();
     });
 
@@ -1557,6 +2374,7 @@
           if (parsed.storeGames && parsed.overflowGames) {
             storeGames = parsed.storeGames;
             overflowGames = parsed.overflowGames;
+            overflowGames.forEach(g => { g.storePrice = 0; });
             if (parsed.consoles) consoles = parsed.consoles;
           } else if (Array.isArray(parsed)) {
             setActiveGames(parsed);
@@ -1573,9 +2391,9 @@
     });
 
     document.getElementById('btn-reset-defaults').addEventListener('click', () => {
-      if (!confirm(`Reset ${stockMode} games to default sample list?`)) return;
-      if (stockMode === 'overflow') overflowGames = INITIAL_OVERFLOW_GAMES;
-      else storeGames = INITIAL_STORE_GAMES;
+      if (!confirm(`Reset ${stockMode} games to default empty list?`)) return;
+      if (stockMode === 'overflow') overflowGames = [];
+      else storeGames = [];
       consoles = INITIAL_CONSOLES;
       selectedConsole = 'all';
       saveState();
@@ -1584,7 +2402,7 @@
     });
 
     document.getElementById('btn-clear-stock').addEventListener('click', () => {
-      if (!confirm(`Are you sure you want to completely clear all ${stockMode} games?`)) return;
+      if (!confirm(`Are you sure you want to clear all ${stockMode} games?`)) return;
       setActiveGames([]);
       showToast(`Cleared all ${stockMode} games.`);
     });

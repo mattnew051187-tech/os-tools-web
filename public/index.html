@@ -57,6 +57,47 @@
       </div>
     </header>
 
+    <!-- Lois Bullion Live Metal Rates (9ct, 14ct, 18ct, 24ct, 925 silver) -->
+    <div id="bullion-bar" class="bullion-bar">
+      <div class="bullion-brand">
+        <span class="bullion-icon">&#9878;</span>
+        <a href="https://lois-bullion.com/" target="_blank" rel="noopener noreferrer" class="bullion-link" title="Live scrap rates from Lois Bullion (lois-bullion.com)">
+          LOIS BULLION
+        </a>
+        <span class="bullion-pulse" title="Live feed active &bull; auto-refreshes every 30m"></span>
+      </div>
+
+      <div class="bullion-items">
+        <div class="bullion-pill gold" title="9ct Scrap Gold">
+          <span class="bullion-label">9ct</span>
+          <span class="bullion-val" id="bullion-9ct">&pound;34.29<small>/g</small></span>
+        </div>
+        <div class="bullion-pill gold" title="14ct Scrap Gold">
+          <span class="bullion-label">14ct</span>
+          <span class="bullion-val" id="bullion-14ct">&pound;53.31<small>/g</small></span>
+        </div>
+        <div class="bullion-pill gold" title="18ct Scrap Gold">
+          <span class="bullion-label">18ct</span>
+          <span class="bullion-val" id="bullion-18ct">&pound;68.58<small>/g</small></span>
+        </div>
+        <div class="bullion-pill gold highlight" title="24ct Scrap Gold">
+          <span class="bullion-label">24ct</span>
+          <span class="bullion-val" id="bullion-24ct">&pound;91.43<small>/g</small></span>
+        </div>
+        <div class="bullion-pill silver" title="Silver .925">
+          <span class="bullion-label">925 Silver</span>
+          <span class="bullion-val" id="bullion-silver">&pound;0.83<small>/g</small></span>
+        </div>
+      </div>
+
+      <div class="bullion-meta">
+        <span id="bullion-updated" class="bullion-time">Updated: loading...</span>
+        <button id="btn-refresh-bullion" class="bullion-refresh-btn" type="button" title="Refresh live rates from Lois Bullion (auto every 30m)">
+          &#8635;
+        </button>
+      </div>
+    </div>
+
     <div id="banner" class="banner hidden"></div>
     <div id="must-change" class="banner warn hidden">
       You are using the default master password. Please change it in <b>Account</b>.
@@ -70,6 +111,7 @@
           <button class="tile" data-open="game-library"><div class="tile-icon">&#128253;</div><h3>Game Library</h3><p>Open module</p></button>
           <button class="tile" data-open="product-search"><div class="tile-icon">&#128269;</div><h3>Product Search</h3><p>Open module</p></button>
           <button class="tile" data-open="repair-book-in"><div class="tile-icon">&#128295;</div><h3>Repair Book In</h3><p>Open module</p></button>
+          <button class="tile tile-beta hidden" id="tile-beta" data-open="beta"><span class="beta-badge">DEV LAB</span><div class="tile-icon">&#129514;</div><h3>Beta</h3><p>App Incubator &amp; Staging</p></button>
         </div>
       </div>
       <div class="tab-pane" data-pane="phone-tablets">
@@ -91,6 +133,10 @@
       <div class="tab-pane" data-pane="repair-book-in">
         <button class="btn back-btn" data-back>&#8592; Home</button>
         <iframe class="module-frame" title="Repair Book In" allow="gamepad; camera; microphone; display-capture; clipboard-read; clipboard-write; autoplay"></iframe>
+      </div>
+      <div class="tab-pane" data-pane="beta">
+        <button class="btn back-btn" data-back>&#8592; Home</button>
+        <iframe class="module-frame" title="Beta App Incubator" allow="gamepad; camera; microphone; display-capture; clipboard-read; clipboard-write; autoplay; serial; usb; hid"></iframe>
       </div>
       <div class="tab-pane" data-pane="users">
         <div class="pane-inner">

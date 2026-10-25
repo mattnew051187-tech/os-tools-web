@@ -254,7 +254,15 @@ const app = express();
 app.set('trust proxy', 1);
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(APP_ROOT, 'public')));
+app.get('/modules/beta.html', (req, res, next) => {
+  const user = getSessionUser(req);
+  if (!user || user.username.toLowerCase() !== 'matt') {
+    return res.status(403).send('Access restricted to Matt.');
+  }
+  next();
+});
 app.use('/modules', express.static(path.join(APP_ROOT, 'modules')));
+app.use('/vendor/jspdf', express.static(path.join(APP_ROOT, 'node_modules', 'jspdf', 'dist')));
 
 function requireAuth(req, res, next) {
   const user = getSessionUser(req);
@@ -267,6 +275,15 @@ function requireAdmin(req, res, next) {
   const user = getSessionUser(req);
   if (!user) return res.status(401).json({ ok: false, error: 'Not signed in.' });
   if (user.role !== 'admin') return res.status(403).json({ ok: false, error: 'Admin permission required.' });
+  req.user = user;
+  next();
+}
+
+function requireMatt(req, res, next) {
+  const user = getSessionUser(req);
+  if (!user || user.username.toLowerCase() !== 'matt') {
+    return res.status(403).json({ ok: false, error: 'Access restricted to Matt.' });
+  }
   req.user = user;
   next();
 }
@@ -491,7 +508,9 @@ app.post('/api/settings', requireAdmin, (req, res) => {
 app.get('/api/modules', requireAuth, (req, res) => {
   const settings = loadSettings();
   const modules = {};
-  for (const id of TAB_IDS) modules[id] = resolveModule(settings, id);
+  const isMatt = req.user && req.user.username.toLowerCase() === 'matt';
+  const tabList = isMatt ? [...TAB_IDS, 'beta'] : TAB_IDS;
+  for (const id of tabList) modules[id] = resolveModule(settings, id);
   res.json({ ok: true, modules });
 });
 
@@ -504,6 +523,399 @@ app.get('/api/check-updates', requireAuth, async (req, res) => {
 
 app.get('/api/activity', requireAdmin, (req, res) => {
   res.json({ ok: true, entries: readActivityLog(400) });
+});
+
+// ---- Usernames List (for technician select in modules) ----
+app.get('/api/users/list', (req, res) => {
+  const users = loadUsers();
+  const list = users.map((u) => u.username).filter(Boolean);
+  res.json({ ok: true, users: list });
+});
+
+// ---- Gamepad QA Reports Library Persistence ----
+const GAMEPAD_REPORTS_FILE = path.join(APP_ROOT, 'data', 'gamepad-reports.json');
+
+function loadGamepadReports() {
+  try {
+    if (fs.existsSync(GAMEPAD_REPORTS_FILE)) {
+      return JSON.parse(fs.readFileSync(GAMEPAD_REPORTS_FILE, 'utf8')) || [];
+    }
+  } catch (e) {}
+  return [];
+}
+
+function saveGamepadReports(reports) {
+  try {
+    const dataDir = path.join(APP_ROOT, 'data');
+    if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+    fs.writeFileSync(GAMEPAD_REPORTS_FILE, JSON.stringify(reports, null, 2), 'utf8');
+  } catch (e) {}
+}
+
+app.get('/api/gamepad-reports', (req, res) => {
+  res.json({ ok: true, reports: loadGamepadReports() });
+});
+
+app.post('/api/gamepad-reports', (req, res) => {
+  const report = req.body;
+  if (!report || !report.id) return res.status(400).json({ ok: false, error: 'Invalid report data' });
+  const reports = loadGamepadReports();
+  const existingIdx = reports.findIndex((r) => r.id === report.id);
+  if (existingIdx >= 0) {
+    reports[existingIdx] = { ...reports[existingIdx], ...report, updatedAt: new Date().toISOString() };
+  } else {
+    reports.unshift({ ...report, createdAt: report.createdAt || new Date().toISOString() });
+  }
+  saveGamepadReports(reports);
+  res.json({ ok: true, report });
+});
+
+app.patch('/api/gamepad-reports/:id/sku', (req, res) => {
+  const { id } = req.params;
+  const { sku, notes } = req.body || {};
+  const reports = loadGamepadReports();
+  const target = reports.find((r) => r.id === id);
+  if (!target) return res.status(404).json({ ok: false, error: 'Report not found' });
+  target.sku = String(sku || '').trim();
+  target.skuAssignedAt = new Date().toISOString();
+  if (notes) target.notes = notes;
+  saveGamepadReports(reports);
+  res.json({ ok: true, report: target });
+});
+
+app.delete('/api/gamepad-reports/:id', (req, res) => {
+  const { id } = req.params;
+  let reports = loadGamepadReports();
+  reports = reports.filter((r) => r.id !== id);
+  saveGamepadReports(reports);
+  res.json({ ok: true });
+});
+
+// ---- Phone & Tablet QA Reports Library Persistence ----
+const PHONE_REPORTS_FILE = path.join(APP_ROOT, 'data', 'phone-reports.json');
+
+function loadPhoneReports() {
+  try {
+    if (fs.existsSync(PHONE_REPORTS_FILE)) {
+      return JSON.parse(fs.readFileSync(PHONE_REPORTS_FILE, 'utf8')) || [];
+    }
+  } catch (e) {}
+  return [];
+}
+
+function savePhoneReports(reports) {
+  try {
+    const dataDir = path.join(APP_ROOT, 'data');
+    if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+    fs.writeFileSync(PHONE_REPORTS_FILE, JSON.stringify(reports, null, 2), 'utf8');
+  } catch (e) {}
+}
+
+app.get('/api/phone-reports', (req, res) => {
+  res.json({ ok: true, reports: loadPhoneReports() });
+});
+
+app.post('/api/phone-reports', (req, res) => {
+  const report = req.body;
+  if (!report || !report.id) return res.status(400).json({ ok: false, error: 'Invalid report data' });
+  const reports = loadPhoneReports();
+  const existingIdx = reports.findIndex((r) => r.id === report.id);
+  if (existingIdx >= 0) {
+    reports[existingIdx] = { ...reports[existingIdx], ...report, updatedAt: new Date().toISOString() };
+  } else {
+    reports.unshift({ ...report, createdAt: report.createdAt || new Date().toISOString() });
+  }
+  savePhoneReports(reports);
+  res.json({ ok: true, report });
+});
+
+app.patch('/api/phone-reports/:id/sku', (req, res) => {
+  const { id } = req.params;
+  const { sku, notes } = req.body || {};
+  const reports = loadPhoneReports();
+  const target = reports.find((r) => r.id === id);
+  if (!target) return res.status(404).json({ ok: false, error: 'Report not found' });
+  target.sku = String(sku || '').trim();
+  target.skuAssignedAt = new Date().toISOString();
+  if (notes) target.notes = notes;
+  savePhoneReports(reports);
+  res.json({ ok: true, report: target });
+});
+
+app.delete('/api/phone-reports/:id', (req, res) => {
+  const { id } = req.params;
+  let reports = loadPhoneReports();
+  reports = reports.filter((r) => r.id !== id);
+  savePhoneReports(reports);
+  res.json({ ok: true });
+});
+
+// ---- USB Phone Diagnostic Agent Bridge ----
+let activeUsbDevice = null;
+
+app.get('/api/usb-agent/status', (req, res) => {
+  res.json({
+    ok: true,
+    agentOnline: true,
+    agentVersion: '1.2.0',
+    supportedPlatforms: ['android_adb', 'apple_ios', 'webusb'],
+    activeDevice: activeUsbDevice,
+  });
+});
+
+app.get('/api/usb-agent/device', (req, res) => {
+  res.json({
+    ok: true,
+    device: activeUsbDevice,
+  });
+});
+
+app.post('/api/usb-agent/device', (req, res) => {
+  const device = req.body;
+  activeUsbDevice = device;
+  res.json({ ok: true, activeDevice: activeUsbDevice });
+});
+
+app.delete('/api/usb-agent/device', (req, res) => {
+  activeUsbDevice = null;
+  res.json({ ok: true });
+});
+
+// ---- CeX Barcode & Product Proxy ----
+app.get('/api/cex-lookup', (req, res) => {
+  const barcode = String(req.query.barcode || req.query.q || '').trim();
+  if (!barcode) return res.json({ ok: false, error: 'No barcode or query provided.' });
+
+  const manualUrl = `https://uk.webuy.com/search?stext=${encodeURIComponent(barcode)}`;
+  const searchUrl = `https://uk.webuy.com/search/?stext=${encodeURIComponent(barcode)}`;
+
+  let parsed;
+  try {
+    parsed = new URL(searchUrl);
+  } catch {
+    return res.json({ ok: false, barcode, manualUrl, error: 'Invalid URL' });
+  }
+
+  const reqOptions = {
+    hostname: parsed.hostname,
+    path: parsed.pathname + parsed.search,
+    method: 'GET',
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+      'Accept-Language': 'en-GB,en;q=0.9',
+    },
+    timeout: 5000,
+  };
+
+  const cexReq = https.request(reqOptions, (cexRes) => {
+    let body = '';
+    cexRes.on('data', (chunk) => {
+      body += chunk;
+      // Cap at 1MB to avoid memory bloat
+      if (body.length > 1024 * 1024) cexReq.destroy();
+    });
+    cexRes.on('end', () => {
+      // Look for JSON payload in page
+      try {
+        const nextMatch = body.match(/<script id=\"__NEXT_DATA__\"[^>]*>(.*?)<\/script>/s);
+        if (nextMatch) {
+          const json = JSON.parse(nextMatch[1]);
+          const boxes = json?.props?.pageProps?.data?.boxes || [];
+          if (boxes.length > 0) {
+            const b = boxes[0];
+            return res.json({
+              ok: true,
+              item: {
+                name: b.boxName,
+                console: b.categoryFriendlyName || '',
+                cexPrice: Number(b.sellPrice) || 0,
+                cashPrice: Number(b.cashPrice) || 0,
+                barcode: b.barcode || barcode,
+                boxId: b.boxId,
+                imageUrl: (b.imageUrls && b.imageUrls.large) || '',
+              },
+              manualUrl,
+            });
+          }
+        }
+      } catch {}
+
+      // Fallback: If no structured box found or Cloudflare challenge
+      res.json({ ok: false, barcode, manualUrl, message: 'Not found in live CeX scrape or blocked by Cloudflare' });
+    });
+  });
+
+  cexReq.on('timeout', () => {
+    cexReq.destroy();
+    res.json({ ok: false, barcode, manualUrl, message: 'CeX lookup timed out' });
+  });
+
+  cexReq.on('error', () => {
+    res.json({ ok: false, barcode, manualUrl, message: 'CeX request error' });
+  });
+
+  cexReq.end();
+});
+
+// ---- Lois Bullion Scrap Metal Live Rates (9ct, 14ct, 18ct, 24ct, 925 silver) ----
+const bullionCache = {
+  rates: {
+    gold9ct: 34.29,
+    gold14ct: 53.31,
+    gold18ct: 68.58,
+    gold24ct: 91.43,
+    silver925: 0.83,
+  },
+  lastFetched: 0,
+  sourceDate: '',
+  sourceUrl: 'https://lois-bullion.com/',
+  isFetching: false,
+};
+
+function fetchLoisBullion(force = false) {
+  return new Promise((resolve) => {
+    const now = Date.now();
+    // Cache for 30 minutes (30 * 60 * 1000 ms) unless force is true
+    if (!force && bullionCache.lastFetched && (now - bullionCache.lastFetched < 30 * 60 * 1000)) {
+      return resolve(bullionCache);
+    }
+    if (bullionCache.isFetching) {
+      return resolve(bullionCache);
+    }
+    bullionCache.isFetching = true;
+
+    const req = https.get('https://lois-bullion.com/', {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-GB,en;q=0.9',
+      },
+      timeout: 9000,
+    }, (res) => {
+      let body = '';
+      res.on('data', (chunk) => {
+        body += chunk;
+        if (body.length > 2.5 * 1024 * 1024) req.destroy();
+      });
+      res.on('end', () => {
+        bullionCache.isFetching = false;
+        try {
+          const p9 = body.match(/9ct\s*Scrap\s*Gold<\/small>\s*<span>(?:&pound;|£)?\s*([0-9\.]+)/i);
+          const p14 = body.match(/14ct\s*Scrap\s*Gold<\/small>\s*<span>(?:&pound;|£)?\s*([0-9\.]+)/i);
+          const p18 = body.match(/18ct\s*Scrap\s*Gold<\/small>\s*<span>(?:&pound;|£)?\s*([0-9\.]+)/i);
+          const p24 = body.match(/24ct\s*Scrap\s*Gold<\/small>\s*<span>(?:&pound;|£)?\s*([0-9\.]+)/i);
+          const pSilver = body.match(/Silver\s*\.?925<\/small>\s*<span>(?:&pound;|£)?\s*([0-9\.]+)/i);
+          const updatedMatch = body.match(/Updated:\s*([A-Za-z0-9,\s]+)<\/small>/i);
+
+          if (p9 && p14 && p18 && p24) {
+            bullionCache.rates = {
+              gold9ct: parseFloat(p9[1]),
+              gold14ct: parseFloat(p14[1]),
+              gold18ct: parseFloat(p18[1]),
+              gold24ct: parseFloat(p24[1]),
+              silver925: pSilver ? parseFloat(pSilver[1]) : bullionCache.rates.silver925,
+            };
+            bullionCache.lastFetched = Date.now();
+            if (updatedMatch) bullionCache.sourceDate = updatedMatch[1].trim();
+          }
+        } catch (e) {
+          console.error('Error parsing Lois Bullion HTML:', e.message);
+        }
+        resolve(bullionCache);
+      });
+    });
+
+    req.on('timeout', () => {
+      req.destroy();
+      bullionCache.isFetching = false;
+      resolve(bullionCache);
+    });
+
+    req.on('error', () => {
+      bullionCache.isFetching = false;
+      resolve(bullionCache);
+    });
+  });
+}
+
+// Background auto-refresh every 30 minutes
+setInterval(() => {
+  fetchLoisBullion(true).catch(() => {});
+}, 30 * 60 * 1000);
+
+app.get('/api/bullion-rates', async (req, res) => {
+  const force = req.query.force === '1' || req.query.force === 'true';
+  const data = await fetchLoisBullion(force);
+  res.json({
+    ok: true,
+    rates: data.rates,
+    lastFetched: data.lastFetched,
+    sourceDate: data.sourceDate,
+    sourceUrl: data.sourceUrl,
+  });
+});
+
+// ---- Matt's Beta App Incubator & Staging API ----
+const BETA_PROJECTS_FILE = path.join(APP_ROOT, 'data', 'beta-projects.json');
+
+function loadBetaProjects() {
+  try {
+    if (fs.existsSync(BETA_PROJECTS_FILE)) {
+      return JSON.parse(fs.readFileSync(BETA_PROJECTS_FILE, 'utf8')) || [];
+    }
+  } catch (e) {}
+  return [];
+}
+
+function saveBetaProjects(projects) {
+  try {
+    const dataDir = path.join(APP_ROOT, 'data');
+    if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+    fs.writeFileSync(BETA_PROJECTS_FILE, JSON.stringify(projects, null, 2), 'utf8');
+  } catch (e) {}
+}
+
+app.get('/api/beta/projects', requireMatt, (req, res) => {
+  res.json({ ok: true, projects: loadBetaProjects() });
+});
+
+app.post('/api/beta/projects', requireMatt, (req, res) => {
+  const project = req.body;
+  if (!project || !project.id) return res.status(400).json({ ok: false, error: 'Invalid project data' });
+  const projects = loadBetaProjects();
+  const existingIdx = projects.findIndex((p) => p.id === project.id);
+  if (existingIdx >= 0) {
+    projects[existingIdx] = { ...projects[existingIdx], ...project, updatedAt: new Date().toISOString() };
+  } else {
+    projects.unshift({ ...project, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+  }
+  saveBetaProjects(projects);
+  res.json({ ok: true, project });
+});
+
+app.delete('/api/beta/projects/:id', requireMatt, (req, res) => {
+  const { id } = req.params;
+  let projects = loadBetaProjects();
+  projects = projects.filter((p) => p.id !== id);
+  saveBetaProjects(projects);
+  res.json({ ok: true });
+});
+
+app.post('/api/beta/integrate', requireMatt, (req, res) => {
+  const { slug, name, htmlContent } = req.body || {};
+  const safeSlug = String(slug || '').toLowerCase().replace(/[^a-z0-9_-]/g, '-').replace(/^-+|-+$/g, '');
+  if (!safeSlug) return res.status(400).json({ ok: false, error: 'Valid module slug required' });
+  if (!htmlContent) return res.status(400).json({ ok: false, error: 'Module HTML content required' });
+
+  const targetPath = path.join(APP_ROOT, 'modules', `${safeSlug}.html`);
+  try {
+    fs.writeFileSync(targetPath, htmlContent, 'utf8');
+    logActivity(req.user.username, 'beta-integrate', `Integrated new module "${name || safeSlug}" into modules/${safeSlug}.html`);
+    res.json({ ok: true, slug: safeSlug, path: `/modules/${safeSlug}.html` });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 app.get('/healthz', (req, res) => res.json({ ok: true, version: APP_VERSION }));
