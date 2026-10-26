@@ -239,74 +239,85 @@
     /* Tri-State Diagnostics Buttons */
     .hardware-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
       gap: 10px;
       margin-top: 14px;
     }
 
     .hw-item-card {
       background: var(--panel-2);
-      border: 1px solid var(--border);
+      border: 1.5px solid var(--border);
       border-radius: 10px;
-      padding: 10px 12px;
+      padding: 10px 14px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+
+    .hw-item-card.pass {
+      border-color: var(--border);
+      background: var(--panel-2);
+    }
+
+    .hw-item-card.fail {
+      border-color: var(--danger);
+      background: var(--danger-bg);
     }
 
     .hw-item-top {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 6px;
+      gap: 8px;
     }
 
-    .hw-item-name {
-      font-size: 12.5px;
-      font-weight: 700;
+    .hw-checkbox-label {
       display: flex;
       align-items: center;
-      gap: 6px;
-    }
-
-    .status-btn-group {
-      display: flex;
-      gap: 3px;
-    }
-
-    .status-btn {
-      padding: 4px 8px;
-      font-size: 10px;
+      gap: 10px;
+      font-size: 13px;
       font-weight: 700;
-      border-radius: 6px;
-      border: 1px solid var(--border);
-      background: var(--panel);
-      color: var(--muted);
+      color: var(--text);
       cursor: pointer;
+      user-select: none;
     }
 
-    .status-btn.active.pass {
-      background: var(--success);
-      border-color: var(--success);
-      color: #fff;
+    .hw-checkbox {
+      width: 19px;
+      height: 19px;
+      cursor: pointer;
+      accent-color: var(--success);
     }
 
-    .status-btn.active.repair {
-      background: var(--amber);
-      border-color: var(--amber);
-      color: #fff;
+    .hw-status-badge {
+      font-size: 10.5px;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 6px;
+      letter-spacing: 0.3px;
     }
 
-    .status-btn.active.fail {
-      background: var(--danger);
-      border-color: var(--danger);
-      color: #fff;
+    .hw-status-badge.pass {
+      background: var(--success-bg);
+      color: var(--success);
+      border: 1px solid var(--success);
+    }
+
+    .hw-status-badge.fail {
+      background: var(--danger-bg);
+      color: var(--danger);
+      border: 1px solid var(--danger);
     }
 
     .defect-input {
-      font-size: 11px;
-      padding: 4px 8px;
+      font-size: 11.5px;
+      padding: 5px 8px;
       border-radius: 6px;
+      border: 1px solid var(--danger);
+      background: var(--panel);
+      color: var(--text);
+      width: 100%;
     }
 
     /* Battery Diagnostic Visual */
@@ -581,7 +592,7 @@
         color: #000 !important;
         padding: 0 !important;
       }
-      .glow-header, header .header-actions, .usb-dock-card, .btn, .modal-backdrop, .toast, .sim-dropdown-wrap {
+      .glow-header, header .header-actions, .usb-dock-card, .btn, .modal-backdrop, .toast {
         display: none !important;
       }
       main {
@@ -753,57 +764,6 @@
       flex-wrap: wrap;
     }
 
-    .sim-dropdown-wrap {
-      position: relative;
-      display: inline-block;
-    }
-
-    .sim-menu {
-      position: absolute;
-      top: 100%;
-      right: 0;
-      margin-top: 6px;
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      box-shadow: 0 8px 24px var(--shadow);
-      z-index: 50;
-      min-width: 290px;
-      padding: 6px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .sim-menu-header {
-      font-size: 10.5px;
-      font-weight: 800;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      padding: 6px 8px 4px;
-    }
-
-    .sim-menu button {
-      width: 100%;
-      text-align: left;
-      padding: 7px 10px;
-      border: none;
-      background: transparent;
-      border-radius: 6px;
-      font-size: 11.5px;
-      font-weight: 600;
-      color: var(--text);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .sim-menu button:hover {
-      background: var(--panel-2);
-      color: var(--accent);
-    }
   </style>
 </head>
 <body>
@@ -866,19 +826,6 @@
           <button type="button" class="btn" id="btn-direct-webserial" onclick="connectWebSerial()" title="Direct USB Modem / Serial AT Telemetry (Reads IMEI &amp; Model)">
             <span>&#128268; Web Serial (COM)</span>
           </button>
-          <div class="sim-dropdown-wrap">
-            <button type="button" class="btn subtle" id="btn-sim-usb" onclick="toggleSimMenu()">
-              ⚡ Test Scenarios &#9662;
-            </button>
-            <div id="sim-usb-menu" class="sim-menu" style="display:none;">
-              <div class="sim-menu-header">Simulate Live USB Telemetry:</div>
-              <button type="button" onclick="simulateUsbDevice('iphone15pro')">&#127822; iPhone 15 Pro (iOS 17.5.1 · 94% Battery · Trusted)</button>
-              <button type="button" onclick="simulateUsbDevice('s24ultra')">&#128241; Galaxy S24 Ultra (Android 14 · ADB Authorized)</button>
-              <button type="button" onclick="simulateUsbDevice('pixel8')">&#128241; Google Pixel 8 Pro (Android 14 · 98% Battery)</button>
-              <button type="button" onclick="simulateUsbDevice('awaiting_trust')">&#9888; iPhone 13 (Awaiting "Trust" Prompt on screen)</button>
-              <button type="button" onclick="simulateUsbDevice('no_adb')">&#9888; Xiaomi 13 (Unauthorized - USB Debugging Disabled)</button>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -894,19 +841,8 @@
       </div>
 
       <div class="form-grid">
-        <div class="form-group" style="grid-column: 1 / -1;">
-          <label>Quick Sample Presets (Click to Test Specific Diagnostic Scenarios)</label>
-          <div style="display:flex; flex-wrap:wrap; gap:6px;">
-            <button type="button" class="btn" onclick="loadPreset('iphone15')">&#127822; iPhone 15 Pro (Pristine Grade A)</button>
-            <button type="button" class="btn" onclick="loadPreset('s24')">&#128241; Galaxy S24 Ultra (Clean)</button>
-            <button type="button" class="btn" onclick="loadPreset('battery_fail')">&#9888; iPhone 13 (Battery &lt;75% Fail)</button>
-            <button type="button" class="btn" onclick="loadPreset('blacklisted')">&#128680; Flagged Blacklist (Stolen Test)</button>
-            <button type="button" class="btn" onclick="loadPreset('ipad')">&#128187; iPad Pro 11" (Screen Fault)</button>
-          </div>
-        </div>
-
         <div class="form-group">
-          <label>Technician Name</label>
+          <label>Technician Name (Select your name)</label>
           <select id="dev-tech">
             <option value="Matt">Matt</option>
           </select>
@@ -982,11 +918,6 @@
             <button type="button" id="btn-verify-imei" class="btn primary" onclick="runBlacklistCheck(true)">&#10003; Check</button>
           </div>
         </div>
-        <div style="display:flex; gap:6px; margin-top:8px;">
-          <button type="button" class="btn subtle" style="padding:3px 7px; font-size:11px" onclick="setImeiState('CLEAN')">Force Clean</button>
-          <button type="button" class="btn subtle" style="padding:3px 7px; font-size:11px" onclick="setImeiState('OTHER_FINANCE')">Simulate Other: Financed</button>
-          <button type="button" class="btn danger" style="padding:3px 7px; font-size:11px" onclick="setImeiState('OTHER_BLACKLIST')">Simulate Other: Blacklisted</button>
-        </div>
         <div id="imei-feedback" style="margin-top:10px; font-size:12px; color:var(--muted); line-height:1.5;">
           Enter or connect phone over USB. System automatically validates IMEI and checks GSMA blacklist.
         </div>
@@ -1004,10 +935,6 @@
             <input type="text" id="dev-serial" placeholder="e.g. F2LLN89VJCL or R5CN8091YZA" value="" />
             <button type="button" id="btn-verify-serial" class="btn primary" onclick="runWarrantyCheck(true)">&#10003; Check</button>
           </div>
-        </div>
-        <div style="display:flex; gap:6px; margin-top:8px;">
-          <button type="button" class="btn subtle" style="padding:3px 7px; font-size:11px" onclick="setWarrantyState('ACTIVE')">Force Active</button>
-          <button type="button" class="btn subtle" style="padding:3px 7px; font-size:11px" onclick="setWarrantyState('EXPIRED')">Simulate Expired</button>
         </div>
         <div id="warranty-feedback" style="margin-top:10px; font-size:12px; color:var(--muted); line-height:1.5;">
           Warranty status checks and returns automatically based on phone/tablet brand and serial number.
@@ -1056,12 +983,12 @@
     <section class="card">
       <div class="card-header">
         <div>
-          <h2 class="card-title">&#9881; Hardware Inspection Matrix</h2>
-          <p style="font-size:12px; color:var(--muted); margin-top:2px;">Test front/rear modules, sensors, audio, and switches.</p>
+          <h2 class="card-title">&#9881; Hardware Inspection Checklist</h2>
+          <p style="font-size:12px; color:var(--muted); margin-top:2px;">Check each component for Pass or uncheck for Fail. Any unchecked item will flag a fault.</p>
         </div>
         <div style="display:flex; gap:6px;">
-          <button id="btn-pass-all-hw" class="btn success">&#10003; Pass All Hardware</button>
-          <button id="btn-reset-hw" class="btn subtle">&#8635; Reset</button>
+          <button id="btn-pass-all-hw" class="btn success">&#10003; Pass All Checks</button>
+          <button id="btn-reset-hw" class="btn subtle">&#8635; Reset Checklist</button>
         </div>
       </div>
 
@@ -1070,10 +997,10 @@
       </div>
     </section>
 
-    <!-- Section 5: Cosmetic Assessment & Liquid Damage -->
+    <!-- Section 5: Cosmetic Assessment -->
     <section class="card">
       <div class="card-header">
-        <h2 class="card-title">&#128065; Cosmetic Grading &amp; Liquid Contact (LCI)</h2>
+        <h2 class="card-title">&#128065; Cosmetic Grading &amp; Housing Condition</h2>
       </div>
 
       <div class="form-grid">
@@ -1087,18 +1014,11 @@
           </select>
         </div>
         <div class="form-group">
-          <label>Liquid Ingress Indicator (LCI)</label>
-          <select id="cos-lci">
-            <option value="Pristine (White / Silver - No Moisture)" selected>Pristine (White / Silver - No Moisture)</option>
-            <option value="TRIGGERED (Red / Pink - Liquid Detected)">TRIGGERED (Red / Pink - Liquid Detected)</option>
-          </select>
-        </div>
-        <div class="form-group">
           <label>Screen Glass Condition</label>
           <input type="text" id="cos-screen" value="" placeholder="e.g. Micro-scratches near speaker" />
         </div>
-        <div class="form-group">
-          <label>Frame &amp; Rear Glass</label>
+        <div class="form-group" style="grid-column: 1 / -1;">
+          <label>Frame &amp; Rear Glass Condition</label>
           <input type="text" id="cos-housing" value="" placeholder="e.g. Corner dent near camera" />
         </div>
       </div>
@@ -1114,14 +1034,6 @@
       </div>
 
       <div class="form-grid" style="margin-bottom:18px;">
-        <div class="form-group">
-          <label>Estimated Repair Cost (&pound;)</label>
-          <input type="text" id="verdict-cost" placeholder="e.g. £65.00 (Screen + Battery)" />
-        </div>
-        <div class="form-group">
-          <label>Estimated Repair Turnaround</label>
-          <input type="text" id="verdict-time" placeholder="e.g. 1-2 Hours (Same Day)" />
-        </div>
         <div class="form-group" style="grid-column: 1 / -1;">
           <label>Technician Sign-Off Notes</label>
           <textarea id="verdict-notes" rows="2" placeholder="Inspection complete. Device tested and sanitized."></textarea>
@@ -1336,23 +1248,23 @@
   </div>
 
   <script>
-    // Hardware Inspection Items
+    // Hardware Inspection Items — Common Physical & Sensor Checks
     const HARDWARE_ITEMS = [
-      { id: 'hw_touch', name: 'Display & Touch Digitizer', icon: '📱' },
       { id: 'hw_front_cam', name: 'Front Selfie Camera', icon: '🤳' },
-      { id: 'hw_rear_cam', name: 'Rear Camera Array', icon: '📷' },
-      { id: 'hw_biometrics', name: 'Face ID / Fingerprint', icon: '👤' },
-      { id: 'hw_charging', name: 'USB Charging Port', icon: '🔌' },
+      { id: 'hw_rear_cam', name: 'Rear Camera & Focus', icon: '📷' },
+      { id: 'hw_screen', name: 'Display & Touch Digitizer', icon: '📱' },
       { id: 'hw_earpiece', name: 'Earpiece Speaker', icon: '👂' },
       { id: 'hw_loudspeaker', name: 'Bottom Loudspeaker', icon: '🔊' },
-      { id: 'hw_mics', name: 'Microphones Array', icon: '🎤' },
+      { id: 'hw_mic', name: 'Microphones Array', icon: '🎤' },
+      { id: 'hw_wifi_bt', name: 'Wi-Fi & Bluetooth', icon: '📶' },
+      { id: 'hw_cellular', name: 'Cellular Signal & SIM Reader', icon: '🌐' },
+      { id: 'hw_charging', name: 'USB Charging Port', icon: '🔌' },
       { id: 'hw_buttons', name: 'Volume & Power Buttons', icon: '🔘' },
-      { id: 'hw_wifi', name: 'Wi-Fi & Bluetooth', icon: '📶' },
-      { id: 'hw_cellular', name: 'Cellular / SIM Reader', icon: '🌐' },
-      { id: 'hw_wireless_chg', name: 'Wireless Charging (Qi)', icon: '🔋' },
-      { id: 'hw_vibrate', name: 'Taptic / Vibration Engine', icon: '📳' },
+      { id: 'hw_biometrics', name: 'Face ID / Fingerprint', icon: '👤' },
+      { id: 'hw_vibrate', name: 'Vibration & Haptics', icon: '📳' },
+      { id: 'hw_flash', name: 'Camera Flash / Torch', icon: '🔦' },
       { id: 'hw_proximity', name: 'Proximity Sensor', icon: '💡' },
-      { id: 'hw_flash', name: 'LED Camera Torch', icon: '🔦' }
+      { id: 'hw_wireless', name: 'Wireless Charging (Qi)', icon: '🔋' }
     ];
 
     // State
@@ -1366,10 +1278,12 @@
       savedReports = JSON.parse(localStorage.getItem('devicecheck_pro_saved_reports') || '[]');
     } catch (e) { savedReports = []; }
 
-    document.getElementById('history-count').textContent = savedReports.length;
+    const histBadge = document.getElementById('history-count');
+    if (histBadge) histBadge.textContent = savedReports.length;
 
     function showToast(msg) {
       const t = document.getElementById('toast');
+      if (!t) return;
       document.getElementById('toast-text').textContent = msg;
       t.style.display = 'flex';
       setTimeout(() => { t.style.display = 'none'; }, 3000);
@@ -1378,30 +1292,38 @@
     let currentTestingHwId = null;
     let cameraStream = null;
 
-    // Render Hardware Matrix with interactive test launchers
+    // Toggle hardware item pass/fail via checkbox
+    window.toggleHwCheck = function(id, isChecked) {
+      if (!hardwareState[id]) hardwareState[id] = { status: 'PASS', defectNote: '' };
+      hardwareState[id].status = isChecked ? 'PASS' : 'FAIL';
+      renderHardwareMatrix();
+      recalculateVerdict();
+    };
+
+    // Render Hardware Matrix with clean Pass/Fail checkboxes and inline defect note on fail
     function renderHardwareMatrix() {
       const grid = document.getElementById('hw-grid');
+      if (!grid) return;
       grid.innerHTML = '';
 
       HARDWARE_ITEMS.forEach(item => {
-        const state = hardwareState[item.id];
+        const state = hardwareState[item.id] || { status: 'PASS', defectNote: '' };
+        const isPass = state.status === 'PASS';
         const card = document.createElement('div');
-        card.className = 'hw-item-card';
+        card.className = `hw-item-card ${isPass ? 'pass' : 'fail'}`;
         card.innerHTML = `
           <div class="hw-item-top">
-            <span class="hw-item-name">${item.icon} ${item.name}</span>
-            <div class="status-btn-group">
-              <button class="status-btn ${state.status === 'PASS' ? 'active pass' : ''}" onclick="setHwStatus('${item.id}', 'PASS')">PASS</button>
-              <button class="status-btn ${state.status === 'REPAIR' ? 'active repair' : ''}" onclick="setHwStatus('${item.id}', 'REPAIR')">FIX</button>
-              <button class="status-btn ${state.status === 'FAIL' ? 'active fail' : ''}" onclick="setHwStatus('${item.id}', 'FAIL')">FAIL</button>
+            <label class="hw-checkbox-label" for="hw-chk-${item.id}">
+              <input type="checkbox" id="hw-chk-${item.id}" class="hw-checkbox" ${isPass ? 'checked' : ''} onchange="toggleHwCheck('${item.id}', this.checked)" />
+              <span>${item.icon} ${item.name}</span>
+            </label>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <button type="button" class="btn subtle" style="padding:2px 7px; font-size:10.5px" onclick="openInteractiveTest('${item.id}')">&#128300; Test</button>
+              <span class="hw-status-badge ${isPass ? 'pass' : 'fail'}">${isPass ? '✓ PASS' : '✗ FAIL'}</span>
             </div>
           </div>
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
-            <button type="button" class="btn subtle" style="padding:2px 7px; font-size:10.5px" onclick="openInteractiveTest('${item.id}')">&#128300; Run Interactive Test</button>
-            ${state.status !== 'PASS' ? '<span style="font-size:10px; color:var(--danger); font-weight:700">FAULT FLAGGED</span>' : '<span style="font-size:10px; color:var(--success)">VERIFIED</span>'}
-          </div>
-          ${state.status !== 'PASS' ? `
-            <input type="text" class="defect-input" placeholder="Fault note..." value="${state.defectNote || ''}" onchange="setHwNote('${item.id}', this.value)" />
+          ${!isPass ? `
+            <input type="text" class="defect-input" placeholder="Fault description (e.g. cracked, no sound, degraded)..." value="${escapeHtml(state.defectNote || '')}" oninput="setHwNote('${item.id}', this.value)" />
           ` : ''}
         `;
         grid.appendChild(card);
@@ -1418,7 +1340,7 @@
       const body = document.getElementById('hw-test-body');
       body.innerHTML = '';
 
-      if (id === 'hw_touch') {
+      if (id === 'hw_screen' || id === 'hw_touch') {
         body.innerHTML = `
           <p style="font-size:12.5px; color:var(--muted); margin-bottom:10px">
             Swipe or drag your pointer across all 32 grid zones to verify the digitizer matrix.
@@ -1457,7 +1379,7 @@
             <button class="btn primary" onclick="playAudioTone(1000)">🔊 Play 1000Hz High Tone</button>
           </div>
         `;
-      } else if (id === 'hw_mics') {
+      } else if (id === 'hw_mic' || id === 'hw_mics') {
         body.innerHTML = `
           <p style="font-size:12.5px; color:var(--muted); margin-bottom:10px">
             Speak into the microphone to measure decibel response.
@@ -1477,7 +1399,7 @@
           </p>
           <button class="btn primary" onclick="testHapticPulse()">📳 Trigger Taptic Vibration Pulse</button>
         `;
-      } else if (id === 'hw_wifi' || id === 'hw_cellular') {
+      } else if (id === 'hw_wifi' || id === 'hw_cellular' || id === 'hw_wifi_bt') {
         body.innerHTML = `
           <p style="font-size:12.5px; color:var(--muted); margin-bottom:10px">
             Checks antenna throughput, network gateway latency, and packet roundtrip.
@@ -1509,24 +1431,36 @@
     });
 
     document.getElementById('btn-modal-set-pass').addEventListener('click', () => {
-      if (currentTestingHwId) setHwStatus(currentTestingHwId, 'PASS');
+      if (currentTestingHwId) {
+        hardwareState[currentTestingHwId] = { status: 'PASS', defectNote: '' };
+        renderHardwareMatrix();
+        recalculateVerdict();
+      }
       stopCameraStream();
       document.getElementById('hw-test-modal').style.display = 'none';
-      showToast('Marked component PASS');
+      showToast('Marked check: PASS');
     });
 
     document.getElementById('btn-modal-set-repair').addEventListener('click', () => {
-      if (currentTestingHwId) setHwStatus(currentTestingHwId, 'REPAIR');
+      if (currentTestingHwId) {
+        hardwareState[currentTestingHwId] = { status: 'FAIL', defectNote: 'Requires service / repair' };
+        renderHardwareMatrix();
+        recalculateVerdict();
+      }
       stopCameraStream();
       document.getElementById('hw-test-modal').style.display = 'none';
-      showToast('Marked component REPAIR');
+      showToast('Marked check: FAIL (Service Required)');
     });
 
     document.getElementById('btn-modal-set-fail').addEventListener('click', () => {
-      if (currentTestingHwId) setHwStatus(currentTestingHwId, 'FAIL');
+      if (currentTestingHwId) {
+        hardwareState[currentTestingHwId] = { status: 'FAIL', defectNote: 'Failed physical test' };
+        renderHardwareMatrix();
+        recalculateVerdict();
+      }
       stopCameraStream();
       document.getElementById('hw-test-modal').style.display = 'none';
-      showToast('Marked component FAIL');
+      showToast('Marked check: FAIL');
     });
 
     // Touch Grid Test implementation
@@ -1639,83 +1573,7 @@
       }, 350);
     };
 
-    // Sample Presets loader
-    window.loadPreset = function(type) {
-      if (type === 'iphone15') {
-        document.getElementById('dev-brand').value = 'Apple';
-        document.getElementById('dev-model').value = 'iPhone 15 Pro Max';
-        document.getElementById('dev-storage').value = '256GB';
-        document.getElementById('dev-color').value = 'Natural Titanium';
-        document.getElementById('dev-carrier').value = 'Unlocked (SIM-Free)';
-        if (document.getElementById('dev-sku')) document.getElementById('dev-sku').value = 'SKU-IPH15P-256-0042';
-        document.getElementById('dev-imei').value = '359203810294812';
-        document.getElementById('dev-serial').value = 'F2LZ9018DNW';
-        document.getElementById('cos-grade').value = 'Grade A (Pristine / Like New)';
-        document.getElementById('cos-lci').value = 'Pristine (White / Silver - No Moisture)';
-        updateBattery(98);
-        setImeiState('CLEAN');
-        runWarrantyCheck(false);
-        document.getElementById('btn-pass-all-hw').click();
-        showToast('Loaded preset: iPhone 15 Pro Max (Grade A • SKU Assigned)');
-      } else if (type === 's24') {
-        document.getElementById('dev-brand').value = 'Samsung';
-        document.getElementById('dev-model').value = 'Galaxy S24 Ultra';
-        document.getElementById('dev-storage').value = '512GB';
-        document.getElementById('dev-color').value = 'Titanium Gray';
-        if (document.getElementById('dev-sku')) document.getElementById('dev-sku').value = 'SKU-SAMS24-512-0089';
-        document.getElementById('dev-imei').value = '358291048192049';
-        document.getElementById('dev-serial').value = 'R5CN8091YZA';
-        document.getElementById('cos-grade').value = 'Grade B (Minor Light Scuffs)';
-        document.getElementById('cos-lci').value = 'Pristine (White / Silver - No Moisture)';
-        updateBattery(92);
-        setImeiState('CLEAN');
-        runWarrantyCheck(false);
-        document.getElementById('btn-pass-all-hw').click();
-        showToast('Loaded preset: Galaxy S24 Ultra (Grade B)');
-      } else if (type === 'battery_fail') {
-        document.getElementById('dev-brand').value = 'Apple';
-        document.getElementById('dev-model').value = 'iPhone 13';
-        document.getElementById('dev-storage').value = '128GB';
-        document.getElementById('dev-color').value = 'Midnight Blue';
-        document.getElementById('dev-imei').value = '351928301928491';
-        document.getElementById('dev-serial').value = 'DX3F9018VJL';
-        document.getElementById('cos-grade').value = 'Grade B (Minor Light Scuffs)';
-        document.getElementById('cos-lci').value = 'Pristine (White / Silver - No Moisture)';
-        updateBattery(71); // Triggers <75% fail rule!
-        setImeiState('CLEAN');
-        runWarrantyCheck(false);
-        document.getElementById('btn-pass-all-hw').click();
-        showToast('Loaded preset: iPhone 13 (Battery <75% Replacement Required)');
-      } else if (type === 'blacklisted') {
-        document.getElementById('dev-brand').value = 'Apple';
-        document.getElementById('dev-model').value = 'iPhone 14';
-        document.getElementById('dev-storage').value = '128GB';
-        document.getElementById('dev-color').value = 'Starlight White';
-        document.getElementById('dev-imei').value = '354920194820192';
-        document.getElementById('dev-serial').value = 'F2L99018ZXP';
-        setImeiState('OTHER_BLACKLIST'); // Triggers fatal blacklist OTHER result!
-        runWarrantyCheck(false);
-        updateBattery(88);
-        showToast('Loaded preset: Blacklisted Device (Status: OTHER)');
-      } else if (type === 'ipad') {
-        document.getElementById('dev-brand').value = 'Apple';
-        document.getElementById('dev-model').value = 'iPad Pro 11-inch (4th Gen)';
-        document.getElementById('dev-storage').value = '256GB';
-        document.getElementById('dev-color').value = 'Space Gray';
-        document.getElementById('dev-imei').value = '358192049182049';
-        document.getElementById('dev-serial').value = 'DMPZ90184HN';
-        document.getElementById('cos-grade').value = 'Grade D (Cracked Glass / Heavy Housing Damage)';
-        updateBattery(89);
-        setImeiState('CLEAN');
-        runWarrantyCheck(false);
-        document.getElementById('btn-pass-all-hw').click();
-        setHwStatus('hw_touch', 'FAIL'); // Triggers digitizer crack
-        setHwNote('hw_touch', 'Corner spider crack across digitizer');
-        showToast('Loaded preset: iPad Pro (Digitizer Crack Test)');
-      }
-      recalculateVerdict();
-    };
-
+    // IMEI & Serial validation state
     let currentImeiOverride = null;
     let currentWarrantyOverride = null;
 
@@ -2015,8 +1873,6 @@
       const isBatteryFail = batteryPercent < 75;
 
       const failedHw = Object.keys(hardwareState).filter(k => hardwareState[k].status === 'FAIL');
-      const repairHw = Object.keys(hardwareState).filter(k => hardwareState[k].status === 'REPAIR');
-      const lciTriggered = document.getElementById('cos-lci').value.includes('TRIGGERED');
 
       if (isOtherOrBlacklisted) {
         banner.className = 'verdict-banner fail';
@@ -2025,23 +1881,17 @@
       } else if (failedHw.length > 0) {
         banner.className = 'verdict-banner fail';
         title.textContent = 'QA VERDICT: FAIL';
-        reason.textContent = `Fatal hardware defects detected: ${failedHw.length} critical component(s) failed diagnostics.`;
-      } else if (isBatteryFail || repairHw.length > 0 || lciTriggered) {
+        reason.textContent = `Hardware defect(s) detected: ${failedHw.length} inspection check(s) failed physical testing.`;
+      } else if (isBatteryFail) {
         banner.className = 'verdict-banner repair';
         title.textContent = 'QA VERDICT: REPAIR';
-        const parts = [];
-        if (isBatteryFail) parts.push(`Battery service required (${batteryPercent}% < 75%)`);
-        if (repairHw.length > 0) parts.push(`${repairHw.length} hardware module(s) require bench repair`);
-        if (lciTriggered) parts.push('Liquid ingress detected on internal LCI');
-        reason.textContent = parts.join('; ');
+        reason.textContent = `Battery service required: Maximum capacity is ${batteryPercent}%, which fails the workshop ≥75% threshold.`;
       } else {
         banner.className = 'verdict-banner pass';
         title.textContent = 'QA VERDICT: PASS';
-        reason.textContent = 'All diagnostics passed: Clean IMEI, healthy battery (≥75%), and all hardware fully operational.';
+        reason.textContent = 'All diagnostics passed: Clean IMEI, healthy battery (≥75%), and all hardware checks passed.';
       }
     }
-
-    document.getElementById('cos-lci').addEventListener('change', recalculateVerdict);
 
     // ==========================================
     // QA REPORTS LIBRARY & SKU MANAGEMENT SYSTEM
@@ -2115,9 +1965,6 @@
         battery: (document.getElementById('battery-input').value || 100) + '%',
         cycles: document.getElementById('battery-cycles') ? document.getElementById('battery-cycles').value : '0',
         cosmeticGrade: document.getElementById('cos-grade') ? document.getElementById('cos-grade').value : 'Grade A (Pristine)',
-        lci: document.getElementById('cos-lci') ? document.getElementById('cos-lci').value : 'Pristine (No Moisture)',
-        cost: document.getElementById('verdict-cost').value || '£0.00',
-        time: document.getElementById('verdict-time').value || 'Immediate',
         notes: document.getElementById('verdict-notes').value || '',
         hardware: JSON.parse(JSON.stringify(hardwareState)),
         verdict: document.getElementById('verdict-title').textContent.replace('QA VERDICT: ', ''),
@@ -2508,7 +2355,7 @@
         const sec2Rows = [
           ['15-Digit IMEI:', r.imei || 'N/A', 'GSMA Blacklist Status:', r.blacklist || 'CLEAN'],
           ['Hardware Serial:', r.serial || 'N/A', 'Brand Warranty:', r.warranty || 'Apple Warranty: Active'],
-          ['Luhn Checksum:', isValidLuhnImei(r.imei) ? 'VALID (Pass)' : 'CHECK DIGIT FAILED', 'Liquid Contact (LCI):', r.lci || 'Pristine (No Moisture)'],
+          ['Luhn Checksum:', isValidLuhnImei(r.imei) ? 'VALID (Pass)' : 'CHECK DIGIT FAILED', 'Network Lock:', r.carrier || 'Unlocked (SIM-Free)'],
         ];
 
         sec2Rows.forEach(row => {
@@ -2672,8 +2519,7 @@
         [
           'SKU', 'Report ID', 'Date', 'Technician', 'Brand', 'Model', 'Storage', 'Color', 'Carrier',
           'IMEI', 'Blacklist Status', 'Serial Number', 'Warranty Status', 'Battery Health', 'Battery Cycles',
-          'Cosmetic Grade', 'Liquid Ingress (LCI)', 'Hardware Defects', 'QA Verdict', 'Verdict Reason',
-          'Estimated Cost', 'Turnaround Time', 'Technician Notes'
+          'Cosmetic Grade', 'Hardware Defects', 'QA Verdict', 'Verdict Reason', 'Technician Notes'
         ]
       ];
 
@@ -2703,12 +2549,9 @@
         (r.battery ? String(r.battery).replace('%', '') + '%' : ''),
         r.cycles || '0',
         r.cosmeticGrade || '',
-        r.lci || '',
         defects.join('; ') || 'None (All Pass)',
         r.verdict || '',
         r.reason || '',
-        r.cost || '',
-        r.time || '',
         r.notes || ''
       ]);
 
@@ -2734,8 +2577,7 @@
         [
           'SKU', 'Report ID', 'Date', 'Technician', 'Brand', 'Model', 'Storage', 'Color', 'Carrier',
           'IMEI', 'Blacklist Status', 'Serial Number', 'Warranty Status', 'Battery Health', 'Battery Cycles',
-          'Cosmetic Grade', 'Liquid Ingress (LCI)', 'Hardware Defects', 'QA Verdict', 'Verdict Reason',
-          'Estimated Cost', 'Turnaround Time', 'Technician Notes'
+          'Cosmetic Grade', 'Hardware Defects', 'QA Verdict', 'Verdict Reason', 'Technician Notes'
         ]
       ];
 
@@ -2766,12 +2608,9 @@
           (r.battery ? String(r.battery).replace('%', '') + '%' : ''),
           r.cycles || '0',
           r.cosmeticGrade || '',
-          r.lci || '',
           defects.join('; ') || 'None (All Pass)',
           r.verdict || '',
           r.reason || '',
-          r.cost || '',
-          r.time || '',
           r.notes || ''
         ]);
       });
@@ -2848,16 +2687,29 @@ Summary: ${reason}
     let activeConnectedUsbDevice = null;
     let isAgentOnline = false;
 
-    // Load technicians from users list
+    // Load technicians from users list and default to currently logged-in user
     async function loadTechnicians() {
       try {
         const res = await fetch('/api/users/list');
         const data = await res.json();
+        let curUser = '';
+        try {
+          const meRes = await fetch('/api/me');
+          const meData = await meRes.json();
+          if (meData.ok && meData.user && meData.user.username) {
+            curUser = meData.user.username;
+          }
+        } catch (e) {}
+
         if (data.ok && Array.isArray(data.users) && data.users.length > 0) {
           const sel = document.getElementById('dev-tech');
-          const cur = sel.value;
+          const prev = sel.value;
           sel.innerHTML = data.users.map(u => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join('');
-          if (data.users.includes(cur)) sel.value = cur;
+          if (curUser && data.users.includes(curUser)) {
+            sel.value = curUser;
+          } else if (data.users.includes(prev)) {
+            sel.value = prev;
+          }
         }
       } catch (e) {}
     }
@@ -2869,19 +2721,6 @@ Summary: ${reason}
     function closeAgentModal() {
       document.getElementById('agent-modal').style.display = 'none';
     }
-
-    function toggleSimMenu() {
-      const menu = document.getElementById('sim-usb-menu');
-      menu.style.display = menu.style.display === 'none' ? 'flex' : 'none';
-    }
-
-    document.addEventListener('click', (e) => {
-      const wrap = document.querySelector('.sim-dropdown-wrap');
-      const menu = document.getElementById('sim-usb-menu');
-      if (wrap && menu && !wrap.contains(e.target)) {
-        menu.style.display = 'none';
-      }
-    });
 
     // Check Local Agent on 127.0.0.1:7890 or Server Proxy
     async function checkAgentConnection(isManual = false) {
