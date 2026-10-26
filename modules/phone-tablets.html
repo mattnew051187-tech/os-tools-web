@@ -782,6 +782,7 @@
     <div class="header-actions">
       <button id="btn-copy-summary" class="btn" title="Copy plain text summary">&#128203; Copy Text</button>
       <button id="btn-open-library" class="btn primary" title="View Saved QA Reports Library">&#128218; Reports Library (<span id="library-count">0</span>)</button>
+      <button id="btn-open-dedicated" class="btn" onclick="openDedicatedTab()" title="Open module in dedicated tab for full native USB &amp; Serial access">&#8599; Dedicated Tab</button>
       <button id="btn-open-print" class="btn" title="Print Certificate">&#128424; Print Certificate</button>
       <button id="btn-reset-form" class="btn subtle" title="Clear form">&#8635; New Device</button>
     </div>
@@ -825,6 +826,9 @@
           </button>
           <button type="button" class="btn" id="btn-direct-webserial" onclick="connectWebSerial()" title="Direct USB Modem / Serial AT Telemetry (Reads IMEI &amp; Model)">
             <span>&#128268; Web Serial (COM)</span>
+          </button>
+          <button type="button" class="btn subtle" id="btn-dedicated-dock" onclick="openDedicatedTab()" title="Open module in dedicated browser tab for native WebUSB without iframe sandbox">
+            <span>&#8599; Dedicated Tab</span>
           </button>
         </div>
       </div>
@@ -889,6 +893,10 @@
             <option value="Three">Three</option>
             <option value="Locked (US / Other)">Locked (Other)</option>
           </select>
+        </div>
+        <div class="form-group">
+          <label>Screen Lock Passcode / PIN</label>
+          <input type="text" id="dev-passcode" placeholder="e.g. 1234 or None / Swiped" value="" />
         </div>
         <div class="form-group" style="grid-column: 1 / -1;">
           <label>Product SKU (In-House Buying &amp; Selling System Identifier)</label>
@@ -1033,14 +1041,7 @@
         </p>
       </div>
 
-      <div class="form-grid" style="margin-bottom:18px;">
-        <div class="form-group" style="grid-column: 1 / -1;">
-          <label>Technician Sign-Off Notes</label>
-          <textarea id="verdict-notes" rows="2" placeholder="Inspection complete. Device tested and sanitized."></textarea>
-        </div>
-      </div>
-
-      <div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center;">
+      <div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:16px;">
         <button id="btn-save-report" class="btn success" style="padding:10px 18px; font-size:13.5px">&#10003; Save to Reports Library</button>
         <button id="btn-download-pdf" class="btn primary" style="padding:10px 18px; font-size:13.5px">&#128196; Download PDF Report</button>
         <button id="btn-download-csv" class="btn" style="padding:10px 18px; font-size:13.5px">&#128202; Download CSV Report</button>
@@ -1208,18 +1209,21 @@
         </div>
 
         <div style="background:var(--panel-2); border:1px solid var(--border); border-radius:10px; padding:14px;">
-          <h4 style="font-size:13px; font-weight:800; color:var(--accent); margin-bottom:6px;">2. Local Workstation Bench Agent (Full ADB &amp; Apple Diagnostics):</h4>
+          <h4 style="font-size:13px; font-weight:800; color:var(--accent); margin-bottom:6px;">2. Local Workstation Bench Agent (Zero-Install Windows .bat):</h4>
           <p style="margin-bottom:8px;">
-            For automated background detection via ADB and Apple MobileDevice (reads battery health %, cycle counts, and real-time charging status):
+            The Windows agent is completely self-contained (uses Windows built-in hardware scanner). Zero installation, no Python required! Simply download and double-click to run:
           </p>
           <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px;">
-            <a href="/assets/sos-bench-agent.py" download="sos-bench-agent.py" class="btn primary" style="text-decoration:none; font-size:12px;">
-              &#128190; Download Python Agent (sos-bench-agent.py)
+            <a href="/assets/sos-agent.bat" download="sos-agent.bat" class="btn primary" style="text-decoration:none; font-size:12px;">
+              &#9654; Download Windows Agent (sos-agent.bat)
             </a>
-            <a href="/assets/sos-agent.bat" download="sos-agent.bat" class="btn" style="text-decoration:none; font-size:12px;">
-              &#9654; Download Windows Launcher (.bat)
+            <a href="/assets/sos-bench-agent.py" download="sos-bench-agent.py" class="btn" style="text-decoration:none; font-size:12px;">
+              &#128190; Download Python Agent (Mac / Linux)
             </a>
           </div>
+          <p style="font-size:11px; color:var(--muted); margin-bottom:10px;">
+            <em>Tip: Double-click <strong>sos-agent.bat</strong> and leave the command prompt window open. It will show <code>[ONLINE] Listening on port 7890</code> and automatically detect connected handsets.</em>
+          </p>
           <div style="display:flex; align-items:center; justify-content:space-between; background:var(--panel); padding:10px 12px; border-radius:8px; border:1px solid var(--border);">
             <span>Agent Status: <strong>http://127.0.0.1:7890</strong></span>
             <button type="button" class="btn primary" onclick="checkAgentConnection(true)">&#8635; Test Connection</button>
@@ -1260,11 +1264,8 @@
       { id: 'hw_cellular', name: 'Cellular Signal & SIM Reader', icon: '🌐' },
       { id: 'hw_charging', name: 'USB Charging Port', icon: '🔌' },
       { id: 'hw_buttons', name: 'Volume & Power Buttons', icon: '🔘' },
-      { id: 'hw_biometrics', name: 'Face ID / Fingerprint', icon: '👤' },
       { id: 'hw_vibrate', name: 'Vibration & Haptics', icon: '📳' },
-      { id: 'hw_flash', name: 'Camera Flash / Torch', icon: '🔦' },
-      { id: 'hw_proximity', name: 'Proximity Sensor', icon: '💡' },
-      { id: 'hw_wireless', name: 'Wireless Charging (Qi)', icon: '🔋' }
+      { id: 'hw_flash', name: 'Camera Flash / Torch', icon: '🔦' }
     ];
 
     // State
@@ -1947,6 +1948,7 @@
       const devBrand = document.getElementById('dev-brand').value || 'Apple';
       const devModel = document.getElementById('dev-model').value || 'Handset';
       const rawSku = (document.getElementById('dev-sku') && document.getElementById('dev-sku').value.trim()) || '';
+      const rawPass = (document.getElementById('dev-passcode') && document.getElementById('dev-passcode').value.trim()) || '';
       
       const rep = {
         id: document.getElementById('report-id-badge').textContent || `RPT-${Math.floor(10000 + Math.random() * 90000)}`,
@@ -1958,6 +1960,7 @@
         storage: document.getElementById('dev-storage').value || '128GB',
         color: document.getElementById('dev-color').value || 'Standard',
         carrier: document.getElementById('dev-carrier').value || 'Unlocked (SIM-Free)',
+        passcode: rawPass || 'None / Cleared',
         imei: document.getElementById('dev-imei').value || 'N/A',
         blacklist: document.getElementById('imei-status-pill').textContent || 'CLEAN',
         serial: document.getElementById('dev-serial').value || 'N/A',
@@ -1965,7 +1968,6 @@
         battery: (document.getElementById('battery-input').value || 100) + '%',
         cycles: document.getElementById('battery-cycles') ? document.getElementById('battery-cycles').value : '0',
         cosmeticGrade: document.getElementById('cos-grade') ? document.getElementById('cos-grade').value : 'Grade A (Pristine)',
-        notes: document.getElementById('verdict-notes').value || '',
         hardware: JSON.parse(JSON.stringify(hardwareState)),
         verdict: document.getElementById('verdict-title').textContent.replace('QA VERDICT: ', ''),
         reason: document.getElementById('verdict-reason').textContent
@@ -2326,7 +2328,8 @@
         const idRows = [
           ['Product SKU:', (r.sku && r.sku !== 'Pending') ? r.sku : 'Pending In-House Assignment', 'Inspector / Tech:', r.tech || 'Matt'],
           ['Device Model:', `${r.brand || ''} ${r.model || 'Unknown Handset'}`, 'Storage & Color:', `${r.storage || '128GB'} • ${r.color || 'Standard'}`],
-          ['Carrier Lock:', r.carrier || 'Unlocked (SIM-Free)', 'Cosmetic Grade:', r.cosmeticGrade || 'Grade A (Pristine)'],
+          ['Carrier Lock:', r.carrier || 'Unlocked (SIM-Free)', 'Screen Lock PIN:', r.passcode || 'None / Cleared'],
+          ['Cosmetic Grade:', r.cosmeticGrade || 'Grade A (Pristine)', 'Workshop Rule:', '≥75% Battery & Hardware Pass']
         ];
 
         idRows.forEach(row => {
@@ -2473,8 +2476,7 @@
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(8.5);
         doc.setTextColor(60, 60, 60);
-        const notes = r.notes || r.reason || 'Device inspected, tested, and sanitized. Retail-ready standard.';
-        doc.text(`Technician Notes: ${notes}`, 16, y);
+        doc.text('Device inspected, hardware verified, and certified according to SOS Workshop QA Standards.', 16, y);
 
         y += 8;
         doc.setDrawColor(180, 180, 180);
@@ -2518,8 +2520,8 @@
       const rows = [
         [
           'SKU', 'Report ID', 'Date', 'Technician', 'Brand', 'Model', 'Storage', 'Color', 'Carrier',
-          'IMEI', 'Blacklist Status', 'Serial Number', 'Warranty Status', 'Battery Health', 'Battery Cycles',
-          'Cosmetic Grade', 'Hardware Defects', 'QA Verdict', 'Verdict Reason', 'Technician Notes'
+          'Screen Lock PIN', 'IMEI', 'Blacklist Status', 'Serial Number', 'Warranty Status', 'Battery Health', 'Battery Cycles',
+          'Cosmetic Grade', 'Hardware Defects', 'QA Verdict', 'Verdict Reason'
         ]
       ];
 
@@ -2542,6 +2544,7 @@
         r.storage || '',
         r.color || '',
         r.carrier || '',
+        r.passcode || 'None',
         r.imei || '',
         r.blacklist || '',
         r.serial || '',
@@ -2551,8 +2554,7 @@
         r.cosmeticGrade || '',
         defects.join('; ') || 'None (All Pass)',
         r.verdict || '',
-        r.reason || '',
-        r.notes || ''
+        r.reason || ''
       ]);
 
       const csvContent = rows.map(row => row.map(cell => `"${String(cell || '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
@@ -2576,8 +2578,8 @@
       const rows = [
         [
           'SKU', 'Report ID', 'Date', 'Technician', 'Brand', 'Model', 'Storage', 'Color', 'Carrier',
-          'IMEI', 'Blacklist Status', 'Serial Number', 'Warranty Status', 'Battery Health', 'Battery Cycles',
-          'Cosmetic Grade', 'Hardware Defects', 'QA Verdict', 'Verdict Reason', 'Technician Notes'
+          'Screen Lock PIN', 'IMEI', 'Blacklist Status', 'Serial Number', 'Warranty Status', 'Battery Health', 'Battery Cycles',
+          'Cosmetic Grade', 'Hardware Defects', 'QA Verdict', 'Verdict Reason'
         ]
       ];
 
@@ -2601,6 +2603,7 @@
           r.storage || '',
           r.color || '',
           r.carrier || '',
+          r.passcode || 'None',
           r.imei || '',
           r.blacklist || '',
           r.serial || '',
@@ -2610,8 +2613,7 @@
           r.cosmeticGrade || '',
           defects.join('; ') || 'None (All Pass)',
           r.verdict || '',
-          r.reason || '',
-          r.notes || ''
+          r.reason || ''
         ]);
       });
 
@@ -2665,6 +2667,7 @@ Summary: ${reason}
       document.getElementById('dev-model').value = '';
       document.getElementById('dev-imei').value = '';
       document.getElementById('dev-serial').value = '';
+      if (document.getElementById('dev-passcode')) document.getElementById('dev-passcode').value = '';
       currentImeiOverride = null;
       currentWarrantyOverride = null;
       runBlacklistCheck(false);
@@ -2862,37 +2865,68 @@ Summary: ${reason}
       };
     }
 
-    // Scan USB Device (Agent -> Paired WebUSB -> Server Proxy)
+    window.openDedicatedTab = function() {
+      window.open('/modules/phone-tablets.html', '_blank');
+    };
+
+    function getUsbApi() {
+      if (typeof navigator !== 'undefined' && 'usb' in navigator && navigator.usb) return navigator.usb;
+      try {
+        if (window.top && window.top.navigator && 'usb' in window.top.navigator && window.top.navigator.usb) {
+          return window.top.navigator.usb;
+        }
+      } catch (e) {}
+      return null;
+    }
+
+    function getSerialApi() {
+      if (typeof navigator !== 'undefined' && 'serial' in navigator && navigator.serial) return navigator.serial;
+      try {
+        if (window.top && window.top.navigator && 'serial' in window.top.navigator && window.top.navigator.serial) {
+          return window.top.navigator.serial;
+        }
+      } catch (e) {}
+      return null;
+    }
+
+    function showIframeUsbHelp() {
+      const guidance = document.getElementById('usb-permission-guidance');
+      if (guidance) {
+        guidance.style.display = 'block';
+        guidance.style.background = 'var(--amber-bg)';
+        guidance.style.border = '1.5px solid var(--amber)';
+        guidance.style.color = 'var(--text)';
+        guidance.innerHTML = `
+          <strong>&#9888; Browser Sandbox Restriction:</strong> Chrome and Edge restrict WebUSB and Web Serial hardware access inside nested iframes.<br>
+          <div style="margin-top:8px; display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+            <button type="button" class="btn primary" onclick="openDedicatedTab()">&#8599; Open Module in Dedicated Tab</button>
+            <span style="font-size:11.5px; color:var(--muted)">In a dedicated browser tab, Chrome/Edge allows 100% full, unrestricted WebUSB &amp; WebSerial hardware pairing.</span>
+          </div>
+        `;
+      }
+    }
+
+    // Scan USB Device (Agent -> Paired WebUSB -> Direct Pairing Fallback)
     async function scanUsbDevice() {
       const btn = document.getElementById('btn-scan-usb');
       btn.disabled = true;
       btn.innerHTML = '<span>&#8987; Scanning USB...</span>';
 
       try {
-        // Step 1: Check if any WebUSB devices are already paired with this browser
-        if ('usb' in navigator) {
-          try {
-            const paired = await navigator.usb.getDevices();
-            if (paired && paired.length > 0) {
-              const devPayload = buildPayloadFromWebUsb(paired[0]);
-              handleUsbDeviceConnected(devPayload);
-              showToast(`⚡ Paired USB Handset Detected: ${devPayload.brand} ${devPayload.model}`);
-              return;
-            }
-          } catch (e) {}
-        }
-
-        // Step 2: Query local bench agent on 127.0.0.1:7890
+        // Step 1: Query local bench agent on 127.0.0.1:7890 (Double-click sos-agent.bat)
         let foundDev = null;
         try {
-          const res = await fetch('http://127.0.0.1:7890/api/device');
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 1500);
+          const res = await fetch('http://127.0.0.1:7890/api/device', { signal: controller.signal });
+          clearTimeout(timeoutId);
           if (res.ok) {
             const data = await res.json();
-            if (data.device) foundDev = data.device;
+            if (data && data.device) foundDev = data.device;
           }
         } catch (e) {}
 
-        // Step 3: Query server proxy
+        // Step 2: Query server proxy
         if (!foundDev) {
           try {
             const res = await fetch('/api/usb-agent/device');
@@ -2901,12 +2935,35 @@ Summary: ${reason}
           } catch (e) {}
         }
 
+        // Step 3: Check previously paired WebUSB devices
+        const usbApi = getUsbApi();
+        if (!foundDev && usbApi) {
+          try {
+            const paired = await usbApi.getDevices();
+            if (paired && paired.length > 0) {
+              foundDev = buildPayloadFromWebUsb(paired[0]);
+            }
+          } catch (e) {}
+        }
+
         if (foundDev) {
           handleUsbDeviceConnected(foundDev);
-        } else {
-          showToast('No active phone detected on USB. Click "Direct WebUSB" or "Web Serial" to pair handset.');
-          resetUsbDock();
+          showToast(`⚡ USB Handset Detected: ${foundDev.brand} ${foundDev.model}`);
+          return;
         }
+
+        // Step 4: If no paired phone found yet, prompt to pair now via device picker
+        if (usbApi) {
+          const wantPair = confirm('No phone has been paired with this browser yet.\n\nClick OK to select your connected iPhone or Android in the browser device picker.');
+          if (wantPair) {
+            await connectWebUsb();
+            return;
+          }
+        } else {
+          showIframeUsbHelp();
+          showToast('Direct USB blocked by iframe. Click "Dedicated Tab" in top header.');
+        }
+        resetUsbDock();
       } catch (err) {
         showToast('USB scan query completed.');
       } finally {
@@ -2917,18 +2974,21 @@ Summary: ${reason}
 
     // Direct WebUSB connection for Chrome / Edge
     async function connectWebUsb() {
-      if (!('usb' in navigator)) {
-        alert('WebUSB is not supported in this browser. Please use Chrome or Edge, or run the SOS Bench Agent.');
+      const usbApi = getUsbApi();
+      if (!usbApi) {
+        showIframeUsbHelp();
+        const openNow = confirm('Chrome / Edge security blocks direct USB hardware pairing inside embedded frames.\n\nClick OK to open this module in a Dedicated Tab where WebUSB is 100% unrestricted.');
+        if (openNow) openDedicatedTab();
         return;
       }
 
       try {
         let device = null;
         try {
-          device = await navigator.usb.requestDevice({ filters: SMARTPHONE_USB_FILTERS });
+          device = await usbApi.requestDevice({ filters: SMARTPHONE_USB_FILTERS });
         } catch (err) {
           if (err.name === 'NotFoundError') return;
-          device = await navigator.usb.requestDevice({ filters: [] });
+          device = await usbApi.requestDevice({ filters: [] });
         }
 
         if (device) {
@@ -2945,13 +3005,16 @@ Summary: ${reason}
 
     // Direct Web Serial COM / Modem AT Diagnostic Intake
     async function connectWebSerial() {
-      if (!('serial' in navigator)) {
-        alert('Web Serial is not supported in this browser. Please use Chrome or Edge on desktop (Windows, Mac, or Linux).');
+      const serialApi = getSerialApi();
+      if (!serialApi) {
+        showIframeUsbHelp();
+        const openNow = confirm('Chrome / Edge security blocks direct serial COM port access inside embedded frames.\n\nClick OK to open this module in a Dedicated Tab where Web Serial is 100% unrestricted.');
+        if (openNow) openDedicatedTab();
         return;
       }
 
       try {
-        const port = await navigator.serial.requestPort();
+        const port = await serialApi.requestPort();
         await port.open({ baudRate: 115200 });
 
         showToast('Connected to USB Serial port. Querying AT telemetry...');
@@ -3289,23 +3352,28 @@ Summary: ${reason}
       recalculateVerdict();
 
       // Attach WebUSB plug-and-play auto-listeners
-      if ('usb' in navigator) {
-        navigator.usb.getDevices().then(devices => {
-          if (devices && devices.length > 0) {
-            const devPayload = buildPayloadFromWebUsb(devices[0]);
+      const usbApi = getUsbApi();
+      if (usbApi) {
+        try {
+          usbApi.getDevices().then(devices => {
+            if (devices && devices.length > 0) {
+              const devPayload = buildPayloadFromWebUsb(devices[0]);
+              handleUsbDeviceConnected(devPayload);
+            }
+          }).catch(() => {});
+
+          usbApi.addEventListener('connect', (event) => {
+            const devPayload = buildPayloadFromWebUsb(event.device);
             handleUsbDeviceConnected(devPayload);
-          }
-        }).catch(() => {});
+            showToast(`⚡ Handset plugged in: ${devPayload.brand} ${devPayload.model}`);
+          });
 
-        navigator.usb.addEventListener('connect', (event) => {
-          const devPayload = buildPayloadFromWebUsb(event.device);
-          handleUsbDeviceConnected(devPayload);
-          showToast(`⚡ Handset plugged in: ${devPayload.brand} ${devPayload.model}`);
-        });
-
-        navigator.usb.addEventListener('disconnect', () => {
-          showToast('Handset disconnected from USB');
-        });
+          usbApi.addEventListener('disconnect', () => {
+            showToast('Handset disconnected from USB');
+          });
+        } catch (e) {
+          console.warn('WebUSB auto-listener registration failed:', e);
+        }
       }
     });
   </script>

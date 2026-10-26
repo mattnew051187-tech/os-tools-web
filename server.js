@@ -252,6 +252,10 @@ function publicUser(user) {
 // ---------------------------------------------------------------------------
 const app = express();
 app.set('trust proxy', 1);
+app.use((req, res, next) => {
+  res.setHeader('Permissions-Policy', 'usb=*, serial=*, hid=*, camera=*, microphone=*');
+  next();
+});
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(APP_ROOT, 'public')));
 app.get('/modules/beta.html', (req, res, next) => {
