@@ -945,7 +945,7 @@ app.get('/healthz', (req, res) => res.json({ ok: true, version: APP_VERSION }));
   loadSettings();
   logActivity('system', 'server-start', `SOS Tools Web v${APP_VERSION} started (store: ${mode})`);
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`SOS Tools Web v${APP_VERSION} running on http://0.0.0.0:${PORT}`);
+  app.listen(PORT, HOST, () => {
+    console.log(`SOS Tools Web v${APP_VERSION} running on http://${HOST}:${PORT}`);
   });
 })();
