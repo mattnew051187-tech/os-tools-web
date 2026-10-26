@@ -20,6 +20,7 @@ const APP_VERSION = '1.1.0';
 const APP_ROOT = __dirname;
 
 const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || '0.0.0.0';
 const TAB_IDS = ['phone-tablets', 'gamepad-tester', 'game-library', 'product-search', 'repair-book-in'];
 const VALID_THEMES = ['yellow', 'light', 'dark', 'blue'];
 const SESSION_COOKIE = 'sos_session';
@@ -537,7 +538,7 @@ app.get('/api/users/list', (req, res) => {
 });
 
 // ---- Gamepad QA Reports Library Persistence ----
-const GAMEPAD_REPORTS_FILE = path.join(APP_ROOT, 'data', 'gamepad-reports.json');
+const GAMEPAD_REPORTS_FILE = path.join(store.DATA_DIR, 'gamepad-reports.json');
 
 function loadGamepadReports() {
   try {
@@ -596,7 +597,7 @@ app.delete('/api/gamepad-reports/:id', (req, res) => {
 });
 
 // ---- Phone & Tablet QA Reports Library Persistence ----
-const PHONE_REPORTS_FILE = path.join(APP_ROOT, 'data', 'phone-reports.json');
+const PHONE_REPORTS_FILE = path.join(store.DATA_DIR, 'phone-reports.json');
 
 function loadPhoneReports() {
   try {
@@ -861,7 +862,7 @@ app.get('/api/bullion-rates', async (req, res) => {
 });
 
 // ---- Matt's Beta App Incubator & Staging API ----
-const BETA_PROJECTS_FILE = path.join(APP_ROOT, 'data', 'beta-projects.json');
+const BETA_PROJECTS_FILE = path.join(store.DATA_DIR, 'beta-projects.json');
 
 function loadBetaProjects() {
   try {
