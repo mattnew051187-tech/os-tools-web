@@ -64,7 +64,7 @@ async function start() {
   // Run the existing Express app in this process; Electron bundles its Node runtime.
   require('../server.js');
   const localUrl = `http://127.0.0.1:${selectedPort}`;
-  await waitForServer(`${localUrl}/healthz`);
+  await waitForServer(`${localUrl}/`);
 
   mainWindow = new BrowserWindow({
     width: 1440,
