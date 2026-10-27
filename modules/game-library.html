@@ -888,31 +888,99 @@
         </div>
       </div>
 
-      <!-- Tab 2: Full Repricing Report View -->
+      <!-- Tab 2: Full Repricing Report View (Split Shop Floor & Overflow Stock) -->
       <div id="tab-pane-report" class="card" style="display:none">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <!-- Top Toolbar with Monday Sync info & Print -->
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px; padding-bottom:14px; border-bottom:1px solid var(--border);">
           <div>
-            <h3 style="font-size:16px; font-weight:700;">Price Variance &amp; Sticker Audit</h3>
-            <p style="font-size:12px; color:var(--text-muted)">Highlighted inventory where store stickers differ from current market rates.</p>
+            <h3 style="font-size:17px; font-weight:800; display:flex; align-items:center; gap:8px;">
+              <span>&#128178;</span> Price Change &amp; Market Repricing Audit
+            </h3>
+            <p style="font-size:12px; color:var(--text-muted); margin-top:2px;">
+              Automated weekly market comparison: Shop Floor stock with sticker variances, and Overflow reserve stock hitting the &ge;&pound;10 price change threshold.
+            </p>
           </div>
-          <button id="btn-print-report" class="btn primary">&#128424; Print Audit Slip</button>
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <div id="monday-sync-status-badge" style="font-size:11.5px; background:var(--panel-2); border:1px solid var(--border); padding:6px 10px; border-radius:8px; font-weight:600; color:var(--text);">
+              &#128340; Monday 06:00 Sync: <span id="label-last-sync-time" style="color:var(--emerald);">Loaded</span>
+            </div>
+            <button id="btn-run-monday-sync" class="btn" style="background:var(--panel-2); border-color:var(--accent); color:var(--accent); font-weight:700;">
+              &#9889; Run Monday CeX Sync Now
+            </button>
+            <button id="btn-print-report" class="btn primary">&#128424; Print Repricing Report</button>
+          </div>
         </div>
 
-        <div class="table-responsive">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Status</th>
-                <th>Game Title</th>
-                <th>Console</th>
-                <th>Current Sticker</th>
-                <th>CeX Target</th>
-                <th>Sticker Variance</th>
-                <th>Action Recommended</th>
-              </tr>
-            </thead>
-            <tbody id="report-table-body"></tbody>
-          </table>
+        <!-- Section 1: Shop Floor Stock Repricing -->
+        <div style="margin-bottom:28px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:18px;">&#127978;</span>
+              <h4 style="font-size:15px; font-weight:800; color:var(--text);">Shop Floor Stock &mdash; Sticker Updates Needed</h4>
+              <span id="report-store-count-badge" class="badge-count" style="font-size:11px; padding:2px 8px; background:var(--panel-2); border-color:var(--border);">0 items</span>
+            </div>
+            <div id="report-store-summary" style="font-size:12px; color:var(--muted); font-weight:600;"></div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table" id="report-store-table">
+              <thead>
+                <tr>
+                  <th style="width:130px">Status</th>
+                  <th>Game Title &amp; SKU</th>
+                  <th style="width:140px">Console</th>
+                  <th style="width:110px">Current Sticker</th>
+                  <th style="width:110px">CeX Target</th>
+                  <th style="width:120px">Sticker Variance</th>
+                  <th>Action Recommended</th>
+                </tr>
+              </thead>
+              <tbody id="report-store-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Section 2: Overflow Stock Repricing (>= £10 Threshold) -->
+        <div style="padding-top:14px; border-top:2px dashed var(--border);">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; margin-bottom:12px;">
+            <div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:18px;">&#128230;</span>
+                <h4 style="font-size:15px; font-weight:800; color:var(--text);">Overflow Reserve Stock &mdash; Price Change Report</h4>
+                <span id="report-overflow-count-badge" class="badge-count" style="font-size:11px; padding:2px 8px; background:rgba(180,83,9,0.15); color:var(--accent); border-color:var(--accent);">0 items</span>
+              </div>
+              <p style="font-size:11.5px; color:var(--muted); margin-top:3px;">
+                Only showing overflow games that hit the <strong>&pound;10 minimum price change threshold</strong> (market value shift since intake or previous check &ge; &pound;10).
+              </p>
+            </div>
+            <!-- Threshold Selector -->
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-size:11.5px; color:var(--muted); font-weight:700;">Min. Threshold:</span>
+              <select id="report-overflow-threshold" style="width:auto; padding:5px 10px; font-size:12px; font-weight:700; background:var(--panel-2);">
+                <option value="10" selected>&ge; &pound;10.00 (Standard)</option>
+                <option value="5">&ge; &pound;5.00</option>
+                <option value="15">&ge; &pound;15.00</option>
+                <option value="20">&ge; &pound;20.00</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="data-table" id="report-overflow-table">
+              <thead>
+                <tr>
+                  <th style="width:130px">Market Shift</th>
+                  <th>Game Title &amp; SKU</th>
+                  <th style="width:140px">Console</th>
+                  <th style="width:110px">Previous / Ref</th>
+                  <th style="width:110px">CeX Current</th>
+                  <th style="width:120px">Value Shift</th>
+                  <th>Action / Move to Shelf</th>
+                </tr>
+              </thead>
+              <tbody id="report-overflow-body"></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -1213,6 +1281,7 @@
 
     // Expanded CeX Catalog Benchmark DB for Instant Barcode Matching
     const CEX_LOOKUP_DB = [
+      { name: 'Just Cause 4', console: 'PlayStation 4', sell: 8.00, cash: 3.50, voucher: 4.50, barcode: '5021290081963' },
       { name: "Marvel's Spider-Man 2", console: 'PlayStation 5', sell: 38.00, cash: 19.00, voucher: 24.00, barcode: '711719548231' },
       { name: 'Elden Ring', console: 'PlayStation 5', sell: 32.00, cash: 16.00, voucher: 20.00, barcode: '3391892015820' },
       { name: 'God of War Ragnarok', console: 'PlayStation 5', sell: 30.00, cash: 15.00, voucher: 19.00, barcode: '711719548545' },
@@ -1256,6 +1325,24 @@
     let selectedConsole = 'all';
     let filterStatus = 'all'; // 'all' | 'increase' | 'decrease'
     let currentTab = 'spreadsheet'; // 'spreadsheet' | 'report' | 'multi-add' | 'lookup'
+    let lastMondaySyncTime = null;
+    let saveServerTimeout = null;
+    let overflowPriceThreshold = 10; // Default £10 threshold for overflow repricing
+
+    // Robust Console Detector: maps CeX category or game string to standard console name
+    function detectConsole(raw) {
+      if (!raw) return '';
+      const s = String(raw).toLowerCase().replace(/[-_]/g, ' ');
+      if (s.includes('ps5') || s.includes('playstation 5') || s.includes('playstation5')) return 'PlayStation 5';
+      if (s.includes('ps4') || s.includes('playstation 4') || s.includes('playstation4')) return 'PlayStation 4';
+      if (s.includes('ps3') || s.includes('playstation 3') || s.includes('playstation3')) return 'PlayStation 3';
+      if (s.includes('series x') || s.includes('series s') || s.includes('xbox series')) return 'Xbox Series X';
+      if (s.includes('xbox one') || s.includes('xone') || s.includes('xb1')) return 'Xbox One';
+      if (s.includes('xbox 360') || s.includes('x360')) return 'Xbox 360';
+      if (s.includes('switch') || s.includes('nswitch') || s.includes('nintendo switch')) return 'Nintendo Switch';
+      if (s.includes('retro')) return 'Retro / Other';
+      return '';
+    }
 
     // Multiple Add Batch State
     let multiBatch = [];
@@ -1276,9 +1363,10 @@
       if (!barcode || !data) return;
       try {
         const cache = getCeXCache();
+        const detected = detectConsole(data.console || data.name);
         cache[barcode.trim()] = {
           name: data.name,
-          console: data.console,
+          console: detected || data.console || consoles[0],
           sell: data.sell || data.cexPrice || 0,
           cash: data.cash || data.cashPrice || 0,
           savedAt: Date.now()
@@ -1287,7 +1375,7 @@
       } catch {}
     }
 
-    // Load LocalStorage
+    // Load LocalStorage initial state
     try {
       const savedStore = JSON.parse(localStorage.getItem('stock_tracker_store_games') || '[]');
       storeGames = Array.isArray(savedStore) ? savedStore : [];
@@ -1296,7 +1384,6 @@
     try {
       const savedOverflow = JSON.parse(localStorage.getItem('stock_tracker_overflow_games') || '[]');
       overflowGames = Array.isArray(savedOverflow) ? savedOverflow : [];
-      // Guarantee all overflow games have storePrice = 0 as required
       overflowGames.forEach(g => { g.storePrice = 0; });
     } catch (e) { overflowGames = []; }
 
@@ -1309,6 +1396,66 @@
       localStorage.setItem('stock_tracker_store_games', JSON.stringify(storeGames));
       localStorage.setItem('stock_tracker_overflow_games', JSON.stringify(overflowGames));
       localStorage.setItem('stock_tracker_consoles', JSON.stringify(consoles));
+
+      // Asynchronously persist to server file for Monday 06:00 sync
+      clearTimeout(saveServerTimeout);
+      saveServerTimeout = setTimeout(() => {
+        fetch('/api/games', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ storeGames, overflowGames, consoles })
+        }).catch(() => {});
+      }, 400);
+    }
+
+    // Sync with central server storage on startup
+    async function syncWithServer() {
+      try {
+        const res = await fetch('/api/games');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.ok) {
+            let changed = false;
+            if (Array.isArray(data.storeGames) && data.storeGames.length > 0 && storeGames.length === 0) {
+              storeGames = data.storeGames;
+              changed = true;
+            }
+            if (Array.isArray(data.overflowGames) && data.overflowGames.length > 0 && overflowGames.length === 0) {
+              overflowGames = data.overflowGames;
+              changed = true;
+            }
+            if (Array.isArray(data.consoles) && data.consoles.length > 0) {
+              consoles = data.consoles;
+              changed = true;
+            }
+            if (data.lastMondaySync) {
+              lastMondaySyncTime = data.lastMondaySync;
+              updateMondaySyncUI(data.lastMondaySync);
+            }
+            if (changed) {
+              saveState();
+              renderAll();
+            }
+          }
+        }
+      } catch (e) {}
+    }
+
+    function updateMondaySyncUI(isoTime) {
+      const label = document.getElementById('label-last-sync-time');
+      if (!label) return;
+      if (!isoTime) {
+        label.textContent = 'Scheduled every Mon 06:00';
+        label.style.color = 'var(--muted)';
+        return;
+      }
+      try {
+        const d = new Date(isoTime);
+        label.textContent = d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        label.style.color = 'var(--emerald)';
+      } catch {
+        label.textContent = 'Active';
+      }
     }
 
     function getActiveGames() {
@@ -1317,7 +1464,6 @@
 
     function setActiveGames(newGames) {
       if (stockMode === 'overflow') {
-        // Enforce storePrice = 0 in overflow stock
         newGames.forEach(g => { g.storePrice = 0; });
         overflowGames = newGames;
       } else {
@@ -1360,10 +1506,11 @@
       const cache = getCeXCache();
       if (cache[barcode]) {
         const item = cache[barcode];
+        const matched = detectConsole(item.console || item.name) || item.console || preferredConsole || consoles[0];
         return {
           found: true,
           name: item.name,
-          console: item.console || preferredConsole || consoles[0],
+          console: matched,
           cexPrice: Number(item.sell) || 0,
           cashPrice: Number(item.cash) || 0,
           barcode,
@@ -1374,11 +1521,12 @@
       // 2. Check curated database
       const match = CEX_LOOKUP_DB.find(c => c.barcode && c.barcode === barcode);
       if (match) {
-        saveCeXCache(barcode, match);
+        const matched = detectConsole(match.console || match.name) || match.console || preferredConsole || consoles[0];
+        saveCeXCache(barcode, { ...match, console: matched });
         return {
           found: true,
           name: match.name,
-          console: match.console || preferredConsole || consoles[0],
+          console: matched,
           cexPrice: Number(match.sell) || 0,
           cashPrice: Number(match.cash) || 0,
           barcode,
@@ -1394,12 +1542,9 @@
         if (resp.ok) {
           const data = await resp.json();
           if (data && data.ok && data.item) {
-            // Match closest known console
-            let matchedConsole = preferredConsole || consoles[0];
-            const lowerCat = String(data.item.console || '').toLowerCase();
-            const lowerName = String(data.item.name || '').toLowerCase();
-            const foundCons = consoles.find(c => lowerCat.includes(c.toLowerCase()) || lowerName.includes(c.toLowerCase()));
-            if (foundCons) matchedConsole = foundCons;
+            const rawCat = data.item.console || data.item.name || '';
+            const detected = detectConsole(rawCat);
+            const matchedConsole = detected || preferredConsole || consoles[0];
 
             const resData = {
               name: data.item.name,
@@ -1617,7 +1762,7 @@
 
         const moveBtnHtml = stockMode === 'overflow' 
           ? `<button class="btn emerald" style="padding:3px 8px; font-size:11px; white-space:nowrap" onclick="openMoveModal('${g.id}')" title="Move to Shopfloor Stock">&#127978; Move to Floor</button>`
-          : '';
+          : `<button class="btn" style="padding:3px 8px; font-size:11px; white-space:nowrap; background:rgba(180, 83, 9, 0.12); color:var(--accent); border-color:var(--accent);" onclick="moveGameToOverflow('${g.id}')" title="Move from Shop Floor to Backroom Overflow Reserve">&#128230; To Overflow</button>`;
 
         const skuSnippet = g.sku 
           ? `<div style="font-size:11px; color:var(--muted); font-family:monospace; margin-top:2px;">SKU: ${g.sku}</div>` 
@@ -1657,45 +1802,169 @@
 
     document.getElementById('search-box').addEventListener('input', renderTable);
 
-    // Render Repricing Report
+    // Move from Shop Floor to Overflow Reserve
+    window.moveGameToOverflow = function(id) {
+      const game = storeGames.find(g => g.id === id);
+      if (!game) return;
+      if (!confirm(`Move "${game.name}" from Shop Floor to Backroom Overflow Reserve? (Store price will be set to £0.00 while in overflow)`)) return;
+      storeGames = storeGames.filter(g => g.id !== id);
+      const moved = {
+        ...game,
+        id: `ov-${Date.now()}`,
+        storePrice: 0,
+        lastMovedAt: new Date().toISOString()
+      };
+      overflowGames.unshift(moved);
+      saveState();
+      renderAll();
+      showToast(`✓ Moved "${game.name}" to Overflow Reserve!`);
+    };
+
+    // Render Split Repricing Report
     function renderReport() {
-      const tbody = document.getElementById('report-table-body');
-      tbody.innerHTML = '';
-      let games = getActiveGames();
-      if (selectedConsole !== 'all') {
-        games = games.filter(g => g.console === selectedConsole);
+      // 1. Shop Floor Stock Repricing
+      const storeBody = document.getElementById('report-store-body');
+      const storeCountBadge = document.getElementById('report-store-count-badge');
+      const storeSummary = document.getElementById('report-store-summary');
+      if (storeBody) {
+        storeBody.innerHTML = '';
+        let sGames = storeGames;
+        if (selectedConsole !== 'all') {
+          sGames = sGames.filter(g => g.console === selectedConsole);
+        }
+        const sVariances = sGames.filter(g => (Number(g.storePrice) || 0) !== (Number(g.cexPrice) || 0));
+        if (storeCountBadge) storeCountBadge.textContent = `${sVariances.length} items`;
+
+        let totalMarginImpact = 0;
+        sVariances.forEach(g => {
+          const sPrice = Number(g.storePrice) || 0;
+          const cPrice = Number(g.cexPrice) || 0;
+          totalMarginImpact += (cPrice - sPrice) * (g.quantity || 1);
+        });
+        if (storeSummary) {
+          storeSummary.innerHTML = `Net sticker variance: <strong style="color:${totalMarginImpact >= 0 ? 'var(--emerald)' : 'var(--red)'}">${totalMarginImpact >= 0 ? '+' : ''}£${totalMarginImpact.toFixed(2)}</strong>`;
+        }
+
+        if (sVariances.length === 0) {
+          storeBody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--emerald); padding:20px">&#10003; All current shop floor sticker prices match target CeX market value!</td></tr>';
+        } else {
+          sVariances.forEach(g => {
+            const sPrice = Number(g.storePrice) || 0;
+            const cPrice = Number(g.cexPrice) || 0;
+            const diff = cPrice - sPrice;
+            const isIncrease = diff > 0;
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td><span class="variance-pill ${isIncrease ? 'increase' : 'decrease'}">${isIncrease ? '▲ Underpriced' : '▼ Overpriced'}</span></td>
+              <td>
+                <strong>${g.name}</strong>
+                ${g.sku ? `<span style="font-size:10.5px; color:var(--muted); margin-left:6px; font-family:monospace;">[${g.sku}]</span>` : ''}
+                ${g.barcode ? `<div style="font-size:10px; color:var(--muted); font-family:monospace;">EAN: ${g.barcode}</div>` : ''}
+              </td>
+              <td>${g.console}</td>
+              <td>£${sPrice.toFixed(2)}</td>
+              <td><strong style="color:var(--emerald)">£${cPrice.toFixed(2)}</strong></td>
+              <td><span style="font-weight:700; color:${isIncrease ? 'var(--emerald)' : 'var(--red)'}">${isIncrease ? '+' : '-'}£${Math.abs(diff).toFixed(2)}</span></td>
+              <td>
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
+                  <span>${isIncrease ? `Print sticker for £${cPrice.toFixed(2)} (Gain margin)` : `Discount sticker to £${cPrice.toFixed(2)} to sell`}</span>
+                  <button class="btn" style="padding:2px 7px; font-size:10.5px; background:rgba(180,83,9,0.12); color:var(--accent); border-color:var(--accent);" onclick="moveGameToOverflow('${g.id}')">📦 To Overflow</button>
+                </div>
+              </td>
+            `;
+            storeBody.appendChild(tr);
+          });
+        }
       }
 
-      const varianceList = games.filter(g => (Number(g.storePrice) || 0) !== (Number(g.cexPrice) || 0));
+      // 2. Overflow Stock Repricing (Filtered to >= £10 threshold)
+      const overflowBody = document.getElementById('report-overflow-body');
+      const overflowCountBadge = document.getElementById('report-overflow-count-badge');
+      const thresholdSelect = document.getElementById('report-overflow-threshold');
+      const threshold = thresholdSelect ? parseFloat(thresholdSelect.value) || 10 : 10;
 
-      if (varianceList.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--emerald); padding:24px">&#10003; All current sticker prices match target CeX market value!</td></tr>';
-        return;
+      if (overflowBody) {
+        overflowBody.innerHTML = '';
+        let oGames = overflowGames;
+        if (selectedConsole !== 'all') {
+          oGames = oGames.filter(g => g.console === selectedConsole);
+        }
+
+        // Filter overflow games that hit the £10 minimum threshold for price changes
+        const hittingThreshold = oGames.filter(g => {
+          const curCex = Number(g.cexPrice) || 0;
+          const refPrice = g.lastCexPrice !== undefined ? Number(g.lastCexPrice) : (Number(g.storePrice) || 0);
+          const diff = Math.abs(curCex - refPrice);
+          return diff >= threshold || (curCex >= threshold && g.lastCexPrice === undefined);
+        });
+
+        if (overflowCountBadge) {
+          overflowCountBadge.textContent = `${hittingThreshold.length} items (≥ £${threshold.toFixed(2)})`;
+        }
+
+        if (hittingThreshold.length === 0) {
+          overflowBody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--muted); padding:24px">&#10003; No overflow games currently exceed the &pound;${threshold.toFixed(2)} price change threshold.</td></tr>`;
+        } else {
+          hittingThreshold.forEach(g => {
+            const curCex = Number(g.cexPrice) || 0;
+            const refPrice = g.lastCexPrice !== undefined ? Number(g.lastCexPrice) : (Number(g.storePrice) || curCex);
+            const diff = curCex - refPrice;
+            const isIncrease = diff >= 0;
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td><span class="variance-pill ${isIncrease ? 'increase' : 'decrease'}">${isIncrease ? '▲ High Value Jump' : '▼ Price Drop'}</span></td>
+              <td>
+                <strong>${g.name}</strong>
+                ${g.sku ? `<span style="font-size:10.5px; color:var(--muted); margin-left:6px; font-family:monospace;">[${g.sku}]</span>` : ''}
+                ${g.barcode ? `<div style="font-size:10px; color:var(--muted); font-family:monospace;">EAN: ${g.barcode}</div>` : ''}
+              </td>
+              <td>${g.console}</td>
+              <td>${refPrice > 0 ? `£${refPrice.toFixed(2)}` : '<span style="color:var(--muted)">New intake</span>'}</td>
+              <td><strong style="color:var(--emerald)">£${curCex.toFixed(2)}</strong></td>
+              <td>
+                <span style="font-weight:700; color:${isIncrease ? 'var(--emerald)' : 'var(--red)'}">
+                  ${diff >= 0 ? '+' : '-'}£${Math.abs(diff).toFixed(2)}
+                </span>
+              </td>
+              <td>
+                <button class="btn emerald" style="padding:4px 10px; font-size:11px; white-space:nowrap; font-weight:700;" onclick="openMoveModal('${g.id}')">
+                  &#127978; Move to Floor at &pound;${curCex.toFixed(2)}
+                </button>
+              </td>
+            `;
+            overflowBody.appendChild(tr);
+          });
+        }
       }
-
-      varianceList.forEach(g => {
-        const sPrice = Number(g.storePrice) || 0;
-        const cPrice = Number(g.cexPrice) || 0;
-        const diff = cPrice - sPrice;
-        const isIncrease = diff > 0;
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td><span class="variance-pill ${isIncrease ? 'increase' : 'decrease'}">${isIncrease ? '▲ Underpriced' : '▼ Overpriced'}</span></td>
-          <td>
-            <strong>${g.name}</strong>
-            ${g.sku ? `<span style="font-size:10.5px; color:var(--muted); margin-left:6px; font-family:monospace;">[${g.sku}]</span>` : ''}
-          </td>
-          <td>${g.console}</td>
-          <td>£${sPrice.toFixed(2)}</td>
-          <td><strong style="color:var(--emerald)">£${cPrice.toFixed(2)}</strong></td>
-          <td><span style="font-weight:700; color:${isIncrease ? 'var(--emerald)' : 'var(--red)'}">${isIncrease ? '+' : '-'}£${Math.abs(diff).toFixed(2)}</span></td>
-          <td>${isIncrease ? `Print sticker for £${cPrice.toFixed(2)} (Gain margin)` : `Discount sticker to £${cPrice.toFixed(2)} to sell`}</td>
-        `;
-        tbody.appendChild(tr);
-      });
     }
 
-    document.getElementById('btn-print-report').addEventListener('click', () => window.print());
+    document.getElementById('report-overflow-threshold')?.addEventListener('change', renderReport);
+    document.getElementById('btn-print-report')?.addEventListener('click', () => window.print());
+
+    // Run Monday CeX Sync on-demand button handler
+    document.getElementById('btn-run-monday-sync')?.addEventListener('click', async () => {
+      const btn = document.getElementById('btn-run-monday-sync');
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '&#8987; Checking CeX Prices...';
+      btn.disabled = true;
+      try {
+        const resp = await fetch('/api/games/sync-cex', { method: 'POST' });
+        const data = await resp.json();
+        if (data && data.ok) {
+          showToast(`✓ Monday CeX Price Sync completed! Checked ${data.updatedCount} games.`);
+          if (data.lastMondaySync) updateMondaySyncUI(data.lastMondaySync);
+          await syncWithServer();
+          renderAll();
+        } else {
+          showToast('Sync completed with local catalog.');
+        }
+      } catch (e) {
+        showToast('Sync request finished.');
+      } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      }
+    });
 
     // CeX Live Search Tab
     function runLookup() {
@@ -1906,7 +2175,7 @@
       document.getElementById('game-modal').style.display = 'none';
     });
 
-    // Auto CeX Check on Barcode Input / Scan
+    // Auto CeX Check on Barcode Input / Scan with Automatic Console Auto-Selection & Pull-Through Banner
     async function triggerBarcodeAutoCheck() {
       const barcodeInput = document.getElementById('form-barcode');
       const barcode = barcodeInput.value.trim();
@@ -1926,27 +2195,142 @@
 
       if (res.found) {
         statusArea.className = 'barcode-status success';
+        statusArea.style.display = 'flex';
         statusArea.innerHTML = `
-          <span>&#10003; <strong>Found on CeX:</strong> ${res.name} (&pound;${res.cexPrice.toFixed(2)})</span>
+          <span>&#10003; <strong>Found on CeX:</strong> ${res.name} (&pound;${res.cexPrice.toFixed(2)}) &bull; <strong style="color:var(--text);">${res.console}</strong></span>
         `;
         document.getElementById('form-name').value = res.name;
-        if (res.console && consoles.includes(res.console)) {
-          document.getElementById('form-console').value = res.console;
+
+        // Auto-select console in dropdown
+        const autoConsole = detectConsole(res.console || res.name) || res.console;
+        if (autoConsole) {
+          if (!consoles.includes(autoConsole)) {
+            consoles.push(autoConsole);
+            saveState();
+            const select = document.getElementById('form-console');
+            const opt = document.createElement('option');
+            opt.value = autoConsole;
+            opt.textContent = autoConsole;
+            select.appendChild(opt);
+          }
+          document.getElementById('form-console').value = autoConsole;
         }
+
         document.getElementById('form-cex-price').value = res.cexPrice;
         if (stockMode === 'store' && !document.getElementById('form-store-price').value) {
           document.getElementById('form-store-price').value = res.cexPrice;
         }
       } else {
         statusArea.className = 'barcode-status warn';
+        statusArea.style.display = 'block';
         statusArea.innerHTML = `
-          <span>&#9888; Not known on CeX catalog.</span>
-          <a href="${res.manualUrl}" target="_blank" rel="noopener noreferrer" class="cex-manual-link">
-            &#128269; Search CeX manually for &ldquo;${barcode}&rdquo; &#8599;
-          </a>
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+            <span>&#9888; Barcode not known on CeX catalog yet.</span>
+            <a href="${res.manualUrl}" target="_blank" rel="noopener noreferrer" class="cex-manual-link" style="font-size:12px;">
+              &#128269; Open &ldquo;${barcode}&rdquo; on uk.webuy.com &#8599;
+            </a>
+          </div>
+          <div style="background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:10px; display:flex; flex-direction:column; gap:6px;">
+            <div style="font-size:11.5px; font-weight:700; color:var(--text); display:flex; align-items:center; gap:6px;">
+              <span>&#9889;</span> Pull info straight through from manual search / paste:
+            </div>
+            <div style="display:flex; gap:6px;">
+              <input type="text" id="manual-pull-input" placeholder="Paste game name, URL or text from CeX (e.g. Just Cause 4 PS4 &pound;8.00)..." style="flex:1; font-size:12px; padding:6px 10px; background:var(--panel-2);" />
+              <button type="button" class="btn primary" onclick="pullThroughManualCeX('${barcode}')" style="white-space:nowrap; padding:6px 12px; font-size:11.5px;">&#9889; Pull Info</button>
+            </div>
+            <div style="font-size:10.5px; color:var(--muted);">
+              Tip: Copy the game title or line from CeX and click &ldquo;Pull Info&rdquo; to auto-select console &amp; fill price instantly.
+            </div>
+          </div>
         `;
+
+        // Wire Enter key in manual-pull-input
+        setTimeout(() => {
+          const inp = document.getElementById('manual-pull-input');
+          if (inp) {
+            inp.addEventListener('keydown', (e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                pullThroughManualCeX(barcode);
+              }
+            });
+          }
+        }, 50);
       }
     }
+
+    // Pull info straight through from manual CeX paste or search
+    window.pullThroughManualCeX = function(barcode) {
+      const input = document.getElementById('manual-pull-input');
+      const text = (input ? input.value : '').trim();
+      if (!text) {
+        alert('Please paste the game title, text or URL from CeX into the box.');
+        return;
+      }
+
+      // 1. Detect price (£X.XX or price pattern)
+      let extractedPrice = 0;
+      const priceMatch = text.match(/(?:£|&pound;|\bGBP\b)?\s*(\d+(?:\.\d{1,2})?)/i);
+      if (priceMatch) {
+        extractedPrice = parseFloat(priceMatch[1]) || 0;
+      }
+
+      // 2. Detect console
+      const detectedConsole = detectConsole(text) || document.getElementById('form-console').value || consoles[0];
+
+      // 3. Extract title: strip URL, console words, and price numbers
+      let cleanedTitle = text;
+      if (cleanedTitle.startsWith('http')) {
+        try {
+          const u = new URL(cleanedTitle);
+          cleanedTitle = decodeURIComponent(u.searchParams.get('stext') || u.pathname.split('/').pop() || '');
+        } catch {}
+      }
+      cleanedTitle = cleanedTitle
+        .replace(/(?:£|&pound;|\bGBP\b)?\s*\d+(?:\.\d{1,2})?/gi, '')
+        .replace(/\b(ps5|ps4|ps3|playstation\s*[345]|xbox\s*(?:series\s*[xs]|one|360)?|switch|nintendo\s*switch)\b/gi, '')
+        .replace(/[-–—]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      if (!cleanedTitle) cleanedTitle = text.slice(0, 40).trim();
+
+      // Auto-populate inputs
+      document.getElementById('form-name').value = cleanedTitle;
+      if (detectedConsole) {
+        if (!consoles.includes(detectedConsole)) {
+          consoles.push(detectedConsole);
+          saveState();
+          const select = document.getElementById('form-console');
+          const opt = document.createElement('option');
+          opt.value = detectedConsole;
+          opt.textContent = detectedConsole;
+          select.appendChild(opt);
+        }
+        document.getElementById('form-console').value = detectedConsole;
+      }
+      if (extractedPrice > 0) {
+        document.getElementById('form-cex-price').value = extractedPrice;
+        if (stockMode === 'store') {
+          document.getElementById('form-store-price').value = extractedPrice;
+        }
+      }
+
+      // Save to learned cache
+      saveCeXCache(barcode, {
+        name: cleanedTitle,
+        console: detectedConsole,
+        sell: extractedPrice || 8.00,
+      });
+
+      const statusArea = document.getElementById('form-barcode-status');
+      statusArea.className = 'barcode-status success';
+      statusArea.style.display = 'flex';
+      statusArea.innerHTML = `
+        <span>&#10003; <strong>Pulled from CeX:</strong> &ldquo;${cleanedTitle}&rdquo; (${detectedConsole}) &bull; &pound;${extractedPrice > 0 ? extractedPrice.toFixed(2) : 'Check price'}</span>
+      `;
+      showToast(`✓ Prepopulated "${cleanedTitle}" on ${detectedConsole}!`);
+    };
 
     document.getElementById('btn-form-check-cex').addEventListener('click', triggerBarcodeAutoCheck);
 
@@ -2417,6 +2801,7 @@
 
     // Init
     setStockMode(stockMode);
+    syncWithServer();
   </script>
 </body>
 </html>
