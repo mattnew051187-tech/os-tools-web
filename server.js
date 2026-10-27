@@ -611,7 +611,7 @@ function loadPhoneReports() {
 
 function savePhoneReports(reports) {
   try {
-    const dataDir = path.join(APP_ROOT, 'data');
+    const dataDir = store.DATA_DIR;
     if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
     fs.writeFileSync(PHONE_REPORTS_FILE, JSON.stringify(reports, null, 2), 'utf8');
   } catch (e) {}
@@ -849,7 +849,7 @@ function loadGameLibrary() {
 
 function saveGameLibrary(lib) {
   try {
-    const dataDir = path.join(APP_ROOT, 'data');
+    const dataDir = store.DATA_DIR;
     if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
     fs.writeFileSync(GAME_LIBRARY_FILE, JSON.stringify(lib, null, 2), 'utf8');
   } catch (e) {
@@ -1062,7 +1062,7 @@ function loadBetaProjects() {
 
 function saveBetaProjects(projects) {
   try {
-    const dataDir = path.join(APP_ROOT, 'data');
+    const dataDir = store.DATA_DIR;
     if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
     fs.writeFileSync(BETA_PROJECTS_FILE, JSON.stringify(projects, null, 2), 'utf8');
   } catch (e) {}
