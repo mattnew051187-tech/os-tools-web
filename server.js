@@ -16,10 +16,11 @@ const https = require('https');
 const http = require('http');
 const store = require('./store');
 
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.1.1';
 const APP_ROOT = __dirname;
 
 const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || '0.0.0.0';
 const TAB_IDS = ['phone-tablets', 'gamepad-tester', 'game-library', 'product-search', 'repair-book-in'];
 const VALID_THEMES = ['yellow', 'light', 'dark', 'blue'];
 const SESSION_COOKIE = 'sos_session';
@@ -265,6 +266,7 @@ app.get('/modules/beta.html', (req, res, next) => {
   }
   next();
 });
+app.use('/modules', express.static(path.join(store.DATA_DIR, 'modules')));
 app.use('/modules', express.static(path.join(APP_ROOT, 'modules')));
 app.use('/vendor/jspdf', express.static(path.join(APP_ROOT, 'node_modules', 'jspdf', 'dist')));
 
@@ -537,7 +539,7 @@ app.get('/api/users/list', (req, res) => {
 });
 
 // ---- Gamepad QA Reports Library Persistence ----
-const GAMEPAD_REPORTS_FILE = path.join(APP_ROOT, 'data', 'gamepad-reports.json');
+const GAMEPAD_REPORTS_FILE = path.join(store.DATA_DIR, 'gamepad-reports.json');
 
 function loadGamepadReports() {
   try {
@@ -550,7 +552,7 @@ function loadGamepadReports() {
 
 function saveGamepadReports(reports) {
   try {
-    const dataDir = path.join(APP_ROOT, 'data');
+    const dataDir = store.DATA_DIR;
     if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
     fs.writeFileSync(GAMEPAD_REPORTS_FILE, JSON.stringify(reports, null, 2), 'utf8');
   } catch (e) {}
@@ -596,7 +598,7 @@ app.delete('/api/gamepad-reports/:id', (req, res) => {
 });
 
 // ---- Phone & Tablet QA Reports Library Persistence ----
-const PHONE_REPORTS_FILE = path.join(APP_ROOT, 'data', 'phone-reports.json');
+const PHONE_REPORTS_FILE = path.join(store.DATA_DIR, 'phone-reports.json');
 
 function loadPhoneReports() {
   try {
@@ -609,7 +611,7 @@ function loadPhoneReports() {
 
 function savePhoneReports(reports) {
   try {
-    const dataDir = path.join(APP_ROOT, 'data');
+    const dataDir = store.DATA_DIR;
     if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
     fs.writeFileSync(PHONE_REPORTS_FILE, JSON.stringify(reports, null, 2), 'utf8');
   } catch (e) {}
@@ -823,7 +825,7 @@ app.get('/api/cex-lookup', async (req, res) => {
 });
 
 // ---- Game Library Persistence & Monday 06:00 Sync Engine ----
-const GAME_LIBRARY_FILE = path.join(APP_ROOT, 'data', 'game-library.json');
+const GAME_LIBRARY_FILE = path.join(store.DATA_DIR, 'game-library.json');
 
 function loadGameLibrary() {
   try {
@@ -847,7 +849,7 @@ function loadGameLibrary() {
 
 function saveGameLibrary(lib) {
   try {
-    const dataDir = path.join(APP_ROOT, 'data');
+    const dataDir = store.DATA_DIR;
     if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
     fs.writeFileSync(GAME_LIBRARY_FILE, JSON.stringify(lib, null, 2), 'utf8');
   } catch (e) {
@@ -1047,7 +1049,7 @@ app.get('/api/bullion-rates', async (req, res) => {
 });
 
 // ---- Matt's Beta App Incubator & Staging API ----
-const BETA_PROJECTS_FILE = path.join(APP_ROOT, 'data', 'beta-projects.json');
+const BETA_PROJECTS_FILE = path.join(store.DATA_DIR, 'beta-projects.json');
 
 function loadBetaProjects() {
   try {
@@ -1060,7 +1062,7 @@ function loadBetaProjects() {
 
 function saveBetaProjects(projects) {
   try {
-    const dataDir = path.join(APP_ROOT, 'data');
+    const dataDir = store.DATA_DIR;
     if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
     fs.writeFileSync(BETA_PROJECTS_FILE, JSON.stringify(projects, null, 2), 'utf8');
   } catch (e) {}
@@ -1098,8 +1100,9 @@ app.post('/api/beta/integrate', requireMatt, (req, res) => {
   if (!safeSlug) return res.status(400).json({ ok: false, error: 'Valid module slug required' });
   if (!htmlContent) return res.status(400).json({ ok: false, error: 'Module HTML content required' });
 
-  const targetPath = path.join(APP_ROOT, 'modules', `${safeSlug}.html`);
+  const targetPath = path.join(store.DATA_DIR, 'modules', `${safeSlug}.html`);
   try {
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
     fs.writeFileSync(targetPath, htmlContent, 'utf8');
     logActivity(req.user.username, 'beta-integrate', `Integrated new module "${name || safeSlug}" into modules/${safeSlug}.html`);
     res.json({ ok: true, slug: safeSlug, path: `/modules/${safeSlug}.html` });
@@ -1131,7 +1134,7 @@ app.get('/healthz', (req, res) => res.json({ ok: true, version: APP_VERSION }));
   scheduleMondaySync();
   logActivity('system', 'server-start', `SOS Tools Web v${APP_VERSION} started (store: ${mode})`);
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`SOS Tools Web v${APP_VERSION} running on http://0.0.0.0:${PORT}`);
+  app.listen(PORT, HOST, () => {
+    console.log(`SOS Tools v${APP_VERSION} running on http://${HOST}:${PORT}`);
   });
 })();
