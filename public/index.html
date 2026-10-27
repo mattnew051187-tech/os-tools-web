@@ -50,6 +50,7 @@
       <nav id="tab-nav" class="tabs"></nav>
       <div class="user-box">
         <span id="whoami"></span>
+        <button id="btn-toggle-headers" class="btn subtle" title="Toggle full workspace (collapse header & Lois Bullion)">&#10530; Maximize</button>
         <button id="btn-reload" class="btn subtle" title="Reload modules now">&#10227; Reload</button>
         <button id="btn-lock" class="btn subtle" title="Lock session">&#128274; Lock</button>
         <button id="btn-account" class="btn subtle" title="Account">Account</button>
@@ -94,6 +95,31 @@
         <span id="bullion-updated" class="bullion-time">Updated: loading...</span>
         <button id="btn-refresh-bullion" class="bullion-refresh-btn" type="button" title="Refresh live rates from Lois Bullion (auto every 30m)">
           &#8635;
+        </button>
+      </div>
+    </div>
+
+    <!-- Compact Workspace Bar: seamlessly displays when header & bullion are collapsed in modules -->
+    <div id="workspace-bar" class="workspace-bar hidden">
+      <div class="workspace-bar-left">
+        <button id="workspace-back-home" class="btn workspace-home-btn" title="Return to Workshop Home">
+          <span>&#8592;</span> <strong>Home</strong>
+        </button>
+        <span class="workspace-sep">/</span>
+        <span id="workspace-module-title" class="workspace-title">Module</span>
+      </div>
+      <div class="workspace-bar-center">
+        <div class="mini-bullion-peek" id="mini-bullion-peek" title="Lois Bullion live scrap rates">
+          <span class="mini-tag">Lois Rates:</span>
+          <span class="mini-val">24ct <strong id="mini-gold-24ct">&pound;91.43</strong></span>
+          <span class="mini-val">18ct <strong id="mini-gold-18ct">&pound;68.58</strong></span>
+          <span class="mini-val">9ct <strong id="mini-gold-9ct">&pound;34.29</strong></span>
+        </div>
+      </div>
+      <div class="workspace-bar-right">
+        <button id="workspace-toggle-header" class="btn workspace-toggle-btn" title="Expand Lois Bullion rates & top navigation">
+          <span id="workspace-toggle-icon">&#9660;</span>
+          <span id="workspace-toggle-text">Show Header &amp; Bullion</span>
         </button>
       </div>
     </div>

@@ -869,6 +869,37 @@
       color: #fff;
       border-color: var(--accent);
     }
+
+    /* Gamepad Wake Banner & Motor Animations */
+    .gamepad-wake-banner {
+      background: var(--panel-2);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 18px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 12.5px;
+      position: relative;
+      z-index: 10;
+    }
+
+    .motor-icon {
+      display: inline-block;
+      transition: transform 0.1s ease;
+    }
+
+    @keyframes spin-motor {
+      0% { transform: rotate(0deg) scale(1); }
+      50% { transform: rotate(180deg) scale(1.15); }
+      100% { transform: rotate(360deg) scale(1); }
+    }
+
+    .motor-spinning {
+      animation: spin-motor 0.1s linear infinite !important;
+      color: var(--accent) !important;
+    }
   </style>
 </head>
 <body>
@@ -888,11 +919,27 @@
         <span class="status-dot"></span>
         <span id="conn-text">Disconnected</span>
       </div>
-      <button id="btn-open-library" class="btn" title="Open QA Reports & SKU Library">&#128218; Reports Library (<span id="library-count">0</span>)</button>
+      <select id="gamepad-device-select" class="btn" style="font-size:12px; padding:6px 10px; max-width:240px;" title="Select active connected gamepad">
+        <option value="auto">🎮 Auto-Detect Controller</option>
+      </select>
+      <button id="btn-open-dedicated" class="btn primary" title="Open in dedicated browser tab for full un-sandboxed USB access">↗ Dedicated Tab</button>
+      <button id="btn-open-library" class="btn" title="Open QA Reports & SKU Library">&#128218; Reports (<span id="library-count">0</span>)</button>
       <button id="btn-toggle-sound" class="btn" title="Mute/unmute sound effects">&#128266; Sound: ON</button>
       <button id="btn-toggle-theme" class="btn" title="Toggle theme">&#127763; Theme</button>
     </div>
   </header>
+
+  <!-- Controller Wake / USB Hint Bar -->
+  <div id="gamepad-wake-banner" class="gamepad-wake-banner">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <span style="font-size:18px;">🎮</span>
+      <span id="wake-banner-text"><strong>Plugged-in controller not responding?</strong> Modern browsers (Chrome/Edge) require you to <strong>press any button</strong> (✕, A, or Trigger) while this page is open to activate input.</span>
+    </div>
+    <div style="display:flex; gap:6px; flex-shrink:0;">
+      <button id="btn-activate-input" class="btn primary" style="padding:4px 11px; font-size:11.5px;">Click to Focus &amp; Wake</button>
+      <button id="btn-open-dedicated-banner" class="btn" style="padding:4px 11px; font-size:11.5px;">↗ Open in Tab</button>
+    </div>
+  </div>
 
   <main>
     <!-- Step Progress Indicator -->
@@ -1134,34 +1181,39 @@
         <div class="stick-box">
           <h4>Left Stick Circularity</h4>
           <canvas id="canvas-range-left" class="stick-canvas" width="180" height="180"></canvas>
-          <div style="font-size:12px; color:var(--text-muted)">Circularity Error: <strong id="circ-left" style="color:var(--green)">6.2% (Pass)</strong></div>
+          <div style="font-size:12px; margin-top:6px;">Circularity Error: <strong id="circ-left" style="color:var(--accent)">Rotate stick 360°...</strong></div>
+          <div style="font-size:11px; color:var(--muted); margin-top:2px;">Coverage: <span id="circ-cov-left">0%</span> • Avg Radius: <span id="circ-rad-left">0.00</span></div>
         </div>
 
         <div class="stick-box">
           <h4>Right Stick Circularity</h4>
           <canvas id="canvas-range-right" class="stick-canvas" width="180" height="180"></canvas>
-          <div style="font-size:12px; color:var(--text-muted)">Circularity Error: <strong id="circ-right" style="color:var(--green)">5.8% (Pass)</strong></div>
+          <div style="font-size:12px; margin-top:6px;">Circularity Error: <strong id="circ-right" style="color:var(--accent)">Rotate stick 360°...</strong></div>
+          <div style="font-size:11px; color:var(--muted); margin-top:2px;">Coverage: <span id="circ-cov-right">0%</span> • Avg Radius: <span id="circ-rad-right">0.00</span></div>
         </div>
 
         <div class="stick-box" style="flex:1; min-width:280px; text-align:left;">
           <h4>Analog Trigger Depths</h4>
           <div style="margin-bottom:14px;">
             <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px">
-              <span>L2 / LT Trigger</span>
+              <span>L2 / LT Trigger (Left)</span>
               <span id="trigger-val-left" style="font-weight:700">0%</span>
             </div>
             <div class="trigger-bar-wrap">
               <div id="trigger-bar-left" class="trigger-bar"></div>
             </div>
           </div>
-          <div>
+          <div style="margin-bottom:14px;">
             <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px">
-              <span>R2 / RT Trigger</span>
+              <span>R2 / RT Trigger (Right)</span>
               <span id="trigger-val-right" style="font-weight:700">0%</span>
             </div>
             <div class="trigger-bar-wrap">
               <div id="trigger-bar-right" class="trigger-bar"></div>
             </div>
+          </div>
+          <div style="display:flex; justify-content:flex-end;">
+            <button id="btn-reset-circularity" class="btn" style="font-size:11.5px; padding:4px 10px;">↺ Clear Circularity Trails</button>
           </div>
         </div>
       </div>
@@ -1213,10 +1265,13 @@
 
       <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:16px; margin:24px 0;">
         <div class="stick-box">
-          <h4>Heavy Motor (Left Grip)</h4>
-          <p style="font-size:12px; color:var(--text-muted); margin-bottom:14px">Low-frequency rumble for explosions &amp; terrain.</p>
-          <button id="btn-test-rumble-heavy" class="btn primary">&#128260; Trigger Heavy Rumble</button>
-          <div style="margin-top:12px;">
+          <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:8px;">
+            <span id="motor-icon-heavy" class="motor-icon" style="font-size:28px;">⚙️</span>
+            <h4>Heavy Motor (Left Grip)</h4>
+          </div>
+          <p style="font-size:12px; color:var(--text-muted); margin-bottom:14px">Low-frequency rumble for heavy explosions &amp; terrain.</p>
+          <button id="btn-test-rumble-heavy" class="btn primary" style="width:100%; justify-content:center;">&#128260; Trigger Heavy Rumble (Left)</button>
+          <div style="margin-top:12px; text-align:left;">
             <label style="font-size:12px; display:inline-flex; align-items:center; gap:6px;">
               <input type="checkbox" id="rumble-heavy-pass" checked style="width:auto" /> Heavy motor operational
             </label>
@@ -1224,15 +1279,23 @@
         </div>
 
         <div class="stick-box">
-          <h4>Light Motor (Right Grip)</h4>
-          <p style="font-size:12px; color:var(--text-muted); margin-bottom:14px">High-frequency vibration for delicate feedback.</p>
-          <button id="btn-test-rumble-light" class="btn primary">&#128260; Trigger Light Rumble</button>
-          <div style="margin-top:12px;">
+          <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:8px;">
+            <span id="motor-icon-light" class="motor-icon" style="font-size:28px;">⚙️</span>
+            <h4>Light Motor (Right Grip)</h4>
+          </div>
+          <p style="font-size:12px; color:var(--text-muted); margin-bottom:14px">High-frequency vibration for delicate and subtle feedback.</p>
+          <button id="btn-test-rumble-light" class="btn primary" style="width:100%; justify-content:center;">&#128260; Trigger Light Rumble (Right)</button>
+          <div style="margin-top:12px; text-align:left;">
             <label style="font-size:12px; display:inline-flex; align-items:center; gap:6px;">
               <input type="checkbox" id="rumble-light-pass" checked style="width:auto" /> Light motor operational
             </label>
           </div>
         </div>
+      </div>
+
+      <div style="text-align:center; margin-bottom:20px;">
+        <button id="btn-test-rumble-both" class="btn" style="padding:10px 22px; font-size:13.5px; font-weight:700;">⚡ Test Both Motors (Dual Rumble Burst)</button>
+        <p id="rumble-status-msg" style="font-size:12px; margin-top:8px; color:var(--muted); font-weight:600;">Status: Ready (Click trigger button to test motors)</p>
       </div>
 
       <div class="actions-bar">
@@ -1405,6 +1468,23 @@
       fail() {
         this.beep(220, 'sawtooth', 0.15);
         setTimeout(() => this.beep(180, 'sawtooth', 0.25), 160);
+      }
+      rumbleTone(freq = 55, duration = 0.5) {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+          gain.gain.setValueAtTime(0.18, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + duration);
+        } catch (e) {}
       }
     }
     const sound = new SoundEngine();
@@ -1801,7 +1881,93 @@
       return null;
     }
 
-    // Gamepad hardware loop
+    // Gamepad hardware loop & acquisition
+    let userSelectedGamepadIndex = null;
+
+    function getAvailableGamepads() {
+      const list = [];
+      try {
+        if (navigator.getGamepads) {
+          const gps = navigator.getGamepads();
+          if (gps) {
+            for (let i = 0; i < gps.length; i++) {
+              if (gps[i]) list.push(gps[i]);
+            }
+          }
+        }
+      } catch (e) {}
+
+      // If embedded in iframe, also probe top-level window gamepads if available
+      if (list.length === 0) {
+        try {
+          if (window.top && window.top !== window && window.top.navigator && window.top.navigator.getGamepads) {
+            const topGps = window.top.navigator.getGamepads();
+            if (topGps) {
+              for (let i = 0; i < topGps.length; i++) {
+                if (topGps[i]) list.push(topGps[i]);
+              }
+            }
+          }
+        } catch (e) {}
+      }
+
+      return list;
+    }
+
+    function updateGamepadSelector(gamepads) {
+      const sel = document.getElementById('gamepad-device-select');
+      if (!sel) return;
+
+      const count = gamepads.length;
+      if (count === 0) {
+        sel.innerHTML = '<option value="auto">🎮 Waiting for controller...</option>';
+        return;
+      }
+
+      let html = '<option value="auto">⚡ Auto-Detect Controller</option>';
+      gamepads.forEach((gp) => {
+        const cleanName = gp.id.replace(/\s+/g, ' ').slice(0, 28);
+        const isSel = (userSelectedGamepadIndex === gp.index) ? 'selected' : '';
+        html += `<option value="${gp.index}" ${isSel}>#${gp.index}: ${cleanName} (${gp.buttons.length}B/${gp.axes.length}A)</option>`;
+      });
+
+      sel.innerHTML = html;
+      if (userSelectedGamepadIndex !== null && gamepads.some(g => g.index === userSelectedGamepadIndex)) {
+        sel.value = String(userSelectedGamepadIndex);
+      }
+    }
+
+    const gpSelectEl = document.getElementById('gamepad-device-select');
+    if (gpSelectEl) {
+      gpSelectEl.addEventListener('change', (e) => {
+        userSelectedGamepadIndex = e.target.value === 'auto' ? null : parseInt(e.target.value, 10);
+        sound.click();
+      });
+    }
+
+    // Auto-focus window on interaction to ensure Chrome/Edge delivers Gamepad events
+    window.addEventListener('pointerdown', () => window.focus());
+    window.addEventListener('keydown', () => window.focus());
+
+    // Dedicated Tab Buttons
+    const btnDedicated = document.getElementById('btn-open-dedicated');
+    if (btnDedicated) {
+      btnDedicated.addEventListener('click', () => window.open('/modules/gamepad-tester.html', '_blank'));
+    }
+    const btnDedicatedBanner = document.getElementById('btn-open-dedicated-banner');
+    if (btnDedicatedBanner) {
+      btnDedicatedBanner.addEventListener('click', () => window.open('/modules/gamepad-tester.html', '_blank'));
+    }
+    const btnActivateInput = document.getElementById('btn-activate-input');
+    if (btnActivateInput) {
+      btnActivateInput.addEventListener('click', () => {
+        window.focus();
+        sound.beep(520, 'sine', 0.12);
+        const sub = document.getElementById('conn-device-subtitle');
+        if (sub) sub.textContent = 'Window focused! Now press any button or move a stick on your controller.';
+      });
+    }
+
     window.addEventListener('gamepadconnected', async (e) => {
       activeGamepadIndex = e.gamepad.index;
       const hidSerial = await detectWebHidSerial();
@@ -1810,10 +1976,12 @@
       sound.success();
     });
 
-    window.addEventListener('gamepaddisconnected', () => {
-      activeGamepadIndex = null;
-      detectedUsbSerial = '';
-      setConnected(false);
+    window.addEventListener('gamepaddisconnected', (e) => {
+      if (activeGamepadIndex === e.gamepad?.index) {
+        activeGamepadIndex = null;
+        detectedUsbSerial = '';
+        setConnected(false);
+      }
     });
 
     function setConnected(status, name = 'Gamepad Connected', serial = '') {
@@ -1824,12 +1992,13 @@
       const sub = document.getElementById('conn-device-subtitle');
       const usbStatus = document.getElementById('usb-detect-status');
       const usbVal = document.getElementById('usb-detected-val');
+      const wakeBanner = document.getElementById('gamepad-wake-banner');
 
       if (status) {
-        pill.classList.add('connected');
-        text.textContent = 'Connected';
-        title.textContent = name;
-        sub.textContent = 'Hardware active on browser USB HID channel. Polling live axes.';
+        if (pill) pill.classList.add('connected');
+        if (text) text.textContent = 'Connected';
+        if (title) title.textContent = name;
+        if (sub) sub.textContent = 'Hardware active on browser USB HID channel. Polling live axes & buttons.';
         if (usbStatus && usbVal) {
           usbStatus.textContent = 'USB Detected';
           usbStatus.style.background = 'var(--success-bg)';
@@ -1837,11 +2006,12 @@
           usbStatus.style.borderColor = 'var(--success)';
           usbVal.textContent = serial || detectedUsbSerial || 'USB-DEVICE-CONNECTED';
         }
+        if (wakeBanner) wakeBanner.style.display = 'none';
       } else {
-        pill.classList.remove('connected');
-        text.textContent = 'Disconnected';
-        title.textContent = 'Waiting for controller input...';
-        sub.textContent = 'Press any button on your controller to activate browser HID.';
+        if (pill) pill.classList.remove('connected');
+        if (text) text.textContent = 'Disconnected';
+        if (title) title.textContent = 'Waiting for controller input...';
+        if (sub) sub.textContent = 'Press any button on your controller to activate browser HID.';
         if (usbStatus && usbVal) {
           usbStatus.textContent = 'Awaiting USB';
           usbStatus.style.background = 'var(--danger-bg)';
@@ -1849,6 +2019,7 @@
           usbStatus.style.borderColor = 'var(--danger)';
           usbVal.textContent = 'No USB controller detected yet';
         }
+        if (wakeBanner) wakeBanner.style.display = 'flex';
       }
     }
 
@@ -1859,62 +2030,174 @@
       sound.success();
     });
 
-    // Draw sticks
-    function drawStick(canvasId, x, y) {
-      const c = document.getElementById(canvasId);
-      if (!c) return;
-      const ctx = c.getContext('2d');
-      const w = c.width, h = c.height;
-      const cx = w / 2, cy = h / 2;
-      const r = (w / 2) - 10;
-
-      const style = getComputedStyle(document.body);
-      const borderCol = style.getPropertyValue('--border').trim() || '#ddc87c';
-      const accentCol = style.getPropertyValue('--accent').trim() || '#b45309';
-
-      ctx.clearRect(0, 0, w, h);
-
-      // Deadzone circle
-      ctx.beginPath();
-      ctx.arc(cx, cy, r * 0.1, 0, Math.PI * 2);
-      ctx.strokeStyle = accentCol;
-      ctx.lineWidth = 1;
-      ctx.stroke();
-
-      // Outer boundary
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.strokeStyle = borderCol;
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-
-      // Crosshairs
-      ctx.strokeStyle = borderCol;
-      ctx.beginPath();
-      ctx.moveTo(cx, 10); ctx.lineTo(cx, h - 10);
-      ctx.moveTo(10, cy); ctx.lineTo(w - 10, cy);
-      ctx.stroke();
-
-      // Position
-      const px = cx + (x * r);
-      const py = cy + (y * r);
-
-      ctx.beginPath();
-      ctx.arc(px, py, 9, 0, Math.PI * 2);
-      ctx.fillStyle = accentCol;
-      ctx.fill();
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    }
-
-    // Track previous button states for clean edge-triggered press detection
-    const prevButtonStates = {};
-    // Range path history for visual circularity trace
+    // High-Precision Stick Circularity Engine
+    const circBinnedLeft = new Array(36).fill(null);
+    const circBinnedRight = new Array(36).fill(null);
     const rangeTrailLeft = [];
     const rangeTrailRight = [];
     let driftSamplesLeft = [];
     let driftSamplesRight = [];
+    const prevButtonStates = {};
+
+    function recordCircularity(x, y, isRight = false) {
+      const r = Math.hypot(x, y);
+      if (r < 0.45) return; // Sample outer perimeter
+
+      const angle = Math.atan2(y, x);
+      const normalizedAngle = angle < 0 ? angle + Math.PI * 2 : angle;
+      const binIdx = Math.floor((normalizedAngle / (Math.PI * 2)) * 36) % 36;
+      const error = Math.abs(r - 1.0);
+
+      const binned = isRight ? circBinnedRight : circBinnedLeft;
+      binned[binIdx] = { r, error, x, y };
+
+      const validBins = binned.filter(b => b !== null);
+      const coveredCount = validBins.length;
+      const coveragePct = Math.round((coveredCount / 36) * 100);
+
+      let avgError = 0;
+      let avgRadius = 0;
+      if (coveredCount > 0) {
+        avgError = validBins.reduce((s, b) => s + b.error, 0) / coveredCount;
+        avgRadius = validBins.reduce((s, b) => s + b.r, 0) / coveredCount;
+      }
+
+      const circVal = +(avgError * 100).toFixed(1);
+      const isPass = circVal <= 16.0;
+
+      if (isRight) {
+        rangeResults.rightCirc = circVal;
+        const circEl = document.getElementById('circ-right');
+        const covEl = document.getElementById('circ-cov-right');
+        const radEl = document.getElementById('circ-rad-right');
+        if (circEl) {
+          if (coveredCount < 10) {
+            circEl.textContent = `Rotate stick 360° (${coveragePct}% swept)`;
+            circEl.style.color = 'var(--accent)';
+          } else {
+            circEl.textContent = `${circVal}% (${isPass ? 'Pass' : 'Excess Error'})`;
+            circEl.style.color = isPass ? 'var(--success)' : 'var(--danger)';
+          }
+        }
+        if (covEl) covEl.textContent = `${coveragePct}% (360° Sweep)`;
+        if (radEl) radEl.textContent = avgRadius.toFixed(2);
+      } else {
+        rangeResults.leftCirc = circVal;
+        const circEl = document.getElementById('circ-left');
+        const covEl = document.getElementById('circ-cov-left');
+        const radEl = document.getElementById('circ-rad-left');
+        if (circEl) {
+          if (coveredCount < 10) {
+            circEl.textContent = `Rotate stick 360° (${coveragePct}% swept)`;
+            circEl.style.color = 'var(--accent)';
+          } else {
+            circEl.textContent = `${circVal}% (${isPass ? 'Pass' : 'Excess Error'})`;
+            circEl.style.color = isPass ? 'var(--success)' : 'var(--danger)';
+          }
+        }
+        if (covEl) covEl.textContent = `${coveragePct}% (360° Sweep)`;
+        if (radEl) radEl.textContent = avgRadius.toFixed(2);
+      }
+    }
+
+    function resetCircularity() {
+      circBinnedLeft.fill(null);
+      circBinnedRight.fill(null);
+      rangeTrailLeft.length = 0;
+      rangeTrailRight.length = 0;
+      const cL = document.getElementById('circ-left');
+      const cR = document.getElementById('circ-right');
+      if (cL) { cL.textContent = 'Rotate stick 360°...'; cL.style.color = 'var(--accent)'; }
+      if (cR) { cR.textContent = 'Rotate stick 360°...'; cR.style.color = 'var(--accent)'; }
+      const covL = document.getElementById('circ-cov-left');
+      const covR = document.getElementById('circ-cov-right');
+      if (covL) covL.textContent = '0%';
+      if (covR) covR.textContent = '0%';
+      const radL = document.getElementById('circ-rad-left');
+      const radR = document.getElementById('circ-rad-right');
+      if (radL) radL.textContent = '0.00';
+      if (radR) radR.textContent = '0.00';
+      sound.click();
+    }
+
+    const btnResetCirc = document.getElementById('btn-reset-circularity');
+    if (btnResetCirc) btnResetCirc.addEventListener('click', resetCircularity);
+
+    // Rumble / Haptics Controller Engine
+    async function triggerControllerRumble(heavy = 1.0, light = 0.5, duration = 800) {
+      sound.rumbleTone(heavy > 0 ? 52 : 140, duration / 1000);
+
+      const statusEl = document.getElementById('rumble-status-msg');
+      const iconH = document.getElementById('motor-icon-heavy');
+      const iconL = document.getElementById('motor-icon-light');
+
+      if (heavy > 0 && iconH) iconH.classList.add('motor-spinning');
+      if (light > 0 && iconL) iconL.classList.add('motor-spinning');
+
+      setTimeout(() => {
+        if (iconH) iconH.classList.remove('motor-spinning');
+        if (iconL) iconL.classList.remove('motor-spinning');
+        if (statusEl) {
+          statusEl.textContent = 'Status: Ready (Vibration cycle completed)';
+          statusEl.style.color = 'var(--muted)';
+        }
+      }, duration);
+
+      if (statusEl) {
+        statusEl.textContent = `Status: VIBRATING [Heavy: ${Math.round(heavy * 100)}% | Light: ${Math.round(light * 100)}%] for ${duration}ms...`;
+        statusEl.style.color = 'var(--accent)';
+      }
+
+      // Query active gamepad for physical vibration actuators
+      const gamepads = getAvailableGamepads();
+      const gp = (activeGamepadIndex !== null ? gamepads.find(g => g.index === activeGamepadIndex) : null) || gamepads[0];
+
+      let vibrated = false;
+      if (gp) {
+        if (gp.vibrationActuator && typeof gp.vibrationActuator.playEffect === 'function') {
+          try {
+            await gp.vibrationActuator.playEffect('dual-rumble', {
+              startDelay: 0,
+              duration: duration,
+              weakMagnitude: light,
+              strongMagnitude: heavy
+            });
+            vibrated = true;
+          } catch (e) {
+            console.warn('vibrationActuator.playEffect notice:', e);
+          }
+        }
+
+        if (!vibrated && gp.hapticActuators && gp.hapticActuators.length > 0) {
+          try {
+            await gp.hapticActuators[0].pulse(Math.max(heavy, light), duration);
+            vibrated = true;
+          } catch (e) {}
+        }
+      }
+
+      if (navigator.vibrate) {
+        try { navigator.vibrate(Math.min(duration, 400)); } catch (e) {}
+      }
+
+      if (heavy > 0) {
+        const chkH = document.getElementById('rumble-heavy-pass');
+        if (chkH) chkH.checked = true;
+      }
+      if (light > 0) {
+        const chkL = document.getElementById('rumble-light-pass');
+        if (chkL) chkL.checked = true;
+      }
+    }
+
+    const btnRumbleHeavy = document.getElementById('btn-test-rumble-heavy');
+    if (btnRumbleHeavy) btnRumbleHeavy.addEventListener('click', () => triggerControllerRumble(1.0, 0.1, 800));
+
+    const btnRumbleLight = document.getElementById('btn-test-rumble-light');
+    if (btnRumbleLight) btnRumbleLight.addEventListener('click', () => triggerControllerRumble(0.1, 1.0, 800));
+
+    const btnRumbleBoth = document.getElementById('btn-test-rumble-both');
+    if (btnRumbleBoth) btnRumbleBoth.addEventListener('click', () => triggerControllerRumble(1.0, 1.0, 1000));
 
     let driftTesting = false;
     document.getElementById('btn-start-drift-test').addEventListener('click', () => {
@@ -1936,7 +2219,6 @@
           clearInterval(interval);
           driftTesting = false;
 
-          // Calculate real metrics from sampled data
           let leftMag = 0, rightMag = 0;
           if (driftSamplesLeft.length > 0) {
             const avgLx = driftSamplesLeft.reduce((s, p) => s + p.x, 0) / driftSamplesLeft.length;
@@ -2023,8 +2305,8 @@
           if (i === 0) ctx.moveTo(tx, ty);
           else ctx.lineTo(tx, ty);
         });
-        ctx.strokeStyle = 'rgba(180, 83, 9, 0.4)';
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = 'rgba(180, 83, 9, 0.45)';
+        ctx.lineWidth = 2.5;
         ctx.stroke();
       }
 
@@ -2053,50 +2335,115 @@
 
     // Animation & Polling Loop
     function pollLoop() {
-      // Proactive scan: automatically detect connected controllers on every frame
-      const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+      const gamepads = getAvailableGamepads();
+      updateGamepadSelector(gamepads);
+
       let gp = null;
-      for (let i = 0; i < gamepads.length; i++) {
-        if (gamepads[i]) {
-          gp = gamepads[i];
-          if (!isConnected) {
-            activeGamepadIndex = i;
-            setConnected(true, gp.id);
-            sound.success();
-          }
+
+      // 1. Check if user physically pressed a button or moved stick on ANY connected gamepad
+      for (const candidate of gamepads) {
+        if (!candidate) continue;
+        const hasBtn = candidate.buttons && candidate.buttons.some(b => typeof b === 'object' ? (b.pressed || b.value > 0.15) : b > 0.15);
+        const hasAxis = candidate.axes && candidate.axes.some(a => Math.abs(a) > 0.18);
+        if (hasBtn || hasAxis) {
+          gp = candidate;
+          activeGamepadIndex = candidate.index;
           break;
         }
+      }
+
+      // 2. Fallback to explicit user selection or activeGamepadIndex
+      if (!gp && userSelectedGamepadIndex !== null) {
+        gp = gamepads.find(g => g.index === userSelectedGamepadIndex) || null;
+      }
+      if (!gp && activeGamepadIndex !== null) {
+        gp = gamepads.find(g => g.index === activeGamepadIndex) || null;
+      }
+
+      // 3. Fallback to first real controller (at least 8 buttons)
+      if (!gp) {
+        gp = gamepads.find(g => g.buttons && g.buttons.length >= 8) || gamepads[0] || null;
+        if (gp) activeGamepadIndex = gp.index;
+      }
+
+      if (gp) {
+        if (!isConnected) {
+          setConnected(true, gp.id, extractHardwareId(gp));
+          sound.success();
+        }
+      } else if (!simulated && isConnected) {
+        setConnected(false);
       }
 
       let lx = 0, ly = 0, rx = 0, ry = 0;
       let lt = 0, rt = 0;
 
       if (gp) {
+        // Left stick
         lx = gp.axes[0] || 0;
         ly = gp.axes[1] || 0;
-        rx = gp.axes[2] !== undefined ? gp.axes[2] : (gp.axes[3] || 0);
-        ry = gp.axes[3] !== undefined ? gp.axes[3] : (gp.axes[4] || 0);
 
-        if (gp.buttons[6]) lt = typeof gp.buttons[6] === 'object' ? gp.buttons[6].value : (gp.buttons[6] ? 1 : 0);
-        if (gp.buttons[7]) rt = typeof gp.buttons[7] === 'object' ? gp.buttons[7].value : (gp.buttons[7] ? 1 : 0);
+        // Right stick: standard is 2, 3. Check for DirectInput 3, 4 if axis 2 is a trigger
+        if (gp.axes.length >= 5 && Math.abs(gp.axes[2]) > 0.95 && Math.abs(gp.axes[3]) > 0.05) {
+          rx = gp.axes[3] || 0;
+          ry = gp.axes[4] || 0;
+        } else {
+          rx = gp.axes[2] !== undefined ? gp.axes[2] : (gp.axes[3] || 0);
+          ry = gp.axes[3] !== undefined ? gp.axes[3] : (gp.axes[4] || 0);
+        }
+
+        // Left and Right analog triggers
+        if (gp.buttons[6]) {
+          lt = typeof gp.buttons[6] === 'object' ? gp.buttons[6].value : (gp.buttons[6] ? 1 : 0);
+        } else if (gp.axes[2] !== undefined && gp.axes.length >= 6) {
+          lt = (gp.axes[2] + 1) / 2;
+        }
+
+        if (gp.buttons[7]) {
+          rt = typeof gp.buttons[7] === 'object' ? gp.buttons[7].value : (gp.buttons[7] ? 1 : 0);
+        } else if (gp.axes[5] !== undefined && gp.axes.length >= 6) {
+          rt = (gp.axes[5] + 1) / 2;
+        }
 
         // Edge-triggered button press detection with sustained visual holding
         gp.buttons.forEach((btn, idx) => {
-          const pressed = typeof btn === 'object' ? btn.pressed : btn > 0.15;
+          const pressed = typeof btn === 'object' ? (btn.pressed || btn.value > 0.15) : btn > 0.15;
           const btnDef = STANDARD_BUTTONS[idx];
           if (btnDef) {
             const card = document.getElementById(`card-${btnDef.id}`);
+            const svgEl = document.getElementById(`svg-btn-${btnDef.id}`);
+
             if (pressed) {
               if (card) card.classList.add('pressed');
+              if (svgEl) svgEl.classList.add('svg-btn-pressed');
               if (!prevButtonStates[btnDef.id]) {
                 registerButtonPress(btnDef.id);
               }
             } else {
               if (card) card.classList.remove('pressed');
+              if (svgEl) svgEl.classList.remove('svg-btn-pressed');
             }
             prevButtonStates[btnDef.id] = pressed;
           }
         });
+
+        // Support POV Hat / D-pad on axes if buttons 12-15 are not mapped
+        if (gp.axes[9] !== undefined) {
+          const pov = gp.axes[9];
+          const up = pov > -1.05 && pov < -0.95;
+          const right = pov > 0.1 && pov < 0.2;
+          const down = pov > 0.65 && pov < 0.75;
+          const left = pov > -0.75 && pov < -0.65;
+          if (up && !prevButtonStates['btn_12']) registerButtonPress('btn_12');
+          if (down && !prevButtonStates['btn_13']) registerButtonPress('btn_13');
+          if (left && !prevButtonStates['btn_14']) registerButtonPress('btn_14');
+          if (right && !prevButtonStates['btn_15']) registerButtonPress('btn_15');
+        }
+
+        // Live circularity sampling when user rotates sticks
+        recordCircularity(lx, ly, false);
+        recordCircularity(rx, ry, true);
+
       } else if (simulated) {
         const t = Date.now() / 800;
         lx = Math.sin(t) * 0.03;
@@ -2114,11 +2461,11 @@
       // Record range trails when moving sticks significantly
       if (Math.abs(lx) > 0.3 || Math.abs(ly) > 0.3) {
         rangeTrailLeft.push({ x: lx, y: ly });
-        if (rangeTrailLeft.length > 80) rangeTrailLeft.shift();
+        if (rangeTrailLeft.length > 120) rangeTrailLeft.shift();
       }
       if (Math.abs(rx) > 0.3 || Math.abs(ry) > 0.3) {
         rangeTrailRight.push({ x: rx, y: ry });
-        if (rangeTrailRight.length > 80) rangeTrailRight.shift();
+        if (rangeTrailRight.length > 120) rangeTrailRight.shift();
       }
 
       // Draw stick positions
@@ -2138,12 +2485,16 @@
       const tbR = document.getElementById('trigger-bar-right');
       const tvR = document.getElementById('trigger-val-right');
       if (tbL && tvL) {
-        tbL.style.width = `${Math.round(lt * 100)}%`;
-        tvL.textContent = `${Math.round(lt * 100)}%`;
+        const pctL = Math.min(100, Math.max(0, Math.round(lt * 100)));
+        tbL.style.width = `${pctL}%`;
+        tvL.textContent = `${pctL}%`;
+        if (pctL > 85) tbL.style.background = 'var(--success)';
       }
       if (tbR && tvR) {
-        tbR.style.width = `${Math.round(rt * 100)}%`;
-        tvR.textContent = `${Math.round(rt * 100)}%`;
+        const pctR = Math.min(100, Math.max(0, Math.round(rt * 100)));
+        tbR.style.width = `${pctR}%`;
+        tvR.textContent = `${pctR}%`;
+        if (pctR > 85) tbR.style.background = 'var(--success)';
       }
 
       requestAnimationFrame(pollLoop);
@@ -2178,6 +2529,8 @@
         circularityRight: rangeResults.rightCirc || 5.8,
         buttonsActuated: Object.keys(buttonPressCounts).length,
         totalButtons: STANDARD_BUTTONS.length,
+        rumbleHeavy: document.getElementById('rumble-heavy-pass') ? document.getElementById('rumble-heavy-pass').checked : true,
+        rumbleLight: document.getElementById('rumble-light-pass') ? document.getElementById('rumble-light-pass').checked : true,
         signOffNotes: (document.getElementById('verdict-notes') && document.getElementById('verdict-notes').value.trim()) || 'Diagnostic testing verified.'
       };
     }

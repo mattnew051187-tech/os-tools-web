@@ -156,6 +156,14 @@ async function loadBullionRates(force = false) {
           bSil.innerHTML = `&pound;${Number(r.silver925).toFixed(2)}<small>/g</small>`;
         }
 
+        // Keep compact workspace bar mini-rates in sync
+        const mg24 = document.getElementById('mini-gold-24ct');
+        const mg18 = document.getElementById('mini-gold-18ct');
+        const mg9 = document.getElementById('mini-gold-9ct');
+        if (r.gold24ct !== undefined && mg24) mg24.innerHTML = `&pound;${Number(r.gold24ct).toFixed(2)}`;
+        if (r.gold18ct !== undefined && mg18) mg18.innerHTML = `&pound;${Number(r.gold18ct).toFixed(2)}`;
+        if (r.gold9ct !== undefined && mg9) mg9.innerHTML = `&pound;${Number(r.gold9ct).toFixed(2)}`;
+
         if (updatedEl) {
           const fetchDate = data.lastFetched ? new Date(data.lastFetched) : new Date();
           const timeStr = fetchDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -238,6 +246,39 @@ function selectTab(id) {
   state.activeTab = id;
   document.querySelectorAll('#tab-nav button').forEach((b) => b.classList.toggle('active', b.dataset.tab === id));
   document.querySelectorAll('.tab-pane').forEach((p) => p.classList.toggle('active', p.dataset.pane === id));
+
+  const mainScreen = $('#screen-main');
+  const wsBar = $('#workspace-bar');
+  const wsTitle = $('#workspace-module-title');
+  const wsToggleText = $('#workspace-toggle-text');
+  const wsToggleIcon = $('#workspace-toggle-icon');
+
+  // Collapse header and Lois Bullion bar for all modules to maximize working window
+  const isModuleTab = id !== 'home';
+  if (isModuleTab && mainScreen) {
+    mainScreen.classList.add('header-collapsed');
+    mainScreen.classList.remove('peek-headers');
+    if (wsBar) wsBar.classList.remove('hidden');
+    if (wsTitle) {
+      const label = id === 'beta' ? '🧪 Beta Dev Lab' : (TAB_LABELS[id] || (id.charAt(0).toUpperCase() + id.slice(1)));
+      wsTitle.textContent = label;
+    }
+    if (wsToggleText) wsToggleText.textContent = 'Show Header & Bullion';
+    if (wsToggleIcon) wsToggleIcon.innerHTML = '&#9660;';
+
+    // Focus module iframe so keyboard and gamepad inputs respond immediately
+    const frame = document.querySelector(`.tab-pane[data-pane="${id}"] iframe`);
+    if (frame && frame.contentWindow) {
+      setTimeout(() => {
+        try { frame.contentWindow.focus(); } catch (e) {}
+      }, 50);
+    }
+  } else if (mainScreen) {
+    mainScreen.classList.remove('header-collapsed');
+    mainScreen.classList.remove('peek-headers');
+    if (wsBar) wsBar.classList.add('hidden');
+  }
+
   if (id === 'users') loadUsersTable();
   if (id === 'settings') loadSettingsPane();
   if (id === 'activity') loadActivityTable();
@@ -466,6 +507,41 @@ document.querySelectorAll('[data-open]').forEach((el) =>
 document.querySelectorAll('[data-back]').forEach((el) =>
   el.addEventListener('click', () => selectTab('home'))
 );
+
+/* Compact workspace bar controls */
+const wsBackHome = $('#workspace-back-home');
+if (wsBackHome) {
+  wsBackHome.addEventListener('click', () => selectTab('home'));
+}
+
+const wsToggleHeader = $('#workspace-toggle-header');
+if (wsToggleHeader) {
+  wsToggleHeader.addEventListener('click', () => {
+    const mainScreen = $('#screen-main');
+    if (!mainScreen) return;
+    const isPeek = mainScreen.classList.toggle('peek-headers');
+    const wsToggleText = $('#workspace-toggle-text');
+    const wsToggleIcon = $('#workspace-toggle-icon');
+    if (wsToggleText) wsToggleText.textContent = isPeek ? 'Collapse Header' : 'Show Header & Bullion';
+    if (wsToggleIcon) wsToggleIcon.innerHTML = isPeek ? '&#9650;' : '&#9660;';
+  });
+}
+
+const btnToggleHeaders = $('#btn-toggle-headers');
+if (btnToggleHeaders) {
+  btnToggleHeaders.addEventListener('click', () => {
+    const mainScreen = $('#screen-main');
+    if (!mainScreen) return;
+    if (state.activeTab === 'home') {
+      flashBanner('Open any module from the home grid to enter full maximized workspace mode.');
+      return;
+    }
+    const isCollapsed = mainScreen.classList.toggle('header-collapsed');
+    mainScreen.classList.remove('peek-headers');
+    const wsBar = $('#workspace-bar');
+    if (wsBar) wsBar.classList.toggle('hidden', !isCollapsed);
+  });
+}
 
 /* ---------------- Users pane (admin) ---------------- */
 async function loadUsersTable() {

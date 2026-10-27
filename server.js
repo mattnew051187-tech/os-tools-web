@@ -253,7 +253,7 @@ function publicUser(user) {
 const app = express();
 app.set('trust proxy', 1);
 app.use((req, res, next) => {
-  res.setHeader('Permissions-Policy', 'usb=*, serial=*, hid=*, camera=*, microphone=*');
+  res.setHeader('Permissions-Policy', 'usb=*, serial=*, hid=*, gamepad=*, camera=*, microphone=*');
   next();
 });
 app.use(express.json({ limit: '1mb' }));
