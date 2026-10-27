@@ -925,7 +925,6 @@
       <button id="btn-open-dedicated" class="btn primary" title="Open in dedicated browser tab for full un-sandboxed USB access">↗ Dedicated Tab</button>
       <button id="btn-open-library" class="btn" title="Open QA Reports & SKU Library">&#128218; Reports (<span id="library-count">0</span>)</button>
       <button id="btn-toggle-sound" class="btn" title="Mute/unmute sound effects">&#128266; Sound: ON</button>
-      <button id="btn-toggle-theme" class="btn" title="Toggle theme">&#127763; Theme</button>
     </div>
   </header>
 
@@ -960,20 +959,19 @@
       
       <!-- Linear 1-Item-Per-Line Intake List -->
       <div class="intake-linear-list">
-        <!-- Item 1: Name (Dropdown / Type to filter users) -->
+        <!-- Item 1: Technician Name Dropdown (Prepopulated with registered users) -->
         <div class="intake-row-item">
           <div class="intake-row-header">
             <div class="intake-row-left">
               <span class="intake-step-num">1</span>
-              <span>Name</span>
+              <span>Technician Name</span>
             </div>
-            <span class="intake-item-hint">Select or type user name</span>
+            <span class="intake-item-hint">Select technician name</span>
           </div>
           <div style="display:flex; gap:8px;">
-            <input type="text" id="tech-name" list="user-names-datalist" placeholder="Select from list or type to find your name..." autocomplete="off" style="flex:1;" />
-            <datalist id="user-names-datalist">
-              <option value="Matt"></option>
-            </datalist>
+            <select id="tech-name" style="flex:1;">
+              <option value="Matt">Matt</option>
+            </select>
           </div>
         </div>
 
@@ -1550,11 +1548,6 @@
     document.getElementById('btn-toggle-sound').addEventListener('click', (e) => {
       sound.enabled = !sound.enabled;
       e.target.textContent = sound.enabled ? '🔊 Sound: ON' : '🔇 Sound: OFF';
-    });
-
-    // Theme toggle
-    document.getElementById('btn-toggle-theme').addEventListener('click', () => {
-      document.body.classList.toggle('theme-sky-blue');
     });
 
     // Steps Navigation
@@ -3034,22 +3027,28 @@
       try {
         const res = await fetch('/api/users/list');
         const data = await res.json();
-        if (data.ok && Array.isArray(data.users) && data.users.length > 0) {
-          const datalist = document.getElementById('user-names-datalist');
-          if (datalist) {
-            datalist.innerHTML = data.users.map(u => `<option value="${escapeHtml(u)}"></option>`).join('');
+        let curUser = '';
+        try {
+          const meRes = await fetch('/api/me');
+          const meData = await meRes.json();
+          if (meData.ok && meData.user && meData.user.username) {
+            curUser = meData.user.username;
           }
-        }
-      } catch (e) {}
+        } catch (e) {}
 
-      // Auto-prefill logged-in user if available
-      try {
-        const meRes = await fetch('/api/me');
-        const meData = await meRes.json();
-        if (meData.ok && meData.user && meData.user.username) {
-          const nameInput = document.getElementById('tech-name');
-          if (nameInput) {
-            nameInput.value = meData.user.username;
+        const sel = document.getElementById('tech-name');
+        if (sel) {
+          if (data.ok && Array.isArray(data.users) && data.users.length > 0) {
+            const prev = sel.value;
+            sel.innerHTML = data.users.map(u => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join('');
+            if (curUser && data.users.includes(curUser)) {
+              sel.value = curUser;
+            } else if (data.users.includes(prev)) {
+              sel.value = prev;
+            }
+          } else if (curUser) {
+            sel.innerHTML = `<option value="${escapeHtml(curUser)}">${escapeHtml(curUser)}</option>`;
+            sel.value = curUser;
           }
         }
       } catch (e) {}
