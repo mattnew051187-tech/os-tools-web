@@ -20,7 +20,7 @@ const APP_VERSION = '1.1.0';
 const APP_ROOT = __dirname;
 
 const PORT = process.env.PORT || 3000;
-const TAB_IDS = ['phone-tablets', 'gamepad-tester', 'game-library', 'product-search', 'repair-book-in'];
+const TAB_IDS = ['phone-tablets', 'gamepad-tester', 'game-library', 'repair-book-in'];
 const VALID_THEMES = ['yellow', 'light', 'dark', 'blue'];
 const SESSION_COOKIE = 'sos_session';
 const SESSION_MAX_AGE_MS = 12 * 60 * 60 * 1000; // absolute 12h expiry; idle lock is client-side
@@ -258,6 +258,9 @@ app.use((req, res, next) => {
 });
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(APP_ROOT, 'public')));
+app.get(['/modules', '/modules/'], (req, res) => {
+  res.redirect('/modules/gamepad-tester.html');
+});
 app.get('/modules/beta.html', (req, res, next) => {
   const user = getSessionUser(req);
   if (!user || user.username.toLowerCase() !== 'matt') {
@@ -266,6 +269,16 @@ app.get('/modules/beta.html', (req, res, next) => {
   next();
 });
 app.use('/modules', express.static(path.join(APP_ROOT, 'modules')));
+app.get('/modules/:file', (req, res, next) => {
+  const file = req.params.file;
+  if (!file.endsWith('.html')) {
+    const candidate = path.join(APP_ROOT, 'modules', `${file}.html`);
+    if (fs.existsSync(candidate)) {
+      return res.sendFile(candidate);
+    }
+  }
+  next();
+});
 app.use('/vendor/jspdf', express.static(path.join(APP_ROOT, 'node_modules', 'jspdf', 'dist')));
 
 function requireAuth(req, res, next) {

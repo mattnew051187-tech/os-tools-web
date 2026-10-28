@@ -1945,11 +1945,11 @@
     // Dedicated Tab Buttons
     const btnDedicated = document.getElementById('btn-open-dedicated');
     if (btnDedicated) {
-      btnDedicated.addEventListener('click', () => window.open('/modules/gamepad-tester.html', '_blank'));
+      btnDedicated.addEventListener('click', () => window.open(window.location.origin + '/modules/gamepad-tester.html', '_blank'));
     }
     const btnDedicatedBanner = document.getElementById('btn-open-dedicated-banner');
     if (btnDedicatedBanner) {
-      btnDedicatedBanner.addEventListener('click', () => window.open('/modules/gamepad-tester.html', '_blank'));
+      btnDedicatedBanner.addEventListener('click', () => window.open(window.location.origin + '/modules/gamepad-tester.html', '_blank'));
     }
     const btnActivateInput = document.getElementById('btn-activate-input');
     if (btnActivateInput) {
@@ -1960,6 +1960,21 @@
         if (sub) sub.textContent = 'Window focused! Now press any button or move a stick on your controller.';
       });
     }
+
+    // Accept forwarded gamepad events from parent window
+    window.addEventListener('message', async (e) => {
+      if (e.data && (e.data.type === 'SOS_GAMEPAD_CONNECTED' || e.data.type === 'SOS_GAMEPAD_SYNC')) {
+        const gamepads = getAvailableGamepads();
+        const gp = gamepads.find(g => g.index === e.data.index) || gamepads[0];
+        if (gp) {
+          activeGamepadIndex = gp.index;
+          const hidSerial = await detectWebHidSerial();
+          detectedUsbSerial = hidSerial || extractHardwareId(gp);
+          setConnected(true, gp.id, detectedUsbSerial);
+          sound.success();
+        }
+      }
+    });
 
     window.addEventListener('gamepadconnected', async (e) => {
       activeGamepadIndex = e.gamepad.index;
@@ -3038,10 +3053,13 @@
 
         const sel = document.getElementById('tech-name');
         if (sel) {
+          const savedTech = sessionStorage.getItem('sos_active_technician') || '';
           if (data.ok && Array.isArray(data.users) && data.users.length > 0) {
             const prev = sel.value;
             sel.innerHTML = data.users.map(u => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join('');
-            if (curUser && data.users.includes(curUser)) {
+            if (savedTech && data.users.includes(savedTech)) {
+              sel.value = savedTech;
+            } else if (curUser && data.users.includes(curUser)) {
               sel.value = curUser;
             } else if (data.users.includes(prev)) {
               sel.value = prev;
@@ -3049,6 +3067,14 @@
           } else if (curUser) {
             sel.innerHTML = `<option value="${escapeHtml(curUser)}">${escapeHtml(curUser)}</option>`;
             sel.value = curUser;
+          }
+
+          if (!sel._boundChange) {
+            sel._boundChange = true;
+            sel.addEventListener('change', () => {
+              sessionStorage.setItem('sos_active_technician', sel.value);
+            });
+            sel.addEventListener('focus', loadUserNamesList);
           }
         }
       } catch (e) {}

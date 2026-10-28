@@ -4,7 +4,6 @@ const TAB_LABELS = {
   'phone-tablets': 'Phone and Tablets',
   'gamepad-tester': 'Gamepad Tester',
   'game-library': 'Game Library',
-  'product-search': 'Product Search',
   'repair-book-in': 'Repair Book In',
 };
 const VALID_THEMES = ['yellow', 'light', 'dark', 'blue'];
@@ -266,12 +265,17 @@ function selectTab(id) {
     if (wsToggleText) wsToggleText.textContent = 'Show Header & Bullion';
     if (wsToggleIcon) wsToggleIcon.innerHTML = '&#9660;';
 
-    // Focus module iframe so keyboard and gamepad inputs respond immediately
+    // Ensure module iframe has a valid src loaded so it never displays a blank white screen
     const frame = document.querySelector(`.tab-pane[data-pane="${id}"] iframe`);
-    if (frame && frame.contentWindow) {
-      setTimeout(() => {
-        try { frame.contentWindow.focus(); } catch (e) {}
-      }, 50);
+    if (frame) {
+      if (!frame.src && !frame.srcdoc && id !== 'home' && !ADMIN_TABS.some((t) => t.id === id) && id !== 'account') {
+        frame.src = `/modules/${id}.html`;
+      }
+      if (frame.contentWindow) {
+        setTimeout(() => {
+          try { frame.contentWindow.focus(); } catch (e) {}
+        }, 50);
+      }
     }
   } else if (mainScreen) {
     mainScreen.classList.remove('header-collapsed');
@@ -738,4 +742,14 @@ buildKeypad();
 
 /* Always land cleanly on the login screen requiring credentials */
 show('screen-login');
+
+// Forward parent window gamepad events to active iframe so gamepads are immediately detected
+window.addEventListener('gamepadconnected', (e) => {
+  try {
+    const activeFrame = document.querySelector('.tab-pane.active iframe');
+    if (activeFrame && activeFrame.contentWindow) {
+      activeFrame.contentWindow.postMessage({ type: 'SOS_GAMEPAD_CONNECTED', id: e.gamepad.id, index: e.gamepad.index }, '*');
+    }
+  } catch (err) {}
+});
 

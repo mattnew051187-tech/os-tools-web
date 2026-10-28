@@ -395,6 +395,12 @@
       border: 1px solid var(--danger);
     }
 
+    .battery-rule-badge.repair {
+      background: var(--amber-bg);
+      color: var(--amber);
+      border: 1px solid var(--amber);
+    }
+
     /* Verdict Banner */
     .verdict-banner {
       border-radius: 12px;
@@ -1039,6 +1045,13 @@
         <p id="verdict-reason" class="verdict-reason">
           All diagnostics passed: Clean IMEI, healthy battery (≥75%), and all hardware fully operational.
         </p>
+      </div>
+
+      <div class="form-group" style="margin-top:14px; margin-bottom:16px;">
+        <label style="font-weight:700; font-size:12.5px; color:var(--text); margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+          <span>&#128221;</span> Technician Notes / Cost of Repair Deductions
+        </label>
+        <textarea id="tech-repair-note" rows="2" placeholder="e.g. Battery below 75% — £25 battery replacement cost deducted from valuation / retail price." style="width:100%; border-radius:8px; border:1px solid var(--border); background:var(--panel-2); color:var(--text); padding:9px 12px; font-size:13px; font-family:inherit; resize:vertical; box-sizing:border-box;"></textarea>
       </div>
 
       <div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:16px;">
@@ -1847,15 +1860,15 @@
       batteryText.textContent = `${p}%`;
 
       if (p < 75) {
-        batteryFill.style.background = 'var(--danger)';
-        batteryText.style.color = 'var(--danger)';
-        batteryBadge.className = 'battery-rule-badge fail';
-        batteryBadge.innerHTML = '&#9888; Battery Fails Workshop Threshold (&lt; 75% Capacity)';
+        batteryFill.style.background = '#d97706';
+        batteryText.style.color = '#b45309';
+        batteryBadge.className = 'battery-rule-badge repair';
+        batteryBadge.innerHTML = '&#9888; Battery Repair Required (&lt; 75% Capacity)';
       } else {
         batteryFill.style.background = 'var(--success)';
         batteryText.style.color = 'var(--success)';
         batteryBadge.className = 'battery-rule-badge pass';
-        batteryBadge.innerHTML = '&#10003; Healthy Battery (Above 75% Threshold)';
+        batteryBadge.innerHTML = '&#10003; Battery Pass (&ge; 75% Capacity)';
       }
       recalculateVerdict();
     }
@@ -1871,7 +1884,7 @@
       const imeiPill = document.getElementById('imei-status-pill').textContent;
       const isOtherOrBlacklisted = imeiPill === 'OTHER' || imeiPill.includes('OTHER') || imeiPill === 'BLACKLISTED';
       const batteryPercent = parseInt(document.getElementById('battery-input').value, 10) || 100;
-      const isBatteryFail = batteryPercent < 75;
+      const isBatteryRepair = batteryPercent < 75;
 
       const failedHw = Object.keys(hardwareState).filter(k => hardwareState[k].status === 'FAIL');
 
@@ -1883,10 +1896,10 @@
         banner.className = 'verdict-banner fail';
         title.textContent = 'QA VERDICT: FAIL';
         reason.textContent = `Hardware defect(s) detected: ${failedHw.length} inspection check(s) failed physical testing.`;
-      } else if (isBatteryFail) {
+      } else if (isBatteryRepair) {
         banner.className = 'verdict-banner repair';
         title.textContent = 'QA VERDICT: REPAIR';
-        reason.textContent = `Battery service required: Maximum capacity is ${batteryPercent}%, which fails the workshop ≥75% threshold.`;
+        reason.textContent = `Battery service required: Maximum capacity is ${batteryPercent}%, which requires repair / battery replacement deduction (< 75% threshold).`;
       } else {
         banner.className = 'verdict-banner pass';
         title.textContent = 'QA VERDICT: PASS';
@@ -1969,6 +1982,7 @@
         cycles: document.getElementById('battery-cycles') ? document.getElementById('battery-cycles').value : '0',
         cosmeticGrade: document.getElementById('cos-grade') ? document.getElementById('cos-grade').value : 'Grade A (Pristine)',
         hardware: JSON.parse(JSON.stringify(hardwareState)),
+        repairNotes: (document.getElementById('tech-repair-note') && document.getElementById('tech-repair-note').value.trim()) || '',
         verdict: document.getElementById('verdict-title').textContent.replace('QA VERDICT: ', ''),
         reason: document.getElementById('verdict-reason').textContent
       };
@@ -2476,6 +2490,13 @@
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(8.5);
         doc.setTextColor(60, 60, 60);
+        if (r.repairNotes) {
+          doc.setFont('helvetica', 'bold');
+          doc.text('Technician / Pricing Notes:', 16, y);
+          doc.setFont('helvetica', 'normal');
+          doc.text(String(r.repairNotes), 60, y);
+          y += 5.5;
+        }
         doc.text('Device inspected, hardware verified, and certified according to SOS Workshop QA Standards.', 16, y);
 
         y += 8;
@@ -2521,7 +2542,7 @@
         [
           'SKU', 'Report ID', 'Date', 'Technician', 'Brand', 'Model', 'Storage', 'Color', 'Carrier',
           'Screen Lock PIN', 'IMEI', 'Blacklist Status', 'Serial Number', 'Warranty Status', 'Battery Health', 'Battery Cycles',
-          'Cosmetic Grade', 'Hardware Defects', 'QA Verdict', 'Verdict Reason'
+          'Cosmetic Grade', 'Hardware Defects', 'QA Verdict', 'Verdict Reason', 'Technician Notes'
         ]
       ];
 
@@ -2554,7 +2575,8 @@
         r.cosmeticGrade || '',
         defects.join('; ') || 'None (All Pass)',
         r.verdict || '',
-        r.reason || ''
+        r.reason || '',
+        r.repairNotes || ''
       ]);
 
       const csvContent = rows.map(row => row.map(cell => `"${String(cell || '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
@@ -2579,7 +2601,7 @@
         [
           'SKU', 'Report ID', 'Date', 'Technician', 'Brand', 'Model', 'Storage', 'Color', 'Carrier',
           'Screen Lock PIN', 'IMEI', 'Blacklist Status', 'Serial Number', 'Warranty Status', 'Battery Health', 'Battery Cycles',
-          'Cosmetic Grade', 'Hardware Defects', 'QA Verdict', 'Verdict Reason'
+          'Cosmetic Grade', 'Hardware Defects', 'QA Verdict', 'Verdict Reason', 'Technician Notes'
         ]
       ];
 
@@ -2613,7 +2635,8 @@
           r.cosmeticGrade || '',
           defects.join('; ') || 'None (All Pass)',
           r.verdict || '',
-          r.reason || ''
+          r.reason || '',
+          r.repairNotes || ''
         ]);
       });
 
@@ -2706,12 +2729,23 @@ Summary: ${reason}
 
         if (data.ok && Array.isArray(data.users) && data.users.length > 0) {
           const sel = document.getElementById('dev-tech');
+          const savedTech = sessionStorage.getItem('sos_active_technician') || '';
           const prev = sel.value;
           sel.innerHTML = data.users.map(u => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join('');
-          if (curUser && data.users.includes(curUser)) {
+          if (savedTech && data.users.includes(savedTech)) {
+            sel.value = savedTech;
+          } else if (curUser && data.users.includes(curUser)) {
             sel.value = curUser;
           } else if (data.users.includes(prev)) {
             sel.value = prev;
+          }
+
+          if (!sel._boundChange) {
+            sel._boundChange = true;
+            sel.addEventListener('change', () => {
+              sessionStorage.setItem('sos_active_technician', sel.value);
+            });
+            sel.addEventListener('focus', loadTechnicians);
           }
         }
       } catch (e) {}
