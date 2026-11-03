@@ -2449,7 +2449,7 @@
         id: `batch-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         barcode,
         name: res.found ? res.name : '',
-        console: consoleName,
+        console: (res.found && res.console) ? res.console : consoleName,
         cexPrice: res.found ? res.cexPrice : 0,
         storePrice: destination === 'overflow' ? 0 : (res.found ? res.cexPrice : 0),
         hasCase: true,

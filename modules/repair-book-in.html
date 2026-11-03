@@ -455,20 +455,132 @@
       margin-top: 4px;
     }
 
-    /* Status Badges */
+    /* Status Badges & Controls */
     .status-badge {
       display: inline-block;
-      padding: 3px 8px;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-size: 11.5px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .status-booked-in { background: #e2e8f0; color: #334155; border: 1px solid #cbd5e1; }
+    .status-with-tech { background: rgba(180, 83, 9, 0.15); color: #b45309; border: 1px solid #f59e0b; }
+    .status-customer-called { background: rgba(2, 132, 199, 0.15); color: #0284c7; border: 1px solid #38bdf8; }
+    .status-back-in-store { background: rgba(15, 118, 110, 0.15); color: #0f766e; border: 1px solid #2dd4bf; }
+    .status-customer-picked-up { background: rgba(21, 128, 61, 0.15); color: #15803d; border: 1px solid #4ade80; }
+
+    /* Interactive Status Card Section */
+    .status-workflow-box {
+      background: rgba(255, 255, 255, 0.65);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .status-workflow-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .status-workflow-label {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+    }
+    .status-select-control {
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1.5px solid var(--accent);
+      background: var(--panel);
+      color: var(--text);
+      cursor: pointer;
+      outline: none;
+      transition: all 0.15s;
+    }
+    .status-select-control:focus {
+      border-color: #92400e;
+      box-shadow: 0 0 0 2px rgba(180, 83, 9, 0.2);
+    }
+    .status-latest-audit {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.35;
+      padding-top: 4px;
+      border-top: 1px dashed var(--border);
+    }
+    .status-latest-audit strong {
+      color: var(--text);
+    }
+    .status-audit-note {
+      font-style: italic;
+      color: var(--text);
+      margin-top: 2px;
+    }
+    .status-history-drawer {
+      margin-top: 6px;
+      padding: 8px 10px;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
       border-radius: 6px;
       font-size: 11px;
+      max-height: 160px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .history-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding-bottom: 6px;
+      border-bottom: 1px dotted var(--border);
+    }
+    .history-item:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+    .history-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       font-weight: 700;
     }
-    .status-booked { background: #e2e8f0; color: #475569; }
-    .status-diagnosing { background: var(--amber-bg); color: var(--amber); }
-    .status-awaiting-parts { background: rgba(168, 85, 247, 0.15); color: #9333ea; }
-    .status-in-progress { background: var(--info-bg); color: var(--info); }
-    .status-ready { background: var(--success-bg); color: var(--success); }
-    .status-collected { background: #f1f5f9; color: #64748b; text-decoration: line-through; }
+    .history-note {
+      color: var(--text);
+      font-style: italic;
+    }
+
+    /* Toast Notification */
+    #repair-toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #1e293b;
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+      z-index: 2000;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      animation: toastIn 0.25s ease-out;
+    }
+    @keyframes toastIn {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
 
     /* Empty state */
     .empty-state {
@@ -723,19 +835,19 @@
         <span class="stat-hint" id="stat-active-hint">Open repairs on bench</span>
       </div>
       <div class="stat-card">
-        <span class="stat-label">Awaiting Parts</span>
-        <span class="stat-value" id="stat-parts-count">0</span>
-        <span class="stat-hint">Components on order</span>
+        <span class="stat-label">With Tech</span>
+        <span class="stat-value" id="stat-tech-count" style="color:var(--amber)">0</span>
+        <span class="stat-hint">Active workbench repair</span>
       </div>
       <div class="stat-card">
-        <span class="stat-label">Ready for Pickup</span>
-        <span class="stat-value" id="stat-ready-count" style="color:var(--success)">0</span>
-        <span class="stat-hint">Passed QA testing</span>
+        <span class="stat-label">Back in Store</span>
+        <span class="stat-value" id="stat-store-count" style="color:var(--info)">0</span>
+        <span class="stat-hint">Ready for customer collection</span>
       </div>
       <div class="stat-card">
         <span class="stat-label">Total Shop Price</span>
         <span class="stat-value" id="stat-quote-val" style="color:var(--accent)">£0.00</span>
-        <span class="stat-hint" id="stat-deposit-val">£0.00 technician costs</span>
+        <span class="stat-hint" id="stat-deposit-val">£0.00 tech costs · £0.00 margin</span>
       </div>
     </div>
 
@@ -745,11 +857,10 @@
       <div class="filter-tabs" id="status-filter-tabs">
         <button class="filter-tab active" data-filter="all">All Jobs (<span id="count-all">0</span>)</button>
         <button class="filter-tab" data-filter="Booked In">Booked In (<span id="count-booked">0</span>)</button>
-        <button class="filter-tab" data-filter="Under Diagnosis">Diagnosing (<span id="count-diag">0</span>)</button>
-        <button class="filter-tab" data-filter="Awaiting Parts">Awaiting Parts (<span id="count-parts">0</span>)</button>
-        <button class="filter-tab" data-filter="Repair In Progress">In Progress (<span id="count-progress">0</span>)</button>
-        <button class="filter-tab" data-filter="Ready for Collection">Ready for Collection (<span id="count-ready">0</span>)</button>
-        <button class="filter-tab" data-filter="Collected">Completed / Collected (<span id="count-collected">0</span>)</button>
+        <button class="filter-tab" data-filter="With Tech">With Tech (<span id="count-tech">0</span>)</button>
+        <button class="filter-tab" data-filter="Customer Called / Updated">Customer Called / Updated (<span id="count-called">0</span>)</button>
+        <button class="filter-tab" data-filter="Back in Store">Back in Store (<span id="count-store">0</span>)</button>
+        <button class="filter-tab" data-filter="Customer Picked Up">Customer Picked Up (<span id="count-pickedup">0</span>)</button>
       </div>
 
       <!-- Search & Filters -->
@@ -956,28 +1067,159 @@
     </div>
   </div>
 
+  <!-- ================= STATUS CHANGE MODAL ================= -->
+  <div class="modal-backdrop" id="status-modal" style="display:none;">
+    <div class="modal-card" style="max-width:500px;">
+      <div class="modal-header">
+        <h2 id="status-modal-title">Update Repair Status</h2>
+        <button class="btn btn-sm" onclick="closeStatusModal()">&#10005;</button>
+      </div>
+      <div class="modal-body">
+        <form id="status-form" onsubmit="handleConfirmStatusChange(event)">
+          <input type="hidden" id="status-ticket-id" value="" />
+          <input type="hidden" id="status-prev-val" value="" />
+
+          <div style="background:var(--panel-2); padding:10px 14px; border-radius:8px; border:1px solid var(--border); font-size:12.5px; display:flex; flex-direction:column; gap:4px;">
+            <div><strong>Ticket:</strong> <span id="status-modal-ref" style="color:var(--accent); font-weight:800;">-</span></div>
+            <div><strong>Device:</strong> <span id="status-modal-device">-</span></div>
+            <div><strong>Customer:</strong> <span id="status-modal-customer">-</span></div>
+          </div>
+
+          <div class="form-group" style="margin-top:12px;">
+            <label>New Workflow Status *</label>
+            <select id="status-modal-select" required style="font-weight:700; font-size:13px;">
+              <option value="Booked In">Booked In</option>
+              <option value="With Tech">With Tech</option>
+              <option value="Customer Called / Updated">Customer Called / Updated</option>
+              <option value="Back in Store">Back in Store</option>
+              <option value="Customer Picked Up">Customer Picked Up</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin-top:10px;">
+            <label>Person Changing Status (Your Name) *</label>
+            <div style="display:flex; gap:8px;">
+              <select id="status-modal-user-dropdown" onchange="handleStatusUserDropdown(this.value)" style="flex:1; font-weight:600;">
+                <option value="Matt">Matt</option>
+                <option value="__custom__">&#43; Write-in Name...</option>
+              </select>
+              <input type="text" id="status-modal-user-text" placeholder="Enter your name" style="flex:1; display:none;" />
+            </div>
+            <span style="font-size:11px; color:var(--muted)">Records who moved the repair to this stage in the audit trail.</span>
+          </div>
+
+          <div class="form-group" style="margin-top:10px;">
+            <label>Date &amp; Time Recorded *</label>
+            <input type="text" id="status-modal-datetime" required />
+          </div>
+
+          <div class="form-group" style="margin-top:10px;">
+            <label>Technician Notes / Communication (Optional)</label>
+            <textarea id="status-modal-note" rows="2" placeholder="e.g. Completed replacement HDMI port; bench-tested ok. Called customer David to confirm ready."></textarea>
+          </div>
+
+          <div class="modal-footer" style="padding-left:0; padding-right:0; margin-top:12px;">
+            <button type="button" class="btn" onclick="closeStatusModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="btn-save-status">&#10003; Confirm Status Change</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="repair-toast"></div>
+
   <script>
     // Storage Key
     const STORAGE_KEY = 'sos_repair_tickets';
 
-    // Initial Dataset - Blank for workshop entry
-    const DEFAULT_TICKETS = [];
+    // 5 Authorized Workflow Stages
+    const STATUS_OPTIONS = [
+      'Booked In',
+      'With Tech',
+      'Customer Called / Updated',
+      'Back in Store',
+      'Customer Picked Up'
+    ];
 
     // State
     let tickets = [];
     let currentFilter = 'all';
+    let availableUsers = ['Matt'];
+    let activeUser = 'Matt';
 
     // Clear All Tickets
-    function clearAllTickets() {
-      if (confirm('Clear all repair tickets from the workshop register?')) {
-        tickets = [];
-        saveTickets();
-        renderTickets();
-      }
+    async function clearAllTickets() {
+      if (!confirm('Clear all repair tickets from the workshop register?')) return;
+      try {
+        for (const t of tickets) {
+          await fetch(`/api/repairs/${t.id}`, { method: 'DELETE' }).catch(() => {});
+        }
+      } catch (e) {}
+      tickets = [];
+      saveLocalTickets();
+      renderTickets();
+      showToast('All workshop tickets cleared');
     }
 
     // Initialize
-    function init() {
+    async function init() {
+      setupFilterTabs();
+      await loadAvailableUsers();
+      await fetchServerTickets();
+    }
+
+    async function loadAvailableUsers() {
+      try {
+        const res = await fetch('/api/users/list');
+        const data = await res.json();
+        if (data && Array.isArray(data.users) && data.users.length > 0) {
+          availableUsers = data.users;
+          if (data.currentUser) activeUser = data.currentUser;
+          else if (availableUsers.includes('Matt')) activeUser = 'Matt';
+          else activeUser = availableUsers[0];
+        }
+      } catch (e) {
+        // Fallback
+        availableUsers = ['Matt'];
+        activeUser = 'Matt';
+      }
+      populateUserDropdown();
+    }
+
+    function populateUserDropdown() {
+      const select = document.getElementById('status-modal-user-dropdown');
+      if (!select) return;
+      select.innerHTML = availableUsers
+        .map(u => `<option value="${escapeHtml(u)}" ${u === activeUser ? 'selected' : ''}>${escapeHtml(u)}</option>`)
+        .join('') + `<option value="__custom__">&#43; Write-in Name...</option>`;
+    }
+
+    function handleStatusUserDropdown(val) {
+      const customInput = document.getElementById('status-modal-user-text');
+      if (val === '__custom__') {
+        customInput.style.display = 'block';
+        customInput.focus();
+      } else {
+        customInput.style.display = 'none';
+        activeUser = val;
+      }
+    }
+
+    async function fetchServerTickets() {
+      try {
+        const res = await fetch('/api/repairs');
+        const data = await res.json();
+        if (data && data.ok && Array.isArray(data.tickets)) {
+          tickets = data.tickets;
+          saveLocalTickets();
+          renderTickets();
+          return;
+        }
+      } catch (e) {}
+
+      // Fallback to local storage if offline
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         try {
@@ -988,15 +1230,14 @@
         }
       } else {
         tickets = [];
-        saveTickets();
       }
-
-      setupFilterTabs();
       renderTickets();
     }
 
-    function saveTickets() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(tickets));
+    function saveLocalTickets() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(tickets));
+      } catch (e) {}
     }
 
     // Filter Tabs
@@ -1012,35 +1253,45 @@
       });
     }
 
+    function getStatusBadgeClass(status) {
+      switch (status) {
+        case 'With Tech': return 'status-with-tech';
+        case 'Customer Called / Updated': return 'status-customer-called';
+        case 'Back in Store': return 'status-back-in-store';
+        case 'Customer Picked Up': return 'status-customer-picked-up';
+        case 'Booked In':
+        default:
+          return 'status-booked-in';
+      }
+    }
+
     // Render Stats and Grid
     function renderTickets() {
       const search = (document.getElementById('search-input').value || '').toLowerCase().trim();
       const categoryFilter = document.getElementById('category-filter').value;
 
-      // Update badge counts
+      // Update badge counts for the 5 workflow stages
       const counts = {
         all: tickets.length,
         booked: tickets.filter(t => (t.status || 'Booked In') === 'Booked In').length,
-        diag: tickets.filter(t => t.status === 'Under Diagnosis').length,
-        parts: tickets.filter(t => t.status === 'Awaiting Parts').length,
-        progress: tickets.filter(t => t.status === 'Repair In Progress').length,
-        ready: tickets.filter(t => t.status === 'Ready for Collection').length,
-        collected: tickets.filter(t => t.status === 'Collected').length,
+        tech: tickets.filter(t => t.status === 'With Tech').length,
+        called: tickets.filter(t => t.status === 'Customer Called / Updated').length,
+        store: tickets.filter(t => t.status === 'Back in Store').length,
+        pickedup: tickets.filter(t => t.status === 'Customer Picked Up').length,
       };
 
       document.getElementById('count-all').textContent = counts.all;
       document.getElementById('count-booked').textContent = counts.booked;
-      document.getElementById('count-diag').textContent = counts.diag;
-      document.getElementById('count-parts').textContent = counts.parts;
-      document.getElementById('count-progress').textContent = counts.progress;
-      document.getElementById('count-ready').textContent = counts.ready;
-      document.getElementById('count-collected').textContent = counts.collected;
+      document.getElementById('count-tech').textContent = counts.tech;
+      document.getElementById('count-called').textContent = counts.called;
+      document.getElementById('count-store').textContent = counts.store;
+      document.getElementById('count-pickedup').textContent = counts.pickedup;
 
       // Summary Grid stats
-      const activeJobs = tickets.filter(t => t.status !== 'Collected');
+      const activeJobs = tickets.filter(t => t.status !== 'Customer Picked Up');
       document.getElementById('stat-active-count').textContent = activeJobs.length;
-      document.getElementById('stat-parts-count').textContent = counts.parts;
-      document.getElementById('stat-ready-count').textContent = counts.ready;
+      document.getElementById('stat-tech-count').textContent = counts.tech;
+      document.getElementById('stat-store-count').textContent = counts.store;
 
       const totalShop = activeJobs.reduce((sum, t) => sum + (Number(t.quote) || 0), 0);
       const totalTech = activeJobs.reduce((sum, t) => sum + (Number(t.deposit) || 0), 0);
@@ -1050,14 +1301,10 @@
 
       // Filter tickets
       const filtered = tickets.filter(t => {
-        // Status filter
         const jobStatus = t.status || 'Booked In';
         if (currentFilter !== 'all' && jobStatus !== currentFilter) return false;
-
-        // Category filter
         if (categoryFilter !== 'all' && t.device.category !== categoryFilter) return false;
 
-        // Search text
         if (search) {
           const match =
             t.id.toLowerCase().includes(search) ||
@@ -1065,10 +1312,9 @@
             t.customer.phone.toLowerCase().includes(search) ||
             t.device.model.toLowerCase().includes(search) ||
             (t.device.serial && t.device.serial.toLowerCase().includes(search)) ||
-            t.fault.toLowerCase().includes(search);
+            (t.fault && t.fault.toLowerCase().includes(search));
           if (!match) return false;
         }
-
         return true;
       });
 
@@ -1089,15 +1335,65 @@
         const margin = shopPrice - techCost;
         const accList = (t.device.accessories && t.device.accessories.length > 0) ? t.device.accessories.join(', ') : 'None left';
         const statusLabel = t.status || 'Booked In';
+        const badgeClass = getStatusBadgeClass(statusLabel);
+
+        // Status history audit
+        const history = Array.isArray(t.statusHistory) && t.statusHistory.length > 0
+          ? t.statusHistory
+          : [{
+              status: statusLabel,
+              changedAt: t.createdAt || 'Intake',
+              changedBy: t.bookedBy || 'Matt',
+              note: 'Initial booking intake registered.'
+            }];
+        const latestAudit = history[0];
+
+        const historyDrawerHtml = history.map(h => `
+          <div class="history-item">
+            <div class="history-head">
+              <span class="status-badge ${getStatusBadgeClass(h.status)}" style="font-size:10px; padding:1px 6px;">${escapeHtml(h.status)}</span>
+              <span style="color:var(--muted); font-size:10.5px;">${escapeHtml(h.changedAt)}</span>
+            </div>
+            <div>By: <strong>${escapeHtml(h.changedBy || 'Staff')}</strong></div>
+            ${h.note ? `<div class="history-note">"${escapeHtml(h.note)}"</div>` : ''}
+          </div>
+        `).join('');
 
         return `
           <div class="ticket-card" id="card-${t.id}">
             <div class="ticket-top">
               <div>
                 <span class="ticket-ref">${escapeHtml(t.id)}</span>
-                <div class="ticket-date">${escapeHtml(t.createdAt)}</div>
+                <div class="ticket-date">Booked: ${escapeHtml(t.createdAt)}</div>
               </div>
-              <span class="status-badge status-booked">${escapeHtml(statusLabel)}</span>
+              <span class="status-badge ${badgeClass}">${escapeHtml(statusLabel)}</span>
+            </div>
+
+            <!-- Workflow Status Dropdown & Audit Trail -->
+            <div class="status-workflow-box">
+              <div class="status-workflow-row">
+                <span class="status-workflow-label">Status Stage:</span>
+                <select class="status-select-control" id="status-select-${t.id}" onchange="promptStatusChange('${t.id}', this.value, '${escapeHtml(statusLabel)}')">
+                  ${STATUS_OPTIONS.map(opt => `
+                    <option value="${escapeHtml(opt)}" ${statusLabel === opt ? 'selected' : ''}>${escapeHtml(opt)}</option>
+                  `).join('')}
+                </select>
+              </div>
+
+              <div class="status-latest-audit">
+                🕒 <strong>${escapeHtml(latestAudit.status)}</strong> · ${escapeHtml(latestAudit.changedAt)} by <strong>${escapeHtml(latestAudit.changedBy || 'Staff')}</strong>
+                ${latestAudit.note ? `<div class="status-audit-note">"${escapeHtml(latestAudit.note)}"</div>` : ''}
+              </div>
+
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
+                <button type="button" class="btn btn-sm" onclick="toggleStatusHistory('${t.id}')" style="font-size:11px; padding:3px 8px; background:transparent;">
+                  📜 Status Trail (${history.length})
+                </button>
+              </div>
+
+              <div id="history-drawer-${t.id}" class="status-history-drawer" style="display:none;">
+                ${historyDrawerHtml}
+              </div>
             </div>
 
             <div class="customer-info">
@@ -1139,6 +1435,112 @@
       }).join('');
     }
 
+    function toggleStatusHistory(ticketId) {
+      const drawer = document.getElementById(`history-drawer-${ticketId}`);
+      if (!drawer) return;
+      drawer.style.display = drawer.style.display === 'none' ? 'flex' : 'none';
+    }
+
+    function promptStatusChange(ticketId, newStatus, prevStatus) {
+      const t = tickets.find(item => item.id === ticketId);
+      if (!t) return;
+
+      document.getElementById('status-ticket-id').value = ticketId;
+      document.getElementById('status-prev-val').value = prevStatus;
+      document.getElementById('status-modal-ref').textContent = `#${t.id}`;
+      document.getElementById('status-modal-device').textContent = `${t.device.model} (${t.device.category})`;
+      document.getElementById('status-modal-customer').textContent = `${t.customer.name} (${t.customer.phone})`;
+      document.getElementById('status-modal-select').value = newStatus;
+      
+      const nowStr = new Date().toLocaleString('en-GB');
+      document.getElementById('status-modal-datetime').value = nowStr;
+      document.getElementById('status-modal-note').value = '';
+
+      populateUserDropdown();
+      document.getElementById('status-modal-user-dropdown').value = activeUser;
+      document.getElementById('status-modal-user-text').style.display = 'none';
+      document.getElementById('status-modal-user-text').value = '';
+
+      document.getElementById('status-modal').style.display = 'flex';
+    }
+
+    function closeStatusModal() {
+      // If cancelled, revert the inline select back to previous value
+      const ticketId = document.getElementById('status-ticket-id').value;
+      const prevVal = document.getElementById('status-prev-val').value;
+      if (ticketId && prevVal) {
+        const select = document.getElementById(`status-select-${ticketId}`);
+        if (select) select.value = prevVal;
+      }
+      document.getElementById('status-modal').style.display = 'none';
+    }
+
+    async function handleConfirmStatusChange(event) {
+      event.preventDefault();
+      const ticketId = document.getElementById('status-ticket-id').value;
+      const newStatus = document.getElementById('status-modal-select').value;
+      const userDropdownVal = document.getElementById('status-modal-user-dropdown').value;
+      const userTextVal = document.getElementById('status-modal-user-text').value.trim();
+      const personName = (userDropdownVal === '__custom__' ? userTextVal : userDropdownVal) || activeUser || 'Staff';
+      const recordDateTime = document.getElementById('status-modal-datetime').value.trim() || new Date().toLocaleString('en-GB');
+      const note = document.getElementById('status-modal-note').value.trim();
+
+      if (!personName) {
+        alert('Please enter or select a technician / person name.');
+        return;
+      }
+
+      // Update active user for session convenience
+      activeUser = personName;
+
+      // Find local ticket
+      const t = tickets.find(item => item.id === ticketId);
+      if (t) {
+        const historyEntry = {
+          status: newStatus,
+          changedAt: recordDateTime,
+          changedBy: personName,
+          note: note || `Status updated to ${newStatus}`
+        };
+        if (!Array.isArray(t.statusHistory)) t.statusHistory = [];
+        t.statusHistory.unshift(historyEntry);
+        t.status = newStatus;
+        t.lastUpdated = recordDateTime;
+        t.lastUpdatedBy = personName;
+      }
+
+      saveLocalTickets();
+      renderTickets();
+      document.getElementById('status-modal').style.display = 'none';
+      showToast(`Status updated: ${newStatus} (by ${personName})`);
+
+      // Persist to server
+      try {
+        await fetch(`/api/repairs/${ticketId}/status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: newStatus,
+            changedBy: personName,
+            changedAt: recordDateTime,
+            note: note
+          })
+        });
+      } catch (err) {
+        console.warn('Could not sync status patch with server, saved locally:', err);
+      }
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('repair-toast');
+      if (!toast) return;
+      toast.innerHTML = `<span>&#10003;</span> <span>${escapeHtml(message)}</span>`;
+      toast.style.display = 'flex';
+      setTimeout(() => {
+        toast.style.display = 'none';
+      }, 3500);
+    }
+
     function getCategoryIcon(cat) {
       switch (cat) {
         case 'Console': return '&#127918;';
@@ -1150,7 +1552,7 @@
       }
     }
 
-    // Modal Handling
+    // Modal Handling for New / Edit Ticket
     function openNewTicketModal() {
       document.getElementById('modal-title').textContent = 'Book In New Repair Ticket';
       document.getElementById('edit-ticket-id').value = '';
@@ -1210,7 +1612,7 @@
       document.getElementById('ticket-modal').style.display = 'flex';
     }
 
-    function handleSaveTicket(event) {
+    async function handleSaveTicket(event) {
       event.preventDefault();
 
       const editId = document.getElementById('edit-ticket-id').value;
@@ -1223,6 +1625,8 @@
       if (document.getElementById('acc-box').checked) accessories.push('Original Box');
 
       const existingTicket = editId ? tickets.find(t => t.id === editId) : null;
+      const nowStr = new Date().toLocaleString('en-GB');
+
       const ticketData = {
         customer: {
           name: document.getElementById('cust-name').value.trim(),
@@ -1242,40 +1646,64 @@
         quote: parseFloat(document.getElementById('quote-price').value) || 0,
         deposit: parseFloat(document.getElementById('deposit-paid').value) || 0,
         status: existingTicket ? (existingTicket.status || 'Booked In') : 'Booked In',
+        bookedBy: activeUser || 'Matt'
       };
 
-      if (editId) {
+      let finalTicket = null;
+
+      if (editId && existingTicket) {
         // Edit existing
+        finalTicket = {
+          ...existingTicket,
+          ...ticketData,
+          updatedAt: nowStr
+        };
         const index = tickets.findIndex(t => t.id === editId);
-        if (index !== -1) {
-          tickets[index] = {
-            ...tickets[index],
-            ...ticketData,
-          };
-        }
+        if (index !== -1) tickets[index] = finalTicket;
       } else {
         // Create new
         const newRef = 'SOS-REP-' + Math.floor(2050 + Math.random() * 8000);
-        const now = new Date();
-        const dateStr = now.toISOString().slice(0, 10) + ' ' + now.toTimeString().slice(0, 5);
-        tickets.unshift({
+        finalTicket = {
           id: newRef,
-          createdAt: dateStr,
+          createdAt: nowStr,
+          statusHistory: [{
+            status: 'Booked In',
+            changedAt: nowStr,
+            changedBy: activeUser || 'Matt',
+            note: 'Initial workshop intake booking recorded.'
+          }],
           ...ticketData,
-        });
+        };
+        tickets.unshift(finalTicket);
       }
 
-      saveTickets();
+      saveLocalTickets();
       renderTickets();
       closeTicketModal();
+      showToast(`Repair Ticket ${finalTicket.id} saved successfully`);
+
+      // Persist to server
+      try {
+        await fetch('/api/repairs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(finalTicket)
+        });
+      } catch (e) {
+        console.warn('Could not post ticket to server, saved locally:', e);
+      }
     }
 
-    function deleteTicket(id) {
-      if (confirm(`Are you sure you want to delete repair ticket ${id}?`)) {
-        tickets = tickets.filter(t => t.id !== id);
-        saveTickets();
-        renderTickets();
-      }
+    async function deleteTicket(id) {
+      if (!confirm(`Are you sure you want to delete repair ticket ${id}?`)) return;
+      tickets = tickets.filter(t => t.id !== id);
+      saveLocalTickets();
+      renderTickets();
+      showToast(`Ticket ${id} deleted`);
+
+      try {
+        await fetch(`/api/repairs/${id}`, { method: 'DELETE' });
+      } catch (e) {}
     }
 
     // Print Modal
@@ -1287,10 +1715,13 @@
       const techCost = Number(t.deposit || 0);
       const margin = shopPrice - techCost;
       const accList = (t.device.accessories && t.device.accessories.length > 0) ? t.device.accessories.join(', ') : 'None';
+      const history = Array.isArray(t.statusHistory) && t.statusHistory.length > 0 ? t.statusHistory : [];
+      const currentStatus = t.status || 'Booked In';
+      const lastAudit = history[0] || { changedAt: t.createdAt, changedBy: 'Matt' };
 
       document.getElementById('print-ticket-barcode').textContent = '*' + t.id + '*';
-      document.getElementById('print-ticket-ref').textContent = '#' + t.id + ' (' + (t.status || 'Booked In') + ')';
-      document.getElementById('print-ticket-date').textContent = 'Date: ' + t.createdAt;
+      document.getElementById('print-ticket-ref').textContent = '#' + t.id + ' [' + currentStatus.toUpperCase() + ']';
+      document.getElementById('print-ticket-date').textContent = `Booked: ${t.createdAt} · Last Update: ${lastAudit.changedAt} by ${lastAudit.changedBy || 'Staff'}`;
 
       document.getElementById('print-cust-name').textContent = t.customer.name;
       document.getElementById('print-cust-phone').textContent = t.customer.phone;
@@ -1318,11 +1749,12 @@
         return;
       }
 
-      const headers = ['TicketID', 'Date', 'CustomerName', 'Phone', 'Email', 'Category', 'Device', 'Serial', 'Fault', 'ShopPrice', 'TechnicianCost', 'Margin', 'Status'];
+      const headers = ['TicketID', 'Date', 'CustomerName', 'Phone', 'Email', 'Category', 'Device', 'Serial', 'Fault', 'ShopPrice', 'TechnicianCost', 'Margin', 'Status', 'LastUpdatedBy', 'LastUpdatedAt'];
       const rows = tickets.map(t => {
         const shopPrice = Number(t.quote) || 0;
         const techCost = Number(t.deposit || 0);
         const margin = shopPrice - techCost;
+        const lastAudit = (t.statusHistory && t.statusHistory[0]) || {};
         return [
           t.id,
           t.createdAt,
@@ -1336,7 +1768,9 @@
           shopPrice.toFixed(2),
           techCost.toFixed(2),
           margin.toFixed(2),
-          t.status || 'Booked In'
+          `"${t.status || 'Booked In'}"`,
+          `"${lastAudit.changedBy || ''}"`,
+          `"${lastAudit.changedAt || ''}"`
         ].join(',');
       });
 

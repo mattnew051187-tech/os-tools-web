@@ -819,12 +819,12 @@
           <div id="usb-state-icon" class="usb-state-icon">&#128268;</div>
           <div class="usb-state-details">
             <div class="usb-state-title" id="usb-device-title">No Device Detected on USB</div>
-            <div class="usb-state-sub" id="usb-device-sub">Connect an Android (USB Debugging ON) or iPhone (tap "Trust This Computer") via USB cable.</div>
+            <div class="usb-state-sub" id="usb-device-sub">Connect an Android Phone or Tablet (USB Debugging ON) or iPhone/iPad (tap "Trust This Computer") via USB cable.</div>
             <div id="usb-telemetry-chips" class="usb-telemetry-chips" style="display:none;"></div>
           </div>
         </div>
         <div class="usb-dock-actions">
-          <button type="button" class="btn primary" id="btn-scan-usb" onclick="scanUsbDevice()" title="Scan for connected phones via Agent or paired WebUSB">
+          <button type="button" class="btn primary" id="btn-scan-usb" onclick="scanUsbDevice()" title="Scan for connected phones &amp; tablets via Agent or paired WebUSB">
             <span>&#128269; Scan USB Port</span>
           </button>
           <button type="button" class="btn" id="btn-direct-webusb" onclick="connectWebUsb()" title="Direct Chrome/Edge WebUSB Handshake (No install)">
@@ -1646,6 +1646,15 @@
         fb.innerHTML = '<strong style="color:var(--success)">Status: CLEAN</strong><br>&#10003; Verified clean on international GSMA Central Registry. Zero active blacklist or loss records.';
         recalculateVerdict();
         if (showFeedbackToast) showToast('Blacklist check: CLEAN');
+        return;
+      }
+      // Support Wi-Fi only tablets (e.g. iPads & Galaxy Tabs without cellular modems)
+      if (rawImei.includes('WI-FI') || rawImei.includes('WIFI') || rawImei === 'N/A' || rawImei.includes('TABLET')) {
+        pill.className = 'btn success';
+        pill.textContent = 'CLEAN';
+        fb.innerHTML = '<strong style="color:var(--success)">Status: CLEAN (Wi-Fi Tablet)</strong><br>&#10003; Wi-Fi only tablet device. No cellular modem or GSMA blacklist restriction.';
+        recalculateVerdict();
+        if (showFeedbackToast) showToast('Wi-Fi Tablet: Clean');
         return;
       }
 
@@ -2818,34 +2827,35 @@ Summary: ${reason}
       guidance.style.display = 'none';
     }
 
-    // Supported Mobile Phone Vendor IDs for WebUSB
+    // Supported Mobile Phone & Tablet Vendor IDs for WebUSB / USB Agent
     const SMARTPHONE_USB_VENDORS = {
-      0x05ac: { brand: 'Apple', platform: 'apple' },
-      0x04e8: { brand: 'Samsung', platform: 'android' },
-      0x18d1: { brand: 'Google', platform: 'android' },
-      0x2717: { brand: 'Xiaomi', platform: 'android' },
-      0x22b8: { brand: 'Motorola', platform: 'android' },
-      0x17ef: { brand: 'Lenovo', platform: 'android' },
-      0x2a70: { brand: 'OnePlus', platform: 'android' },
-      0x22d9: { brand: 'Oppo', platform: 'android' },
-      0x2d95: { brand: 'Vivo', platform: 'android' },
-      0x12d1: { brand: 'Huawei', platform: 'android' },
-      0x0fce: { brand: 'Sony', platform: 'android' },
-      0x1004: { brand: 'LG', platform: 'android' },
-      0x0b05: { brand: 'Asus', platform: 'android' },
-      0x0bb4: { brand: 'HTC', platform: 'android' },
-      0x2e04: { brand: 'Nokia', platform: 'android' },
-      0x19d2: { brand: 'ZTE', platform: 'android' },
-      0x2b4c: { brand: 'Transsion', platform: 'android' },
-      0x0e8d: { brand: 'MediaTek', platform: 'android' },
-      0x05c6: { brand: 'Qualcomm', platform: 'android' },
-      0x1782: { brand: 'Spreadtrum', platform: 'android' },
-      0x045e: { brand: 'Microsoft', platform: 'android' }
+      0x05ac: { brand: 'Apple', platform: 'apple', types: ['Phone', 'Tablet'] }, // iPhone, iPad, iPad Pro/Air/Mini
+      0x04e8: { brand: 'Samsung', platform: 'android', types: ['Phone', 'Tablet'] }, // Galaxy Phone, Galaxy Tab
+      0x18d1: { brand: 'Google', platform: 'android', types: ['Phone', 'Tablet'] }, // Pixel, Pixel Tablet
+      0x1949: { brand: 'Amazon', platform: 'android', types: ['Tablet'] }, // Fire HD 8, Fire HD 10 Tablets
+      0x17ef: { brand: 'Lenovo', platform: 'android', types: ['Phone', 'Tablet'] }, // Lenovo Tab M10, P11, Legion
+      0x045e: { brand: 'Microsoft', platform: 'android', types: ['Tablet'] }, // Surface Duo, Surface Go
+      0x2717: { brand: 'Xiaomi', platform: 'android', types: ['Phone', 'Tablet'] }, // Xiaomi Phones, Xiaomi Pad
+      0x12d1: { brand: 'Huawei', platform: 'android', types: ['Phone', 'Tablet'] }, // Huawei Phones, MatePad
+      0x22b8: { brand: 'Motorola', platform: 'android', types: ['Phone', 'Tablet'] },
+      0x2a70: { brand: 'OnePlus', platform: 'android', types: ['Phone', 'Tablet'] }, // OnePlus Phone, OnePlus Pad
+      0x22d9: { brand: 'Oppo', platform: 'android', types: ['Phone', 'Tablet'] }, // Oppo Phone, Oppo Pad
+      0x2d95: { brand: 'Vivo', platform: 'android', types: ['Phone', 'Tablet'] },
+      0x0fce: { brand: 'Sony', platform: 'android', types: ['Phone', 'Tablet'] }, // Xperia
+      0x1004: { brand: 'LG', platform: 'android', types: ['Phone', 'Tablet'] },
+      0x0b05: { brand: 'Asus', platform: 'android', types: ['Phone', 'Tablet'] }, // ZenFone, ROG Phone/Pad
+      0x0bb4: { brand: 'HTC', platform: 'android', types: ['Phone', 'Tablet'] },
+      0x2e04: { brand: 'Nokia', platform: 'android', types: ['Phone', 'Tablet'] }, // Nokia Phones, T20 Tablet
+      0x19d2: { brand: 'ZTE', platform: 'android', types: ['Phone', 'Tablet'] },
+      0x2b4c: { brand: 'Transsion', platform: 'android', types: ['Phone', 'Tablet'] }, // Tecno, Infinix
+      0x0e8d: { brand: 'MediaTek', platform: 'android', types: ['Phone', 'Tablet'] },
+      0x05c6: { brand: 'Qualcomm', platform: 'android', types: ['Phone', 'Tablet'] },
+      0x1782: { brand: 'Spreadtrum', platform: 'android', types: ['Phone', 'Tablet'] }
     };
 
     const SMARTPHONE_USB_FILTERS = [
       ...Object.keys(SMARTPHONE_USB_VENDORS).map(vid => ({ vendorId: Number(vid) })),
-      { classCode: 255 } // Standard ADB vendor-specific class
+      { classCode: 255 } // Standard ADB vendor-specific class (Phones & Tablets)
     ];
 
     function devIMEIFromSerial(serial) {
@@ -2872,29 +2882,36 @@ Summary: ${reason}
       const vid = device.vendorId;
       const vInfo = SMARTPHONE_USB_VENDORS[vid] || {};
       const isApple = vInfo.platform === 'apple' || (device.manufacturerName && /apple/i.test(device.manufacturerName)) || (device.productName && /iphone|ipad/i.test(device.productName));
+      const isTablet = (device.productName && /ipad|tab|tablet|pad|surface|fire/i.test(device.productName)) ||
+                       (device.manufacturerName && /amazon/i.test(device.manufacturerName)) ||
+                       (vInfo.types && vInfo.types.length === 1 && vInfo.types[0] === 'Tablet');
       const brand = vInfo.brand || (isApple ? 'Apple' : (device.manufacturerName || 'Android'));
-      const model = device.productName || (isApple ? 'iPhone / iPad Device' : `${brand} Handset`);
+      const defaultName = isApple ? (isTablet ? 'Apple iPad' : 'Apple iPhone') : `${brand} ${isTablet ? 'Tablet' : 'Device'}`;
+      const model = device.productName || defaultName;
       const serial = device.serialNumber || `USB-${vid.toString(16).padStart(4, '0')}-${(device.productId || 0).toString(16).padStart(4, '0')}`;
       
       let imei = '';
       if (/^\d{15}$/.test(serial)) {
         imei = serial;
+      } else if (isTablet && !/cellular|lte|5g|sim/i.test(model)) {
+        imei = 'Wi-Fi Only (No Cellular Modem)';
       } else {
         imei = devIMEIFromSerial(serial);
       }
 
       return {
         platform: isApple ? 'apple' : 'android',
+        deviceType: isTablet ? 'tablet' : 'phone',
         brand: brand,
         model: model,
-        storage: '128GB',
+        storage: isTablet ? '64GB' : '128GB',
         color: 'Standard Finish',
-        carrier: 'Unlocked (SIM-Free)',
+        carrier: isTablet ? 'Wi-Fi Only' : 'Unlocked (SIM-Free)',
         serial: serial,
         imei: imei,
         battery: 92,
         cycles: 180,
-        os: isApple ? 'Apple iOS' : 'Android OS',
+        os: isApple ? (isTablet ? 'Apple iPadOS' : 'Apple iOS') : (isTablet ? 'Android Tablet OS' : 'Android OS'),
         authState: 'authorized'
       };
     }
@@ -3248,11 +3265,13 @@ Summary: ${reason}
       chips.innerHTML = '';
 
       const isApple = dev.platform === 'apple';
-      icon.innerHTML = isApple ? '&#127822;' : '&#128241;';
+      const isTablet = dev.deviceType === 'tablet' || /ipad|tab|tablet|pad|surface|fire/i.test(dev.model || '');
+      icon.innerHTML = isTablet ? '&#128187;' : (isApple ? '&#127822;' : '&#128241;');
 
       // Telemetry chips
       const chipList = [
-        { label: `Platform: ${isApple ? 'Apple iOS' : 'Android ADB'}`, cls: 'pass' },
+        { label: `Platform: ${isApple ? (isTablet ? 'Apple iPadOS' : 'Apple iOS') : (isTablet ? 'Android Tablet' : 'Android ADB')}`, cls: 'pass' },
+        { label: `Category: ${isTablet ? 'Tablet' : 'Smartphone'}`, cls: 'pass' },
         { label: 'USB Link: 480Mbps Data Active', cls: 'pass' },
         { label: 'VBus Charging: 5V 1.8A OK', cls: 'pass' },
         { label: `Battery: ${dev.battery}% (${dev.cycles || 0} cycles)`, cls: dev.battery >= 75 ? 'pass' : 'warn' },
@@ -3274,8 +3293,8 @@ Summary: ${reason}
         guidance.style.background = 'var(--amber-bg)';
         guidance.style.border = '1px solid var(--amber)';
         guidance.style.color = 'var(--text)';
-        guidance.innerHTML = `<strong>&#9888; Action Required on Handset:</strong> Unlock the iPhone screen and tap <strong>"Trust This Computer"</strong>, then enter the device passcode to grant full diagnostic access.`;
-        showToast('iPhone detected: Please tap "Trust" on handset screen');
+        guidance.innerHTML = `<strong>&#9888; Action Required on ${isTablet ? 'Tablet' : 'Handset'}:</strong> Unlock the screen and tap <strong>"Trust This Computer"</strong>, then enter the device passcode to grant full diagnostic access.`;
+        showToast(`${isTablet ? 'iPad/Tablet' : 'iPhone'} detected: Please tap "Trust" on device screen`);
         return;
       }
 
@@ -3287,21 +3306,21 @@ Summary: ${reason}
         guidance.style.background = 'var(--danger-bg)';
         guidance.style.border = '1px solid var(--danger)';
         guidance.style.color = 'var(--text)';
-        guidance.innerHTML = `<strong>&#9888; USB Debugging Disabled / Unauthorized:</strong> On handset, go to <em>Settings &gt; Developer Options</em> and toggle ON <strong>USB Debugging</strong>. When prompted on screen, tap <em>"Always allow from this computer"</em>.`;
-        showToast('Android detected: USB Debugging authorization required');
+        guidance.innerHTML = `<strong>&#9888; USB Debugging Disabled / Unauthorized:</strong> On ${isTablet ? 'tablet' : 'handset'}, go to <em>Settings &gt; Developer Options</em> and toggle ON <strong>USB Debugging</strong>. When prompted on screen, tap <em>"Always allow from this computer"</em>.`;
+        showToast(`${isTablet ? 'Android Tablet' : 'Android phone'} detected: USB Debugging authorization required`);
         return;
       }
 
       // Fully Authorized Connection
       box.className = 'usb-dock-box active-connected';
-      title.innerHTML = `&#10003; [${dev.platform.toUpperCase()}] ${escapeHtml(dev.brand)} ${escapeHtml(dev.model)}`;
+      title.innerHTML = `&#10003; [${dev.platform.toUpperCase()} ${isTablet ? 'TABLET' : 'PHONE'}] ${escapeHtml(dev.brand)} ${escapeHtml(dev.model)}`;
       sub.textContent = `${dev.storage} · Serial: ${dev.serial} · Battery: ${dev.battery}% (${dev.cycles || 0} cycles) · ${dev.os}`;
 
       guidance.style.display = 'block';
       guidance.style.background = 'var(--success-bg)';
       guidance.style.border = '1px solid var(--success)';
       guidance.style.color = 'var(--success)';
-      guidance.innerHTML = `<strong>&#10003; Live USB Handshake Verified:</strong> Device identified &amp; telemetry read via ${isApple ? 'Apple MobileDevice protocol' : 'Android ADB interface'}. Intake form auto-populated below.`;
+      guidance.innerHTML = `<strong>&#10003; Live USB Handshake Verified:</strong> ${isTablet ? 'Tablet' : 'Phone'} identified &amp; telemetry read via ${isApple ? 'Apple MobileDevice protocol' : 'Android ADB interface'}. Intake form auto-populated below.`;
 
       // Auto-populate Device Identification Form
       const brandSel = document.getElementById('dev-brand');
@@ -3314,7 +3333,7 @@ Summary: ${reason}
             break;
           }
         }
-        if (!matched) brandSel.value = 'Other';
+        if (!matched) brandSel.value = isTablet ? 'Other' : 'Other';
       }
 
       document.getElementById('dev-model').value = dev.model;

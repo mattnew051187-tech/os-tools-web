@@ -667,7 +667,107 @@ app.delete('/api/phone-reports/:id', (req, res) => {
   res.json({ ok: true });
 });
 
-// ---- USB Phone Diagnostic Agent Bridge ----
+// ---- Repair Book In & Workshop Job Tracking Persistence ----
+const REPAIRS_FILE = path.join(APP_ROOT, 'data', 'repairs.json');
+
+function loadRepairTickets() {
+  try {
+    if (fs.existsSync(REPAIRS_FILE)) {
+      return JSON.parse(fs.readFileSync(REPAIRS_FILE, 'utf8')) || [];
+    }
+  } catch (e) {}
+  return [];
+}
+
+function saveRepairTickets(tickets) {
+  try {
+    const dataDir = path.join(APP_ROOT, 'data');
+    if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+    fs.writeFileSync(REPAIRS_FILE, JSON.stringify(tickets, null, 2), 'utf8');
+  } catch (e) {}
+}
+
+app.get('/api/repairs', (req, res) => {
+  res.json({ ok: true, tickets: loadRepairTickets() });
+});
+
+app.post('/api/repairs', (req, res) => {
+  const ticket = req.body;
+  if (!ticket || !ticket.id) return res.status(400).json({ ok: false, error: 'Invalid ticket data' });
+  const tickets = loadRepairTickets();
+  const existingIdx = tickets.findIndex((t) => t.id === ticket.id);
+  const nowStr = new Date().toLocaleString('en-GB');
+
+  if (existingIdx >= 0) {
+    tickets[existingIdx] = { 
+      ...tickets[existingIdx], 
+      ...ticket, 
+      updatedAt: ticket.updatedAt || nowStr 
+    };
+  } else {
+    const initialHistory = (ticket.statusHistory && ticket.statusHistory.length > 0)
+      ? ticket.statusHistory 
+      : [{
+          status: ticket.status || 'Booked In',
+          changedAt: ticket.createdAt || nowStr,
+          changedBy: ticket.bookedBy || (req.user ? req.user.username : 'Matt'),
+          note: 'Initial intake and booking registered.'
+        }];
+    tickets.unshift({ 
+      ...ticket, 
+      createdAt: ticket.createdAt || nowStr,
+      status: ticket.status || 'Booked In',
+      statusHistory: initialHistory
+    });
+  }
+  saveRepairTickets(tickets);
+  const actor = req.user ? req.user.username : (ticket.bookedBy || 'Matt');
+  logActivity(actor, 'repair-save', `Saved repair ticket ${ticket.id} (${(ticket.device && ticket.device.model) || 'Device'}) - Status: ${ticket.status}`);
+  res.json({ ok: true, ticket });
+});
+
+app.patch('/api/repairs/:id/status', (req, res) => {
+  const { id } = req.params;
+  const { status, changedBy, note, changedAt } = req.body || {};
+  if (!status) return res.status(400).json({ ok: false, error: 'Status is required' });
+
+  const tickets = loadRepairTickets();
+  const target = tickets.find((t) => t.id === id);
+  if (!target) return res.status(404).json({ ok: false, error: 'Repair ticket not found' });
+
+  const nowStr = changedAt || new Date().toLocaleString('en-GB');
+  const user = changedBy || (req.user ? req.user.username : 'Matt');
+  
+  const historyEntry = {
+    status: status,
+    changedAt: nowStr,
+    changedBy: user,
+    note: String(note || '').trim() || `Status updated to ${status}`
+  };
+
+  if (!Array.isArray(target.statusHistory)) {
+    target.statusHistory = [];
+  }
+  target.statusHistory.unshift(historyEntry);
+  target.status = status;
+  target.lastUpdated = nowStr;
+  target.lastUpdatedBy = user;
+  target.updatedAt = nowStr;
+
+  saveRepairTickets(tickets);
+  logActivity(user, 'repair-status-update', `Ticket ${id} status changed to "${status}" by ${user}${note ? ` (${note})` : ''}`);
+  res.json({ ok: true, ticket: target });
+});
+
+app.delete('/api/repairs/:id', (req, res) => {
+  const { id } = req.params;
+  let tickets = loadRepairTickets();
+  tickets = tickets.filter((t) => t.id !== id);
+  saveRepairTickets(tickets);
+  res.json({ ok: true });
+});
+
+// ---- USB Phone & Tablet Diagnostic Agent Bridge ----
 let activeUsbDevice = null;
 
 app.get('/api/usb-agent/status', (req, res) => {
@@ -675,7 +775,8 @@ app.get('/api/usb-agent/status', (req, res) => {
     ok: true,
     agentOnline: true,
     agentVersion: '1.2.0',
-    supportedPlatforms: ['android_adb', 'apple_ios', 'webusb'],
+    supportedPlatforms: ['android_adb', 'apple_ios', 'apple_ipados', 'android_tablet', 'webusb', 'webserial'],
+    supportedDevices: ['Smartphones (iPhone, Samsung Galaxy, Pixel, Xiaomi, etc.)', 'Tablets (iPad, Galaxy Tab, Lenovo Tab, Amazon Fire, Surface)'],
     activeDevice: activeUsbDevice,
   });
 });
@@ -699,9 +800,39 @@ app.delete('/api/usb-agent/device', (req, res) => {
 });
 
 // ---- CeX Catalog Database & Lookup Engine ----
+const CEX_CACHE_FILE = path.join(APP_ROOT, 'data', 'cex-cache.json');
+
+function loadCexCache() {
+  try {
+    if (fs.existsSync(CEX_CACHE_FILE)) {
+      return JSON.parse(fs.readFileSync(CEX_CACHE_FILE, 'utf8')) || {};
+    }
+  } catch {}
+  return {};
+}
+
+function saveCexCache(barcode, item) {
+  if (!barcode || !item) return;
+  try {
+    const dataDir = path.join(APP_ROOT, 'data');
+    if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+    const cache = loadCexCache();
+    cache[String(barcode).trim()] = {
+      ...item,
+      cachedAt: new Date().toISOString()
+    };
+    fs.writeFileSync(CEX_CACHE_FILE, JSON.stringify(cache, null, 2), 'utf8');
+  } catch {}
+}
+
 const KNOWN_CEX_DB = [
-  { barcode: '5021290081963', name: 'Just Cause 4', console: 'PlayStation 4', sell: 8.00, cash: 3.50, voucher: 4.50 },
-  { barcode: '711719548231', name: "Marvel's Spider-Man 2", console: 'PlayStation 5', sell: 38.00, cash: 19.00, voucher: 24.00 },
+  { barcode: '711719856252', name: 'Until Dawn: Rush Of Blood (PSVR)', console: 'PlayStation 4', sell: 3.00, cash: 0.70, voucher: 1.10 },
+  { barcode: '3307215914830', name: 'For Honor (No DLC)', console: 'PlayStation 4', sell: 3.00, cash: 0.40, voucher: 0.90 },
+  { barcode: '5021290081963', name: 'Just Cause 4', console: 'PlayStation 4', sell: 6.00, cash: 2.00, voucher: 3.00 },
+  { barcode: '711719571681', name: 'Spider-Man 2 (No DLC)', console: 'PlayStation 5', sell: 35.00, cash: 18.00, voucher: 23.00 },
+  { barcode: '711719548231', name: "Marvel's Spider-Man 2", console: 'PlayStation 5', sell: 35.00, cash: 18.00, voucher: 23.00 },
+  { barcode: '5026555423045', name: 'Red Dead Redemption 2 (2 Disc) (No DLC)', console: 'PlayStation 4', sell: 12.00, cash: 5.00, voucher: 7.00 },
+  { barcode: '5026555423046', name: 'Red Dead Redemption 2', console: 'PlayStation 4', sell: 12.00, cash: 5.00, voucher: 7.00 },
   { barcode: '3391892015820', name: 'Elden Ring', console: 'PlayStation 5', sell: 32.00, cash: 16.00, voucher: 20.00 },
   { barcode: '711719548545', name: 'God of War Ragnarok', console: 'PlayStation 5', sell: 30.00, cash: 15.00, voucher: 19.00 },
   { barcode: '711719548675', name: 'The Last of Us Part I', console: 'PlayStation 5', sell: 42.00, cash: 21.00, voucher: 26.00 },
@@ -712,7 +843,6 @@ const KNOWN_CEX_DB = [
   { barcode: '711719541539', name: 'Returnal', console: 'PlayStation 5', sell: 22.00, cash: 11.00, voucher: 14.00 },
   { barcode: '711719452316', name: 'Bloodborne', console: 'PlayStation 4', sell: 15.00, cash: 7.50, voucher: 9.50 },
   { barcode: '5026555416970', name: 'Grand Theft Auto V', console: 'PlayStation 4', sell: 12.00, cash: 6.00, voucher: 8.00 },
-  { barcode: '5026555423046', name: 'Red Dead Redemption 2', console: 'PlayStation 4', sell: 16.00, cash: 8.00, voucher: 10.00 },
   { barcode: '5060418460520', name: 'The Witcher 3: Wild Hunt GOTY', console: 'PlayStation 4', sell: 14.00, cash: 7.00, voucher: 9.00 },
   { barcode: '711719827596', name: "Uncharted 4: A Thief's End", console: 'PlayStation 4', sell: 8.00, cash: 4.00, voucher: 5.00 },
   { barcode: '711719714858', name: 'God of War', console: 'PlayStation 4', sell: 10.00, cash: 5.00, voucher: 6.50 },
@@ -736,30 +866,167 @@ const KNOWN_CEX_DB = [
   { barcode: '5026555403567', name: 'Red Dead Redemption', console: 'Xbox 360', sell: 9.00, cash: 4.50, voucher: 6.00 }
 ];
 
-function queryCexPromise(query) {
-  return new Promise((resolve) => {
-    const raw = String(query || '').trim();
-    const manualUrl = `https://uk.webuy.com/search?stext=${encodeURIComponent(raw)}`;
+function normalizeConsoleName(category, title) {
+  const s = `${category || ''} ${title || ''}`.toLowerCase();
+  if (s.includes('playstation 5') || s.includes('playstation5') || s.includes('ps5')) return 'PlayStation 5';
+  if (s.includes('playstation 4') || s.includes('playstation4') || s.includes('ps4') || s.includes('psvr')) return 'PlayStation 4';
+  if (s.includes('playstation 3') || s.includes('playstation3') || s.includes('ps3')) return 'PlayStation 3';
+  if (s.includes('playstation 2') || s.includes('playstation2') || s.includes('ps2')) return 'PlayStation 2';
+  if (s.includes('playstation 1') || s.includes('playstation1') || s.includes('ps1') || s.includes('psx')) return 'PlayStation 1';
+  if (s.includes('playstation portable') || s.includes('psp')) return 'PSP';
+  if (s.includes('playstation vita') || s.includes('ps vita') || s.includes('psvita')) return 'PS Vita';
+  if (s.includes('xbox series') || s.includes('series x') || s.includes('series s')) return 'Xbox Series X';
+  if (s.includes('xbox one') || s.includes('xone') || s.includes('xb1')) return 'Xbox One';
+  if (s.includes('xbox 360') || s.includes('x360')) return 'Xbox 360';
+  if (s.includes('xbox original') || s.includes('original xbox')) return 'Xbox';
+  if (s.includes('switch') || s.includes('nswitch') || s.includes('nintendo switch')) return 'Nintendo Switch';
+  if (s.includes('wii u') || s.includes('wiiu')) return 'Wii U';
+  if (s.includes('wii') || s.includes('nintendo wii')) return 'Nintendo Wii';
+  if (s.includes('3ds') || s.includes('nintendo 3ds')) return 'Nintendo 3DS';
+  if (s.includes('ds') || s.includes('nintendo ds')) return 'Nintendo DS';
+  if (s.includes('gamecube')) return 'GameCube';
+  if (s.includes('game boy advance') || s.includes('gba')) return 'GBA';
+  if (s.includes('game boy color') || s.includes('gbc')) return 'Game Boy Color';
+  if (s.includes('game boy') || s.includes('gameboy')) return 'Game Boy';
+  if (s.includes('pc') || s.includes('windows')) return 'PC';
+  return category || 'PlayStation 4';
+}
 
-    // 1. Check known database first (instant response, immune to Cloudflare)
-    const match = KNOWN_CEX_DB.find(
-      (k) => (k.barcode && k.barcode === raw) || k.name.toLowerCase() === raw.toLowerCase()
-    );
-    if (match) {
-      return resolve({
-        ok: true,
-        item: {
-          name: match.name,
-          console: match.console,
-          cexPrice: Number(match.sell) || 0,
-          cashPrice: Number(match.cash) || 0,
-          barcode: match.barcode || raw,
+function fetchCeXBoxDetail(sku) {
+  return new Promise((resolve) => {
+    const clean = encodeURIComponent(String(sku || '').trim());
+    const endpoints = [
+      `https://wss2.cex.uk.webuy.io/v3/boxes/${clean}/detail`,
+      `https://wss2.cex.ie.webuy.io/v3/boxes/${clean}/detail`
+    ];
+
+    let currentIdx = 0;
+    function tryNext() {
+      if (currentIdx >= endpoints.length) return resolve(null);
+      const url = endpoints[currentIdx++];
+
+      const req = https.get(url, {
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Accept': 'application/json',
+          'Accept-Language': 'en-GB,en;q=0.9',
         },
-        manualUrl,
+        timeout: 4500,
+      }, (res) => {
+        let body = '';
+        res.on('data', (chunk) => {
+          body += chunk;
+          if (body.length > 512 * 1024) req.destroy();
+        });
+        res.on('end', () => {
+          try {
+            const json = JSON.parse(body);
+            const box = json?.response?.data?.boxDetails?.[0];
+            if (box && box.boxName) return resolve(box);
+          } catch {}
+          tryNext();
+        });
+      });
+
+      req.on('timeout', () => {
+        req.destroy();
+        tryNext();
+      });
+
+      req.on('error', () => {
+        tryNext();
       });
     }
 
-    // 2. Query live CeX endpoint
+    tryNext();
+  });
+}
+
+async function queryCexPromise(query) {
+  const raw = String(query || '').trim();
+  const manualUrl = `https://uk.webuy.com/search?stext=${encodeURIComponent(raw)}`;
+  if (!raw) return { ok: false, manualUrl, message: 'Empty query' };
+
+  // 1. Check persistent server cache on disk
+  const diskCache = loadCexCache();
+  if (diskCache[raw]) {
+    const cached = diskCache[raw];
+    return {
+      ok: true,
+      item: {
+        name: cached.name,
+        console: cached.console,
+        cexPrice: Number(cached.cexPrice || cached.sell) || 0,
+        cashPrice: Number(cached.cashPrice || cached.cash) || 0,
+        barcode: raw,
+        imageUrl: cached.imageUrl || '',
+      },
+      manualUrl,
+    };
+  }
+
+  // 2. Check curated known database (instant response)
+  const match = KNOWN_CEX_DB.find(
+    (k) => (k.barcode && k.barcode === raw) || k.name.toLowerCase() === raw.toLowerCase()
+  );
+  if (match) {
+    const item = {
+      name: match.name,
+      console: match.console,
+      cexPrice: Number(match.sell) || 0,
+      cashPrice: Number(match.cash) || 0,
+      barcode: match.barcode || raw,
+      imageUrl: '',
+    };
+    saveCexCache(raw, item);
+    return { ok: true, item, manualUrl };
+  }
+
+  // 3. Generate candidate SKUs (clean numbers, handle 12-digit UPC vs 13-digit EAN zero-padding)
+  const rawClean = raw.replace(/[^0-9a-zA-Z]/g, '');
+  const candidateSkus = [];
+  if (rawClean) candidateSkus.push(rawClean);
+  if (rawClean.length === 12) {
+    candidateSkus.push('0' + rawClean);
+  } else if (rawClean.length === 13 && rawClean.startsWith('0')) {
+    candidateSkus.push(rawClean.slice(1));
+  } else if (rawClean.length === 14 && rawClean.startsWith('00')) {
+    candidateSkus.push(rawClean.slice(2));
+  }
+
+  // 4. Query CeX live catalog directly via official boxes API
+  for (const sku of candidateSkus) {
+    const box = await fetchCeXBoxDetail(sku);
+    if (box && box.boxName) {
+      const consoleName = normalizeConsoleName(
+        box.categoryFriendlyName || box.categoryName,
+        box.boxName
+      );
+      const item = {
+        name: box.boxName,
+        console: consoleName,
+        cexPrice: Number(box.sellPrice) || 0,
+        cashPrice: Number(box.cashPrice) || 0,
+        exchangePrice: Number(box.exchangePrice) || 0,
+        barcode: raw,
+        boxId: box.boxId,
+        imageUrl: (box.imageUrls && (box.imageUrls.large || box.imageUrls.medium)) || '',
+        description: box.boxDescription || '',
+      };
+      saveCexCache(raw, item);
+      if (sku !== raw) saveCexCache(sku, item);
+      return { ok: true, item, manualUrl };
+    }
+  }
+
+  // If input was a numeric barcode and not found via official CeX catalog API, return immediately
+  if (/^\d{6,}$/.test(rawClean)) {
+    return { ok: false, manualUrl, message: 'Item not found on CeX' };
+  }
+
+  // 5. Fallback HTML query for textual game title searches
+  return new Promise((resolve) => {
     let parsed;
     try {
       parsed = new URL(`https://uk.webuy.com/search/?stext=${encodeURIComponent(raw)}`);
@@ -773,18 +1040,18 @@ function queryCexPromise(query) {
       method: 'GET',
       headers: {
         'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'en-GB,en;q=0.9',
       },
-      timeout: 5000,
+      timeout: 3000,
     };
 
     const cexReq = https.request(reqOptions, (cexRes) => {
       let body = '';
       cexRes.on('data', (chunk) => {
         body += chunk;
-        if (body.length > 1024 * 1024) cexReq.destroy();
+        if (body.length > 512 * 1024) cexReq.destroy();
       });
       cexRes.on('end', () => {
         try {
@@ -794,23 +1061,22 @@ function queryCexPromise(query) {
             const boxes = json?.props?.pageProps?.data?.boxes || [];
             if (boxes.length > 0) {
               const b = boxes[0];
-              return resolve({
-                ok: true,
-                item: {
-                  name: b.boxName,
-                  console: b.categoryFriendlyName || '',
-                  cexPrice: Number(b.sellPrice) || 0,
-                  cashPrice: Number(b.cashPrice) || 0,
-                  barcode: b.barcode || raw,
-                  boxId: b.boxId,
-                  imageUrl: (b.imageUrls && b.imageUrls.large) || '',
-                },
-                manualUrl,
-              });
+              const consoleName = normalizeConsoleName(b.categoryFriendlyName, b.boxName);
+              const item = {
+                name: b.boxName,
+                console: consoleName,
+                cexPrice: Number(b.sellPrice) || 0,
+                cashPrice: Number(b.cashPrice) || 0,
+                barcode: b.barcode || raw,
+                boxId: b.boxId,
+                imageUrl: (b.imageUrls && b.imageUrls.large) || '',
+              };
+              saveCexCache(raw, item);
+              return resolve({ ok: true, item, manualUrl });
             }
           }
         } catch {}
-        resolve({ ok: false, manualUrl, message: 'Not found in live CeX scrape or blocked by Cloudflare' });
+        resolve({ ok: false, manualUrl, message: 'Not found on CeX' });
       });
     });
 
