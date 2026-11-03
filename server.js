@@ -257,7 +257,13 @@ app.use((req, res, next) => {
   next();
 });
 app.use(express.json({ limit: '1mb' }));
-app.use(express.static(path.join(APP_ROOT, 'public')));
+app.use(express.static(path.join(APP_ROOT, 'public'), {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    }
+  }
+}));
 app.get(['/modules', '/modules/'], (req, res) => {
   res.redirect('/modules/gamepad-tester.html');
 });
@@ -268,7 +274,13 @@ app.get('/modules/beta.html', (req, res, next) => {
   }
   next();
 });
-app.use('/modules', express.static(path.join(APP_ROOT, 'modules')));
+app.use('/modules', express.static(path.join(APP_ROOT, 'modules'), {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    }
+  }
+}));
 app.get('/modules/:file', (req, res, next) => {
   const file = req.params.file;
   if (!file.endsWith('.html')) {
@@ -866,7 +878,9 @@ const KNOWN_CEX_DB = [
   { barcode: '5026555403567', name: 'Red Dead Redemption', console: 'Xbox 360', sell: 9.00, cash: 4.50, voucher: 6.00 },
   { barcode: '3307215889282', name: 'Rainbow Six Siege', console: 'Xbox Series X', sell: 2.50, cash: 0.30, voucher: 0.80 },
   { barcode: '3307216024590', name: 'The Crew 2 (No DLC)', console: 'PlayStation 4', sell: 6.00, cash: 1.50, voucher: 2.50 },
-  { barcode: '5021290084926', name: "Marvel's Avengers (No DLC)", console: 'PlayStation 4', sell: 10.00, cash: 3.50, voucher: 5.00 }
+  { barcode: '5021290084926', name: "Marvel's Avengers (No DLC)", console: 'PlayStation 4', sell: 10.00, cash: 3.50, voucher: 5.00 },
+  { barcode: '5060236962188', name: 'Zombie Army Trilogy', console: 'PlayStation 4', sell: 8.00, cash: 3.00, voucher: 5.00 },
+  { barcode: '711719947967', name: 'Knowledge is Power (Playlink)', console: 'PlayStation 4', sell: 3.00, cash: 0.01, voucher: 0.10 }
 ];
 
 // Special/Deluxe packaging barcodes that CeX indexes under alternative base disc SKUs
@@ -954,7 +968,11 @@ function fetchCeXBoxDetail(sku) {
 }
 
 async function queryCexPromise(query) {
-  const raw = String(query || '').trim();
+  let raw = String(query || '').trim();
+  const urlIdMatch = raw.match(/[?&]id=([0-9a-zA-Z]+)/i) || raw.match(/product-detail[^\/]*\/([0-9a-zA-Z]+)/i);
+  if (urlIdMatch) {
+    raw = urlIdMatch[1];
+  }
   const manualUrl = `https://uk.webuy.com/search?stext=${encodeURIComponent(raw)}`;
   if (!raw) return { ok: false, manualUrl, message: 'Empty query' };
 

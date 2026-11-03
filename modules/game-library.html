@@ -1257,6 +1257,76 @@
     </div>
   </div>
 
+  <!-- CeX Live Lookup & Fast Import Overlay Modal -->
+  <div id="cex-overlay-modal" class="modal-backdrop" style="display:none; z-index:9999;">
+    <div class="modal-box" style="max-width:580px; width:92%;">
+      <div class="modal-header">
+        <h3 style="display:flex; align-items:center; gap:8px;">
+          <span style="color:var(--accent);">&#128269;</span> CeX Catalog Inspector &amp; Quick Import
+        </h3>
+        <button id="btn-close-cex-overlay" class="btn subtle" onclick="closeCexOverlay()">&times;</button>
+      </div>
+
+      <div style="font-size:12px; color:var(--muted); margin-bottom:12px; line-height:1.4;">
+        Inspect CeX live product details. When you are happy with the information from CeX, click <strong>&ldquo;Use This CeX Information&rdquo;</strong> to auto-populate the game title, native console, and verified CeX price.
+      </div>
+
+      <!-- Search Input Bar -->
+      <div style="display:flex; gap:8px; margin-bottom:12px;">
+        <input type="text" id="cex-overlay-query" placeholder="Enter barcode, game title, or CeX web link..."
+               style="flex:1; font-size:13px; font-weight:600; padding:8px 10px;" />
+        <button type="button" class="btn primary" id="btn-cex-overlay-search" onclick="runCexOverlayQuery()">
+          &#128269; Search CeX
+        </button>
+        <a id="cex-overlay-link-out" href="https://uk.webuy.com" target="_blank" rel="noopener noreferrer"
+           class="btn subtle" style="font-size:12px; display:inline-flex; align-items:center; gap:4px; text-decoration:none;" title="Open CeX website in new tab">
+          CeX Site &#8599;
+        </a>
+      </div>
+
+      <!-- Status banner -->
+      <div id="cex-overlay-status" style="font-size:12px; margin-bottom:12px; min-height:18px;"></div>
+
+      <!-- Result Card -->
+      <div id="cex-overlay-card" style="display:none; background:var(--panel-2); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px;">
+        <div style="display:flex; gap:16px; align-items:flex-start;">
+          <div id="cex-overlay-img-box" style="width:90px; height:120px; background:var(--panel); border:1px solid var(--border); border-radius:8px; overflow:hidden; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <img id="cex-overlay-img" src="" alt="Game Art" style="max-width:100%; max-height:100%; object-fit:contain;" />
+          </div>
+          <div style="flex:1;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+              <h4 id="cex-overlay-title" style="margin:0 0 6px 0; font-size:16px; font-weight:800; color:var(--text);"></h4>
+              <span id="cex-overlay-badge" style="font-size:11px; font-weight:700; background:rgba(59,130,246,0.15); color:var(--accent); border:1px solid var(--accent); padding:2px 8px; border-radius:12px; white-space:nowrap;"></span>
+            </div>
+            <div style="display:flex; gap:16px; flex-wrap:wrap; margin:10px 0;">
+              <div>
+                <div style="font-size:10px; color:var(--muted); text-transform:uppercase; font-weight:700;">CeX Sell Price</div>
+                <div id="cex-overlay-price" style="font-size:18px; font-weight:800; color:var(--text);"></div>
+              </div>
+              <div>
+                <div style="font-size:10px; color:var(--muted); text-transform:uppercase; font-weight:700;">Cash Value</div>
+                <div id="cex-overlay-cash" style="font-size:14px; font-weight:700; color:var(--muted);"></div>
+              </div>
+              <div>
+                <div style="font-size:10px; color:var(--muted); text-transform:uppercase; font-weight:700;">CeX Box ID</div>
+                <div id="cex-overlay-boxid" style="font-size:12px; font-family:monospace; color:var(--muted);"></div>
+              </div>
+            </div>
+            <div id="cex-overlay-note" style="font-size:11px; color:var(--muted);"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action buttons -->
+      <div style="display:flex; justify-content:flex-end; gap:10px; border-top:1px solid var(--border); padding-top:14px;">
+        <button type="button" class="btn subtle" onclick="closeCexOverlay()">Close</button>
+        <button type="button" class="btn emerald" id="btn-cex-overlay-use" style="display:none; font-weight:800;" onclick="applyCexOverlaySelection()">
+          &#10003; Use This CeX Information
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast -->
   <div id="toast" class="toast" style="display:none">
     <span>&#10003;</span>
@@ -1319,7 +1389,9 @@
       { name: 'The Crew 2 (No DLC)', console: 'PlayStation 4', sell: 6.00, cash: 1.50, voucher: 2.50, barcode: '3307216024590' },
       { name: "Marvel's Avengers (No DLC)", console: 'PlayStation 4', sell: 10.00, cash: 3.50, voucher: 5.00, barcode: '5021290084926' },
       { name: 'Until Dawn: Rush Of Blood (PSVR)', console: 'PlayStation 4', sell: 3.00, cash: 0.70, voucher: 1.10, barcode: '711719856252' },
-      { name: 'For Honor (No DLC)', console: 'PlayStation 4', sell: 3.00, cash: 0.40, voucher: 0.90, barcode: '3307215914830' }
+      { name: 'For Honor (No DLC)', console: 'PlayStation 4', sell: 3.00, cash: 0.40, voucher: 0.90, barcode: '3307215914830' },
+      { name: 'Zombie Army Trilogy', console: 'PlayStation 4', sell: 8.00, cash: 3.00, voucher: 5.00, barcode: '5060236962188' },
+      { name: 'Knowledge is Power (Playlink)', console: 'PlayStation 4', sell: 3.00, cash: 0.01, voucher: 0.10, barcode: '711719947967' }
     ];
 
     // Special/Deluxe packaging barcodes that CeX indexes under alternative base disc SKUs
@@ -1588,6 +1660,228 @@
 
       return { found: false, barcode, manualUrl };
     }
+
+    // =========================================================================
+    // CeX Catalog Inspector & Quick Import Overlay Engine
+    // =========================================================================
+    let cexOverlayContext = {
+      targetType: 'batch', // 'batch' or 'single'
+      targetId: null,
+      barcode: '',
+      data: null
+    };
+
+    window.openCexOverlay = async function(targetType, targetId, barcode, currentTitle = '') {
+      cexOverlayContext = {
+        targetType: targetType || 'batch',
+        targetId: targetId,
+        barcode: String(barcode || '').trim(),
+        data: null
+      };
+
+      const modal = document.getElementById('cex-overlay-modal');
+      const input = document.getElementById('cex-overlay-query');
+      const card = document.getElementById('cex-overlay-card');
+      const useBtn = document.getElementById('btn-cex-overlay-use');
+      const statusEl = document.getElementById('cex-overlay-status');
+      const linkOut = document.getElementById('cex-overlay-link-out');
+
+      const queryTerm = cexOverlayContext.barcode || currentTitle || '';
+      input.value = queryTerm;
+      linkOut.href = `https://uk.webuy.com/search?stext=${encodeURIComponent(queryTerm || 'gaming')}`;
+
+      card.style.display = 'none';
+      useBtn.style.display = 'none';
+      statusEl.innerHTML = '';
+
+      modal.style.display = 'flex';
+      setTimeout(() => input.focus(), 80);
+
+      if (queryTerm) {
+        await runCexOverlayQuery();
+      }
+    };
+
+    window.closeCexOverlay = function() {
+      const modal = document.getElementById('cex-overlay-modal');
+      if (modal) modal.style.display = 'none';
+      cexOverlayContext.data = null;
+    };
+
+    window.runCexOverlayQuery = async function() {
+      const input = document.getElementById('cex-overlay-query');
+      const rawQuery = input.value.trim();
+      const card = document.getElementById('cex-overlay-card');
+      const useBtn = document.getElementById('btn-cex-overlay-use');
+      const statusEl = document.getElementById('cex-overlay-status');
+      const linkOut = document.getElementById('cex-overlay-link-out');
+
+      if (!rawQuery) {
+        statusEl.innerHTML = '<span style="color:var(--danger); font-weight:600;">Please enter a barcode, game title, or CeX URL.</span>';
+        card.style.display = 'none';
+        useBtn.style.display = 'none';
+        return;
+      }
+
+      linkOut.href = `https://uk.webuy.com/search?stext=${encodeURIComponent(rawQuery)}`;
+      statusEl.innerHTML = `<span style="color:var(--muted); font-weight:600;">&#8987; Querying CeX live catalog for &ldquo;${rawQuery}&rdquo;...</span>`;
+      card.style.display = 'none';
+      useBtn.style.display = 'none';
+
+      // 1. First check local learned cache or curated DB
+      const aliasTarget = BARCODE_ALIASES[rawQuery] || rawQuery;
+      const localCache = getCeXCache();
+      const cached = (localCache[rawQuery] && localCache[rawQuery].name) ? localCache[rawQuery] : ((localCache[aliasTarget] && localCache[aliasTarget].name) ? localCache[aliasTarget] : null);
+      const curated = CEX_LOOKUP_DB.find(c => c.barcode && (c.barcode === rawQuery || c.barcode === aliasTarget));
+
+      const instantMatch = cached || curated;
+      if (instantMatch && instantMatch.name) {
+        const detectedConsole = detectConsole(instantMatch.console || instantMatch.name) || instantMatch.console || consoles[0] || 'PlayStation 4';
+        displayCexOverlayResult({
+          name: instantMatch.name,
+          console: detectedConsole,
+          sellPrice: Number(instantMatch.sell || instantMatch.cexPrice) || 0,
+          cashPrice: Number(instantMatch.cash || instantMatch.cashPrice) || 0,
+          barcode: cexOverlayContext.barcode || instantMatch.barcode || rawQuery,
+          boxId: instantMatch.boxId || instantMatch.barcode || rawQuery,
+          imageUrl: instantMatch.imageUrl || ''
+        });
+        return;
+      }
+
+      // 2. Query server proxy
+      try {
+        const resp = await fetch(`/api/cex-lookup?q=${encodeURIComponent(rawQuery)}`, {
+          signal: AbortSignal.timeout(8000)
+        });
+        const json = await resp.json();
+
+        if (json && json.ok && json.item) {
+          const item = json.item;
+          const detectedConsole = detectConsole(item.console || item.name) || item.console || consoles[0] || 'PlayStation 4';
+          displayCexOverlayResult({
+            name: item.name,
+            console: detectedConsole,
+            sellPrice: Number(item.cexPrice) || 0,
+            cashPrice: Number(item.cashPrice) || 0,
+            barcode: cexOverlayContext.barcode || item.barcode || rawQuery,
+            boxId: item.boxId || '',
+            imageUrl: item.imageUrl || ''
+          });
+        } else {
+          statusEl.innerHTML = `
+            <div style="color:var(--accent); font-weight:700;">
+              &#9888; Item not found in direct CeX catalog lookup.
+            </div>
+            <div style="margin-top:6px; font-size:11.5px; line-height:1.4;">
+              You can search CeX directly: 
+              <a href="https://uk.webuy.com/search?stext=${encodeURIComponent(rawQuery)}" target="_blank" rel="noopener noreferrer" class="cex-manual-link" style="margin-left:4px;">
+                Open CeX Search Results &#8599;
+              </a>
+            </div>
+            <div style="font-size:11px; color:var(--muted); margin-top:6px;">
+              Tip: If you find it on CeX, paste the page web link or product ID above and click &ldquo;Search CeX&rdquo;.
+            </div>
+          `;
+          card.style.display = 'none';
+          useBtn.style.display = 'none';
+        }
+      } catch (err) {
+        statusEl.innerHTML = `<span style="color:var(--danger); font-weight:600;">CeX request timed out. Please try again or open CeX manually.</span>`;
+        card.style.display = 'none';
+        useBtn.style.display = 'none';
+      }
+    };
+
+    function displayCexOverlayResult(item) {
+      const card = document.getElementById('cex-overlay-card');
+      const useBtn = document.getElementById('btn-cex-overlay-use');
+      const statusEl = document.getElementById('cex-overlay-status');
+
+      cexOverlayContext.data = {
+        name: item.name,
+        console: item.console,
+        cexPrice: Number(item.sellPrice) || 0,
+        cashPrice: Number(item.cashPrice) || 0,
+        barcode: cexOverlayContext.barcode || item.barcode || '',
+        boxId: item.boxId || '',
+        imageUrl: item.imageUrl || ''
+      };
+
+      document.getElementById('cex-overlay-title').textContent = item.name;
+      document.getElementById('cex-overlay-badge').textContent = item.console;
+      document.getElementById('cex-overlay-price').textContent = `£${(Number(item.sellPrice) || 0).toFixed(2)}`;
+      document.getElementById('cex-overlay-cash').textContent = (item.cashPrice ? `£${Number(item.cashPrice).toFixed(2)}` : 'N/A');
+      document.getElementById('cex-overlay-boxid').textContent = item.boxId || item.barcode || 'CeX Verified';
+      document.getElementById('cex-overlay-note').textContent = `Associated Barcode: ${cexOverlayContext.barcode || item.barcode || 'N/A'}`;
+
+      const imgEl = document.getElementById('cex-overlay-img');
+      const imgBox = document.getElementById('cex-overlay-img-box');
+      if (item.imageUrl) {
+        imgEl.src = item.imageUrl;
+        imgBox.style.display = 'flex';
+      } else {
+        imgBox.style.display = 'none';
+      }
+
+      card.style.display = 'block';
+      useBtn.style.display = 'inline-flex';
+      statusEl.innerHTML = `<span style="color:var(--success); font-weight:700;">&#10003; Found verified match on CeX: &ldquo;${item.name}&rdquo;</span>`;
+    }
+
+    window.applyCexOverlaySelection = function() {
+      if (!cexOverlayContext.data) return;
+      const data = cexOverlayContext.data;
+
+      // Persist to local learned cache for instant resolution
+      if (data.barcode) {
+        saveCeXCache(data.barcode, {
+          name: data.name,
+          console: data.console,
+          sell: data.cexPrice,
+          cash: data.cashPrice
+        });
+      }
+
+      // Ensure console exists in global consoles list
+      if (data.console && !consoles.includes(data.console)) {
+        consoles.push(data.console);
+        updateConsoleFilter();
+      }
+
+      if (cexOverlayContext.targetType === 'batch') {
+        const item = multiBatch.find(b => b.id === cexOverlayContext.targetId);
+        if (item) {
+          item.name = data.name;
+          item.console = data.console;
+          item.cexPrice = data.cexPrice;
+          const dest = document.getElementById('multi-destination').value;
+          item.storePrice = (dest === 'overflow' ? 0 : data.cexPrice);
+          item.found = true;
+          renderMultiReport();
+          showToast(`✓ Applied "${data.name}" (${data.console} — £${data.cexPrice.toFixed(2)}) from CeX!`);
+        }
+      } else if (cexOverlayContext.targetType === 'single') {
+        const nameInput = document.getElementById('form-name');
+        const consoleSelect = document.getElementById('form-console');
+        const priceInput = document.getElementById('form-store-price');
+        const cexPriceInput = document.getElementById('form-cex-price');
+
+        if (nameInput) nameInput.value = data.name;
+        if (consoleSelect) {
+          if (!consoles.includes(data.console)) {
+            consoles.push(data.console);
+            populateConsoles();
+          }
+          consoleSelect.value = data.console;
+        }
+        if (priceInput && stockMode !== 'overflow') priceInput.value = data.cexPrice.toFixed(2);
+        if (cexPriceInput) cexPriceInput.value = data.cexPrice.toFixed(2);
+        showToast(`✓ Pre-populated "${data.name}" from CeX!`);
+      }
+
+      closeCexOverlay();
+    };
 
     // Switch between Hub and Workspace
     function setStockMode(mode) {
@@ -2250,9 +2544,15 @@
         statusArea.innerHTML = `
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
             <span>&#9888; Barcode not known on CeX catalog yet.</span>
-            <a href="${res.manualUrl}" target="_blank" rel="noopener noreferrer" class="cex-manual-link" style="font-size:12px;">
-              &#128269; Open &ldquo;${barcode}&rdquo; on uk.webuy.com &#8599;
-            </a>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <button type="button" class="btn primary" style="font-size:11px; padding:3px 8px; font-weight:700;"
+                      onclick="openCexOverlay('single', 'form', '${barcode}', '')">
+                &#128269; Open CeX Overlay &amp; Import
+              </button>
+              <a href="${res.manualUrl}" target="_blank" rel="noopener noreferrer" class="cex-manual-link" style="font-size:12px;">
+                Open CeX site &#8599;
+              </a>
+            </div>
           </div>
           <div style="background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:10px; display:flex; flex-direction:column; gap:6px;">
             <div style="font-size:11.5px; font-weight:700; color:var(--text); display:flex; align-items:center; gap:6px;">
@@ -2497,12 +2797,20 @@
         statusArea.innerHTML = `<span style="color:var(--success); font-weight:700;">&#10003; Added &ldquo;${res.name}&rdquo; (${chosenConsole} &mdash; &pound;${res.cexPrice.toFixed(2)}) to batch report!</span>`;
       } else {
         statusArea.innerHTML = `
-          <span style="color:var(--accent); font-weight:700;">
-            &#9888; Barcode ${barcode} not found on CeX. 
-            <a href="${res.manualUrl}" target="_blank" rel="noopener noreferrer" class="cex-manual-link" style="margin-left:6px;">
-              Check CeX manually &#8599;
-            </a>
-          </span>
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+            <span style="color:var(--accent); font-weight:700;">
+              &#9888; Barcode ${barcode} not found on CeX.
+            </span>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <button type="button" class="btn primary" style="font-size:11px; padding:4px 9px; font-weight:700;"
+                      onclick="openCexOverlay('batch', '${batchItem.id}', '${barcode}', '')">
+                &#128269; Open CeX Overlay &amp; Import
+              </button>
+              <a href="${res.manualUrl}" target="_blank" rel="noopener noreferrer" class="cex-manual-link" style="font-size:11px;">
+                Check CeX site &#8599;
+              </a>
+            </div>
+          </div>
         `;
       }
     }
@@ -2512,6 +2820,13 @@
       if (e.key === 'Enter') {
         e.preventDefault();
         handleMultiScan();
+      }
+    });
+
+    document.getElementById('cex-overlay-query').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        runCexOverlayQuery();
       }
     });
 
@@ -2545,11 +2860,24 @@
         const tr = document.createElement('tr');
 
         const statusHtml = item.found 
-          ? `<span style="color:var(--success); font-weight:700; font-size:11.5px;">&#10003; CeX Verified</span>`
-          : `<span style="color:var(--accent); font-size:11.5px; font-weight:600;">
-              &#9888; Not in CeX
-              <a href="${item.manualUrl}" target="_blank" rel="noopener noreferrer" class="cex-manual-link" style="display:block; font-size:10.5px;">Search CeX &#8599;</a>
-            </span>`;
+          ? `<div style="display:flex; flex-direction:column; gap:3px;">
+              <span style="color:var(--success); font-weight:700; font-size:11.5px;">&#10003; CeX Verified</span>
+              <button type="button" class="btn subtle" style="font-size:10px; padding:2px 5px; display:inline-flex; align-items:center; gap:2px;"
+                      onclick="openCexOverlay('batch', '${item.id}', '${item.barcode}', '${(item.name || '').replace(/'/g, "\\'")}')">
+                &#128269; Inspect CeX
+              </button>
+            </div>`
+          : `<div style="display:flex; flex-direction:column; gap:4px;">
+              <span style="color:var(--accent); font-size:11.5px; font-weight:700;">&#9888; Not in CeX</span>
+              <button type="button" class="btn primary" style="font-size:10.5px; padding:3px 7px; font-weight:700; display:inline-flex; align-items:center; gap:3px;"
+                      title="Inspect CeX catalog &amp; use information with 1-click"
+                      onclick="openCexOverlay('batch', '${item.id}', '${item.barcode}', '${(item.name || '').replace(/'/g, "\\'")}')">
+                &#128269; CeX Overlay Import
+              </button>
+              <a href="${item.manualUrl}" target="_blank" rel="noopener noreferrer" class="cex-manual-link" style="display:inline-block; font-size:10px;">
+                Open CeX site &#8599;
+              </a>
+            </div>`;
 
         const isOverflow = destination === 'overflow';
 
