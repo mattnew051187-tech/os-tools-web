@@ -863,8 +863,16 @@ const KNOWN_CEX_DB = [
   { barcode: '045496424886', name: "Luigi's Mansion 3", console: 'Nintendo Switch', sell: 30.00, cash: 15.00, voucher: 19.00 },
   { barcode: '045496431327', name: 'Super Mario Bros. Wonder', console: 'Nintendo Switch', sell: 36.00, cash: 18.00, voucher: 23.00 },
   { barcode: '4012927042571', name: 'Metal Gear Solid 4: Guns of the Patriots', console: 'PlayStation 3', sell: 8.00, cash: 4.00, voucher: 5.00 },
-  { barcode: '5026555403567', name: 'Red Dead Redemption', console: 'Xbox 360', sell: 9.00, cash: 4.50, voucher: 6.00 }
+  { barcode: '5026555403567', name: 'Red Dead Redemption', console: 'Xbox 360', sell: 9.00, cash: 4.50, voucher: 6.00 },
+  { barcode: '3307215889282', name: 'Rainbow Six Siege', console: 'Xbox Series X', sell: 2.50, cash: 0.30, voucher: 0.80 },
+  { barcode: '3307216024590', name: 'The Crew 2 (No DLC)', console: 'PlayStation 4', sell: 6.00, cash: 1.50, voucher: 2.50 },
+  { barcode: '5021290084926', name: "Marvel's Avengers (No DLC)", console: 'PlayStation 4', sell: 10.00, cash: 3.50, voucher: 5.00 }
 ];
+
+// Special/Deluxe packaging barcodes that CeX indexes under alternative base disc SKUs
+const BARCODE_ALIASES = {
+  '5021290084926': '5021290084803', // Marvel's Avengers Deluxe Edition packaging -> Avengers PS4
+};
 
 function normalizeConsoleName(category, title) {
   const s = `${category || ''} ${title || ''}`.toLowerCase();
@@ -876,6 +884,7 @@ function normalizeConsoleName(category, title) {
   if (s.includes('playstation portable') || s.includes('psp')) return 'PSP';
   if (s.includes('playstation vita') || s.includes('ps vita') || s.includes('psvita')) return 'PS Vita';
   if (s.includes('xbox series') || s.includes('series x') || s.includes('series s')) return 'Xbox Series X';
+  if (s.includes('smart delivery') || s.includes('xbox smart delivery')) return 'Xbox Series X';
   if (s.includes('xbox one') || s.includes('xone') || s.includes('xb1')) return 'Xbox One';
   if (s.includes('xbox 360') || s.includes('x360')) return 'Xbox 360';
   if (s.includes('xbox original') || s.includes('original xbox')) return 'Xbox';
@@ -883,12 +892,13 @@ function normalizeConsoleName(category, title) {
   if (s.includes('wii u') || s.includes('wiiu')) return 'Wii U';
   if (s.includes('wii') || s.includes('nintendo wii')) return 'Nintendo Wii';
   if (s.includes('3ds') || s.includes('nintendo 3ds')) return 'Nintendo 3DS';
-  if (s.includes('ds') || s.includes('nintendo ds')) return 'Nintendo DS';
+  if (s.includes('ds') && !s.includes('smart')) return 'Nintendo DS';
   if (s.includes('gamecube')) return 'GameCube';
   if (s.includes('game boy advance') || s.includes('gba')) return 'GBA';
   if (s.includes('game boy color') || s.includes('gbc')) return 'Game Boy Color';
   if (s.includes('game boy') || s.includes('gameboy')) return 'Game Boy';
   if (s.includes('pc') || s.includes('windows')) return 'PC';
+  if (s.includes('xbox')) return 'Xbox One';
   return category || 'PlayStation 4';
 }
 
@@ -952,11 +962,12 @@ async function queryCexPromise(query) {
   const diskCache = loadCexCache();
   if (diskCache[raw]) {
     const cached = diskCache[raw];
+    const normalized = normalizeConsoleName(cached.console, cached.name);
     return {
       ok: true,
       item: {
         name: cached.name,
-        console: cached.console,
+        console: normalized,
         cexPrice: Number(cached.cexPrice || cached.sell) || 0,
         cashPrice: Number(cached.cashPrice || cached.cash) || 0,
         barcode: raw,
@@ -983,10 +994,14 @@ async function queryCexPromise(query) {
     return { ok: true, item, manualUrl };
   }
 
-  // 3. Generate candidate SKUs (clean numbers, handle 12-digit UPC vs 13-digit EAN zero-padding)
+  // 3. Generate candidate SKUs (clean numbers, handle 12-digit UPC vs 13-digit EAN zero-padding, aliases)
   const rawClean = raw.replace(/[^0-9a-zA-Z]/g, '');
   const candidateSkus = [];
   if (rawClean) candidateSkus.push(rawClean);
+  const aliasTarget = BARCODE_ALIASES[rawClean] || BARCODE_ALIASES[raw];
+  if (aliasTarget && !candidateSkus.includes(aliasTarget)) {
+    candidateSkus.push(aliasTarget);
+  }
   if (rawClean.length === 12) {
     candidateSkus.push('0' + rawClean);
   } else if (rawClean.length === 13 && rawClean.startsWith('0')) {

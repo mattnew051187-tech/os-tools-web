@@ -1018,7 +1018,7 @@
         <!-- Configuration Bar -->
         <div style="display:flex; flex-wrap:wrap; gap:14px; background:var(--panel-2); border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:16px;">
           <div class="form-group" style="flex:1; min-width:220px;">
-            <label style="font-weight:700; font-size:12px; color:var(--text); margin-bottom:4px;">Game Console for this Batch</label>
+            <label style="font-weight:700; font-size:12px; color:var(--text); margin-bottom:4px;">Default / Fallback Console (Auto-detected from CeX per barcode)</label>
             <select id="multi-console" style="background:var(--panel); font-weight:600;"></select>
           </div>
           <div class="form-group" style="flex:1; min-width:220px;">
@@ -1314,8 +1314,18 @@
       { name: 'Luigi\'s Mansion 3', console: 'Nintendo Switch', sell: 30.00, cash: 15.00, voucher: 19.00, barcode: '045496424886' },
       { name: 'Super Mario Bros. Wonder', console: 'Nintendo Switch', sell: 36.00, cash: 18.00, voucher: 23.00, barcode: '045496431327' },
       { name: 'Metal Gear Solid 4: Guns of the Patriots', console: 'PlayStation 3', sell: 8.00, cash: 4.00, voucher: 5.00, barcode: '4012927042571' },
-      { name: 'Red Dead Redemption', console: 'Xbox 360', sell: 9.00, cash: 4.50, voucher: 6.00, barcode: '5026555403567' }
+      { name: 'Red Dead Redemption', console: 'Xbox 360', sell: 9.00, cash: 4.50, voucher: 6.00, barcode: '5026555403567' },
+      { name: 'Rainbow Six Siege', console: 'Xbox Series X', sell: 2.50, cash: 0.30, voucher: 0.80, barcode: '3307215889282' },
+      { name: 'The Crew 2 (No DLC)', console: 'PlayStation 4', sell: 6.00, cash: 1.50, voucher: 2.50, barcode: '3307216024590' },
+      { name: "Marvel's Avengers (No DLC)", console: 'PlayStation 4', sell: 10.00, cash: 3.50, voucher: 5.00, barcode: '5021290084926' },
+      { name: 'Until Dawn: Rush Of Blood (PSVR)', console: 'PlayStation 4', sell: 3.00, cash: 0.70, voucher: 1.10, barcode: '711719856252' },
+      { name: 'For Honor (No DLC)', console: 'PlayStation 4', sell: 3.00, cash: 0.40, voucher: 0.90, barcode: '3307215914830' }
     ];
+
+    // Special/Deluxe packaging barcodes that CeX indexes under alternative base disc SKUs
+    const BARCODE_ALIASES = {
+      '5021290084926': '5021290084803', // Marvel's Avengers Deluxe Edition packaging -> Avengers PS4
+    };
 
     // State
     let stockMode = localStorage.getItem('stock_tracker_active_mode') || 'store'; // 'landing' | 'store' | 'overflow'
@@ -1334,12 +1344,24 @@
       if (!raw) return '';
       const s = String(raw).toLowerCase().replace(/[-_]/g, ' ');
       if (s.includes('ps5') || s.includes('playstation 5') || s.includes('playstation5')) return 'PlayStation 5';
-      if (s.includes('ps4') || s.includes('playstation 4') || s.includes('playstation4')) return 'PlayStation 4';
+      if (s.includes('ps4') || s.includes('playstation 4') || s.includes('playstation4') || s.includes('psvr')) return 'PlayStation 4';
       if (s.includes('ps3') || s.includes('playstation 3') || s.includes('playstation3')) return 'PlayStation 3';
-      if (s.includes('series x') || s.includes('series s') || s.includes('xbox series')) return 'Xbox Series X';
+      if (s.includes('ps2') || s.includes('playstation 2')) return 'PlayStation 2';
+      if (s.includes('ps1') || s.includes('playstation 1') || s.includes('psx')) return 'PlayStation 1';
+      if (s.includes('psp')) return 'PSP';
+      if (s.includes('vita')) return 'PS Vita';
+      if (s.includes('series x') || s.includes('series s') || s.includes('xbox series') || s.includes('smart delivery') || s.includes('xbox smart delivery')) return 'Xbox Series X';
       if (s.includes('xbox one') || s.includes('xone') || s.includes('xb1')) return 'Xbox One';
       if (s.includes('xbox 360') || s.includes('x360')) return 'Xbox 360';
+      if (s.includes('xbox original') || s.includes('original xbox')) return 'Xbox';
       if (s.includes('switch') || s.includes('nswitch') || s.includes('nintendo switch')) return 'Nintendo Switch';
+      if (s.includes('wii u') || s.includes('wiiu')) return 'Wii U';
+      if (s.includes('wii')) return 'Nintendo Wii';
+      if (s.includes('3ds')) return 'Nintendo 3DS';
+      if (s.includes('ds') && !s.includes('smart')) return 'Nintendo DS';
+      if (s.includes('gamecube')) return 'GameCube';
+      if (s.includes('pc') || s.includes('windows')) return 'PC';
+      if (s.includes('xbox')) return 'Xbox One';
       if (s.includes('retro')) return 'Retro / Other';
       return '';
     }
@@ -1502,24 +1524,26 @@
       const manualUrl = `https://uk.webuy.com/search?stext=${encodeURIComponent(barcode)}`;
       if (!barcode) return { found: false, barcode: '', manualUrl };
 
+      const aliasBarcode = BARCODE_ALIASES[barcode] || barcode;
+
       // 1. Check local learned cache
       const cache = getCeXCache();
-      if (cache[barcode]) {
-        const item = cache[barcode];
-        const matched = detectConsole(item.console || item.name) || item.console || preferredConsole || consoles[0];
+      const cached = (cache[barcode] && cache[barcode].name) ? cache[barcode] : ((cache[aliasBarcode] && cache[aliasBarcode].name) ? cache[aliasBarcode] : null);
+      if (cached) {
+        const matched = detectConsole(cached.console || cached.name) || cached.console || preferredConsole || consoles[0];
         return {
           found: true,
-          name: item.name,
+          name: cached.name,
           console: matched,
-          cexPrice: Number(item.sell) || 0,
-          cashPrice: Number(item.cash) || 0,
+          cexPrice: Number(cached.sell || cached.cexPrice) || 0,
+          cashPrice: Number(cached.cash || cached.cashPrice) || 0,
           barcode,
           manualUrl
         };
       }
 
       // 2. Check curated database
-      const match = CEX_LOOKUP_DB.find(c => c.barcode && c.barcode === barcode);
+      const match = CEX_LOOKUP_DB.find(c => c.barcode && (c.barcode === barcode || c.barcode === aliasBarcode));
       if (match) {
         const matched = detectConsole(match.console || match.name) || match.console || preferredConsole || consoles[0];
         saveCeXCache(barcode, { ...match, console: matched });
@@ -1537,13 +1561,13 @@
       // 3. Try server proxy endpoint
       try {
         const resp = await fetch(`/api/cex-lookup?barcode=${encodeURIComponent(barcode)}`, {
-          signal: AbortSignal.timeout(4500)
+          signal: AbortSignal.timeout(6500)
         });
         if (resp.ok) {
           const data = await resp.json();
           if (data && data.ok && data.item) {
             const rawCat = data.item.console || data.item.name || '';
-            const detected = detectConsole(rawCat);
+            const detected = detectConsole(rawCat) || data.item.console;
             const matchedConsole = detected || preferredConsole || consoles[0];
 
             const resData = {
@@ -2444,12 +2468,19 @@
 
       // Look up against CeX
       const res = await lookupCeX(barcode, consoleName);
+      const chosenConsole = (res.found && res.console) ? res.console : consoleName;
+
+      // Ensure console exists in global consoles list so filters and selects work seamlessly
+      if (chosenConsole && !consoles.includes(chosenConsole)) {
+        consoles.push(chosenConsole);
+        updateConsoleFilter();
+      }
 
       const batchItem = {
         id: `batch-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         barcode,
         name: res.found ? res.name : '',
-        console: (res.found && res.console) ? res.console : consoleName,
+        console: chosenConsole,
         cexPrice: res.found ? res.cexPrice : 0,
         storePrice: destination === 'overflow' ? 0 : (res.found ? res.cexPrice : 0),
         hasCase: true,
@@ -2463,7 +2494,7 @@
       renderMultiReport();
 
       if (res.found) {
-        statusArea.innerHTML = `<span style="color:var(--success); font-weight:700;">&#10003; Added &ldquo;${res.name}&rdquo; (&pound;${res.cexPrice.toFixed(2)}) to batch report!</span>`;
+        statusArea.innerHTML = `<span style="color:var(--success); font-weight:700;">&#10003; Added &ldquo;${res.name}&rdquo; (${chosenConsole} &mdash; &pound;${res.cexPrice.toFixed(2)}) to batch report!</span>`;
       } else {
         statusArea.innerHTML = `
           <span style="color:var(--accent); font-weight:700;">
@@ -2522,6 +2553,19 @@
 
         const isOverflow = destination === 'overflow';
 
+        const currentItemConsole = item.console || consoles[0] || 'PlayStation 4';
+        let consoleOpts = [...consoles];
+        if (currentItemConsole && !consoleOpts.includes(currentItemConsole)) {
+          consoleOpts.unshift(currentItemConsole);
+        }
+        const consoleSelectHtml = `
+          <select style="font-size:11.5px; padding:4px 6px; font-weight:600; border-radius:6px; border:1px solid var(--border); background:var(--panel); color:var(--text); max-width:145px;"
+                  title="Native Console (auto-detected from CeX or manually selectable)"
+                  onchange="updateMultiBatchItem('${item.id}', 'console', this.value)">
+            ${consoleOpts.map(c => `<option value="${c.replace(/"/g, '&quot;')}" ${c === currentItemConsole ? 'selected' : ''}>${c.replace(/</g, '&lt;')}</option>`).join('')}
+          </select>
+        `;
+
         tr.innerHTML = `
           <td><strong>${idx + 1}</strong></td>
           <td><code style="font-size:11.5px; font-weight:700;">${item.barcode}</code></td>
@@ -2530,7 +2574,7 @@
                    style="font-size:12px; padding:6px 8px; font-weight:600;" 
                    onchange="updateMultiBatchItem('${item.id}', 'name', this.value)" />
           </td>
-          <td><span style="font-size:11.5px; color:var(--muted); font-weight:600;">${item.console}</span></td>
+          <td>${consoleSelectHtml}</td>
           <td>
             <input type="number" step="0.01" min="0" value="${item.cexPrice || ''}" placeholder="0.00" 
                    style="width:75px; font-size:12px; padding:6px 8px;" 
@@ -2572,8 +2616,15 @@
       const item = multiBatch.find(b => b.id === id);
       if (item) {
         item[field] = value;
-        // If name or price changed, update local cache
-        if (item.barcode && (field === 'name' || field === 'cexPrice')) {
+        // If console changed, ensure it's in the consoles list
+        if (field === 'console' && value) {
+          if (!consoles.includes(value)) {
+            consoles.push(value);
+            updateConsoleFilter();
+          }
+        }
+        // If name, console or price changed, update local cache
+        if (item.barcode && (field === 'name' || field === 'console' || field === 'cexPrice')) {
           saveCeXCache(item.barcode, { name: item.name, console: item.console, sell: item.cexPrice });
         }
         if (field === 'cexPrice') {
@@ -2631,6 +2682,10 @@
 
         if (item.barcode) {
           saveCeXCache(item.barcode, { name: gameName, console: item.console, sell: cPrice });
+        }
+
+        if (item.console && !consoles.includes(item.console)) {
+          consoles.push(item.console);
         }
 
         targetGames.unshift({
