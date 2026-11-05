@@ -743,6 +743,10 @@ buildKeypad();
 /* Always land cleanly on the login screen requiring credentials */
 show('screen-login');
 
+// Immediately load live Lois Bullion rates on boot so top-right ticker is always populated
+loadBullionRates();
+startBullionTimer();
+
 // Forward parent window gamepad events to active iframe so gamepads are immediately detected
 window.addEventListener('gamepadconnected', (e) => {
   try {

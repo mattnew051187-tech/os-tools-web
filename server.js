@@ -967,6 +967,77 @@ function fetchCeXBoxDetail(sku) {
   });
 }
 
+function searchCexAlgolia(query, hitsPerPage = 6) {
+  return new Promise((resolve) => {
+    const q = String(query || '').trim();
+    if (!q) return resolve([]);
+    const postData = JSON.stringify({ query: q, hitsPerPage });
+    const req = https.request('https://search.webuy.io/1/indexes/prod_cex_uk/query', {
+      method: 'POST',
+      headers: {
+        'X-Algolia-Application-Id': 'LNNFEEWZVA',
+        'X-Algolia-API-Key': 'bf79f2b6699e60a18ae330a1248b452c',
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(postData),
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      },
+      timeout: 4500,
+    }, (res) => {
+      let d = '';
+      res.on('data', (c) => { d += c; if (d.length > 512 * 1024) req.destroy(); });
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(d);
+          resolve(Array.isArray(json.hits) ? json.hits : []);
+        } catch {
+          resolve([]);
+        }
+      });
+    });
+    req.on('timeout', () => { req.destroy(); resolve([]); });
+    req.on('error', () => resolve([]));
+    req.write(postData);
+    req.end();
+  });
+}
+
+function reverseBarcodeToTitle(barcode) {
+  return new Promise((resolve) => {
+    const b = String(barcode || '').trim();
+    if (!b || b.length < 6) return resolve(null);
+    const req = https.get('https://html.duckduckgo.com/html/?q=' + encodeURIComponent(b), {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-GB,en;q=0.9',
+      },
+      timeout: 4000,
+    }, (res) => {
+      let d = '';
+      res.on('data', (c) => { d += c; if (d.length > 1024 * 1024) req.destroy(); });
+      res.on('end', () => {
+        try {
+          const matches = [...d.matchAll(/class=\"result__title\"[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>/g)]
+            .map((m) => m[1].replace(/<[^>]+>/g, '').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').trim());
+          for (const m of matches) {
+            let clean = m
+              .replace(/\|.*$/i, '')
+              .replace(/-.*(eBay|Amazon|CEX|Game|PriceSpy|Argos).*$/i, '')
+              .replace(new RegExp(b, 'g'), '')
+              .replace(/\b(EAN|UPC|Barcode|Deluxe Edition|Steelbook|Special Edition)\b/gi, '')
+              .replace(/\s+/g, ' ')
+              .trim();
+            if (clean.length > 3) return resolve(clean);
+          }
+        } catch {}
+        resolve(null);
+      });
+    });
+    req.on('timeout', () => { req.destroy(); resolve(null); });
+    req.on('error', () => resolve(null));
+  });
+}
+
 async function queryCexPromise(query) {
   let raw = String(query || '').trim();
   const urlIdMatch = raw.match(/[?&]id=([0-9a-zA-Z]+)/i) || raw.match(/product-detail[^\/]*\/([0-9a-zA-Z]+)/i);
@@ -988,7 +1059,9 @@ async function queryCexPromise(query) {
         console: normalized,
         cexPrice: Number(cached.cexPrice || cached.sell) || 0,
         cashPrice: Number(cached.cashPrice || cached.cash) || 0,
+        exchangePrice: Number(cached.exchangePrice || cached.voucher) || 0,
         barcode: raw,
+        boxId: cached.boxId || raw,
         imageUrl: cached.imageUrl || '',
       },
       manualUrl,
@@ -1005,7 +1078,9 @@ async function queryCexPromise(query) {
       console: match.console,
       cexPrice: Number(match.sell) || 0,
       cashPrice: Number(match.cash) || 0,
+      exchangePrice: Number(match.voucher) || 0,
       barcode: match.barcode || raw,
+      boxId: match.barcode || raw,
       imageUrl: '',
     };
     saveCexCache(raw, item);
@@ -1028,7 +1103,7 @@ async function queryCexPromise(query) {
     candidateSkus.push(rawClean.slice(2));
   }
 
-  // 4. Query CeX live catalog directly via official boxes API
+  // 4. Query CeX live catalog directly via official boxes detail API
   for (const sku of candidateSkus) {
     const box = await fetchCeXBoxDetail(sku);
     if (box && box.boxName) {
@@ -1053,77 +1128,56 @@ async function queryCexPromise(query) {
     }
   }
 
-  // If input was a numeric barcode and not found via official CeX catalog API, return immediately
-  if (/^\d{6,}$/.test(rawClean)) {
-    return { ok: false, manualUrl, message: 'Item not found on CeX' };
+  // 5. Query CeX live Algolia index via search.webuy.io proxy
+  const hits = await searchCexAlgolia(rawClean || raw, 6);
+  if (hits && hits.length > 0) {
+    const top = hits[0];
+    const consoleName = normalizeConsoleName(top.categoryFriendlyName || top.categoryName, top.boxName);
+    const item = {
+      name: top.boxName,
+      console: consoleName,
+      cexPrice: Number(top.sellPrice) || 0,
+      cashPrice: Number(top.cashPriceCalculated || top.cashBuyPrice) || 0,
+      exchangePrice: Number(top.exchangePriceCalculated || top.exchangePrice) || 0,
+      barcode: raw,
+      boxId: top.boxId || top.objectID,
+      imageUrl: (top.imageUrls && (top.imageUrls.large || top.imageUrls.medium)) || '',
+    };
+    saveCexCache(raw, item);
+    if (top.boxId && top.boxId !== raw) {
+      BARCODE_ALIASES[rawClean] = top.boxId;
+      saveCexCache(top.boxId, item);
+    }
+    return { ok: true, item, manualUrl, hits };
   }
 
-  // 5. Fallback HTML query for textual game title searches
-  return new Promise((resolve) => {
-    let parsed;
-    try {
-      parsed = new URL(`https://uk.webuy.com/search/?stext=${encodeURIComponent(raw)}`);
-    } catch {
-      return resolve({ ok: false, manualUrl, message: 'Invalid URL' });
+  // 6. Reverse Barcode Lookup Fallback: if barcode was not found on CeX directly,
+  // query product name from web and check CeX index with discovered title!
+  if (/^\d{6,}$/.test(rawClean)) {
+    const discoveredTitle = await reverseBarcodeToTitle(rawClean);
+    if (discoveredTitle) {
+      const titleHits = await searchCexAlgolia(discoveredTitle, 4);
+      if (titleHits && titleHits.length > 0) {
+        const top = titleHits[0];
+        const consoleName = normalizeConsoleName(top.categoryFriendlyName || top.categoryName, top.boxName);
+        const item = {
+          name: top.boxName,
+          console: consoleName,
+          cexPrice: Number(top.sellPrice) || 0,
+          cashPrice: Number(top.cashPriceCalculated || top.cashBuyPrice) || 0,
+          exchangePrice: Number(top.exchangePriceCalculated || top.exchangePrice) || 0,
+          barcode: raw,
+          boxId: top.boxId || top.objectID,
+          imageUrl: (top.imageUrls && (top.imageUrls.large || top.imageUrls.medium)) || '',
+        };
+        saveCexCache(raw, item);
+        BARCODE_ALIASES[rawClean] = top.boxId;
+        return { ok: true, item, manualUrl, hits: titleHits };
+      }
     }
+  }
 
-    const reqOptions = {
-      hostname: parsed.hostname,
-      path: parsed.pathname + parsed.search,
-      method: 'GET',
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-GB,en;q=0.9',
-      },
-      timeout: 3000,
-    };
-
-    const cexReq = https.request(reqOptions, (cexRes) => {
-      let body = '';
-      cexRes.on('data', (chunk) => {
-        body += chunk;
-        if (body.length > 512 * 1024) cexReq.destroy();
-      });
-      cexRes.on('end', () => {
-        try {
-          const nextMatch = body.match(/<script id=\"__NEXT_DATA__\"[^>]*>(.*?)<\/script>/s);
-          if (nextMatch) {
-            const json = JSON.parse(nextMatch[1]);
-            const boxes = json?.props?.pageProps?.data?.boxes || [];
-            if (boxes.length > 0) {
-              const b = boxes[0];
-              const consoleName = normalizeConsoleName(b.categoryFriendlyName, b.boxName);
-              const item = {
-                name: b.boxName,
-                console: consoleName,
-                cexPrice: Number(b.sellPrice) || 0,
-                cashPrice: Number(b.cashPrice) || 0,
-                barcode: b.barcode || raw,
-                boxId: b.boxId,
-                imageUrl: (b.imageUrls && b.imageUrls.large) || '',
-              };
-              saveCexCache(raw, item);
-              return resolve({ ok: true, item, manualUrl });
-            }
-          }
-        } catch {}
-        resolve({ ok: false, manualUrl, message: 'Not found on CeX' });
-      });
-    });
-
-    cexReq.on('timeout', () => {
-      cexReq.destroy();
-      resolve({ ok: false, manualUrl, message: 'CeX lookup timed out' });
-    });
-
-    cexReq.on('error', () => {
-      resolve({ ok: false, manualUrl, message: 'CeX request error' });
-    });
-
-    cexReq.end();
-  });
+  return { ok: false, manualUrl, message: 'Item not found on CeX' };
 }
 
 // CeX Barcode & Product Proxy endpoint
