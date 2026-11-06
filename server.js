@@ -946,7 +946,7 @@ function fetchCeXBoxDetail(sku) {
         res.on('end', () => {
           try {
             const json = JSON.parse(body);
-            const box = json?.response?.data?.boxDetails?.[0];
+            const box = (json && json.response && json.response.data && json.response.data.boxDetails && json.response.data.boxDetails[0]) || null;
             if (box && box.boxName) return resolve(box);
           } catch {}
           tryNext();
