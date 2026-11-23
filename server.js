@@ -14,10 +14,12 @@ const fs = require('fs');
 const crypto = require('crypto');
 const https = require('https');
 const http = require('http');
+const net = require('net');
 const store = require('./store');
 
 const APP_VERSION = '1.1.0';
 const APP_ROOT = __dirname;
+const DATA_DIR = store.DATA_DIR || path.join(APP_ROOT, 'data');
 
 const PORT = process.env.PORT || 3000;
 const TAB_IDS = ['phone-tablets', 'gamepad-tester', 'game-library', 'repair-book-in'];
@@ -42,6 +44,152 @@ function verifySecret(secret, record) {
   const a = Buffer.from(hashSecret(secret, record.salt), 'hex');
   const b = Buffer.from(record.hash, 'hex');
   return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+function verifySecretAny(secret, record) {
+  const raw = secret !== undefined && secret !== null ? String(secret) : '';
+  const trimmed = raw.trim();
+  if (verifySecret(raw, record)) return true;
+  if (trimmed !== raw && verifySecret(trimmed, record)) return true;
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+// First-run setup token (only populated when loadUsers().length === 0)
+// ---------------------------------------------------------------------------
+const SETUP_TOKEN_FILE = path.join(DATA_DIR, '.setup-token');
+let initialSetupToken = null;
+
+let setupInProgress = false;
+
+function isSetupRequired() {
+  return loadUsers().length === 0;
+}
+
+function cleanupSetupTokenFile() {
+  try {
+    if (fs.existsSync(SETUP_TOKEN_FILE)) {
+      fs.unlinkSync(SETUP_TOKEN_FILE);
+    }
+  } catch {}
+}
+
+function initSetupState() {
+  if (!isSetupRequired()) {
+    initialSetupToken = null;
+    cleanupSetupTokenFile();
+    return;
+  }
+  const envToken = String(process.env.INITIAL_SETUP_TOKEN || '').trim();
+  if (envToken.length >= 16) {
+    initialSetupToken = envToken;
+    cleanupSetupTokenFile();
+    console.log('====================================================================');
+    console.log('  FIRST-RUN SETUP REQUIRED — No user accounts exist yet.');
+    console.log('  Open the SOS Tools Web UI and enter INITIAL_SETUP_TOKEN.');
+    console.log('====================================================================');
+  } else {
+    initialSetupToken = null;
+    try {
+      if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+      let reusable = false;
+      try {
+        const st = fs.lstatSync(SETUP_TOKEN_FILE);
+        if (st.isSymbolicLink()) {
+          fs.unlinkSync(SETUP_TOKEN_FILE);
+        } else if (st.isFile()) {
+          const existing = fs.readFileSync(SETUP_TOKEN_FILE, 'utf8').trim();
+          if (/^[a-f0-9]{48}$/i.test(existing)) {
+            initialSetupToken = existing;
+            reusable = true;
+          }
+        }
+      } catch {}
+      if (!reusable) {
+        initialSetupToken = crypto.randomBytes(24).toString('hex');
+        fs.writeFileSync(SETUP_TOKEN_FILE, `${initialSetupToken}\n`, { encoding: 'utf8', mode: 0o600 });
+      }
+      fs.chmodSync(SETUP_TOKEN_FILE, 0o600);
+    } catch (err) {
+      if (!initialSetupToken) initialSetupToken = crypto.randomBytes(24).toString('hex');
+      console.error(`Failed to persist setup token file (${SETUP_TOKEN_FILE}):`, err.message);
+    }
+    console.log('====================================================================');
+    console.log('  FIRST-RUN SETUP REQUIRED — No user accounts exist yet.');
+    console.log(`  One-time setup token saved to: ${SETUP_TOKEN_FILE} (mode 0600)`);
+    console.log('  Read that file on the server (never printed to logs) to complete setup.');
+    console.log('====================================================================');
+  }
+}
+
+function verifySetupToken(candidate) {
+  if (!isSetupRequired() || !initialSetupToken) return false;
+  const supplied = String(candidate || '').trim();
+  const a = Buffer.from(supplied, 'utf8');
+  const b = Buffer.from(initialSetupToken, 'utf8');
+  return a.length === b.length && a.length > 0 && crypto.timingSafeEqual(a, b);
+}
+
+function normalizeIp(ip) {
+  let n = String(ip || '').trim();
+  if (n.startsWith('[') && n.includes(']')) {
+    n = n.slice(1, n.indexOf(']'));
+  }
+  n = n.replace(/^::ffff:/i, '');
+  const zoneIdx = n.indexOf('%');
+  if (zoneIdx !== -1) n = n.slice(0, zoneIdx);
+  return n.trim();
+}
+
+function isLoopbackIp(ip) {
+  const n = normalizeIp(ip);
+  if (!n) return false;
+  if (n === '::1' || n === '0:0:0:0:0:0:0:1') return true;
+  return net.isIPv4(n) && n.startsWith('127.');
+}
+
+function getConfiguredTrustedProxies() {
+  const raw = String(process.env.TRUSTED_PROXIES || process.env.TRUSTED_PROXY_IPS || '');
+  const set = new Set();
+  for (const part of raw.split(',')) {
+    const n = normalizeIp(part);
+    if (n && net.isIP(n) !== 0) {
+      set.add(n);
+    }
+  }
+  return set;
+}
+
+function isTrustedProxySocket(ip) {
+  const n = normalizeIp(ip);
+  if (!n || net.isIP(n) === 0) return false;
+  if (isLoopbackIp(n)) return true;
+  return getConfiguredTrustedProxies().has(n);
+}
+
+function isRequestHttps(req) {
+  if (!req) return false;
+  if (req.socket && req.socket.encrypted) return true;
+  const socketIp = req.socket ? req.socket.remoteAddress : '';
+  if (!isTrustedProxySocket(socketIp)) return false;
+  const fwdProto = String((req.headers && req.headers['x-forwarded-proto']) || '').split(',')[0].trim().toLowerCase();
+  return fwdProto === 'https';
+}
+
+function isSetupHttps(req) {
+  return isRequestHttps(req);
+}
+
+function isSetupTransportAllowed(req) {
+  if (isSetupHttps(req)) return true;
+  const socketIp = req && req.socket ? req.socket.remoteAddress : '';
+  if (!isLoopbackIp(socketIp)) return false;
+  const fwdProto = String((req && req.headers && req.headers['x-forwarded-proto']) || '').split(',')[0].trim().toLowerCase();
+  if (fwdProto && fwdProto !== 'https') return false;
+  const fwdForRaw = String((req && req.headers && req.headers['x-forwarded-for']) || '');
+  const fwdHops = fwdForRaw.split(',').map((h) => h.trim()).filter(Boolean);
+  if (fwdHops.some((hop) => !isLoopbackIp(hop))) return false;
+  return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -190,27 +338,104 @@ function compareVersions(a, b) {
 }
 
 // ---------------------------------------------------------------------------
-// Sessions
+// Sessions & Auth Rate Limiting
 // ---------------------------------------------------------------------------
-const sessions = new Map(); // token -> { username, role }
+const sessions = new Map(); // token -> { username, role, createdAt, pinFails }
+
+const RATE_LIMIT_CONFIG = {
+  windowMs: 15 * 60 * 1000,
+  loginUserIpMax: 5,
+  loginIpMax: 15,
+  pinSessionMax: 3,
+  pinIpMax: 12,
+  setupIpMax: 5,
+  maxBuckets: 10000,
+};
+
+const rateLimitBuckets = new Map(); // key -> { count, firstAt, resetAt }
+
+function pruneRateLimits(now = Date.now()) {
+  for (const [key, entry] of rateLimitBuckets.entries()) {
+    if (!entry || now >= entry.resetAt) {
+      rateLimitBuckets.delete(key);
+    }
+  }
+  while (rateLimitBuckets.size >= RATE_LIMIT_CONFIG.maxBuckets) {
+    const oldestKey = rateLimitBuckets.keys().next().value;
+    if (oldestKey === undefined) break;
+    rateLimitBuckets.delete(oldestKey);
+  }
+}
+
+setInterval(() => pruneRateLimits(), 60 * 1000).unref();
+
+function checkRateLimit(key, maxAttempts, now = Date.now()) {
+  const entry = rateLimitBuckets.get(key);
+  if (!entry) return { limited: false, remaining: maxAttempts, retryAfterSec: 0 };
+  if (now >= entry.resetAt) {
+    rateLimitBuckets.delete(key);
+    return { limited: false, remaining: maxAttempts, retryAfterSec: 0 };
+  }
+  if (entry.count >= maxAttempts) {
+    const retryAfterSec = Math.max(1, Math.ceil((entry.resetAt - now) / 1000));
+    return { limited: true, remaining: 0, retryAfterSec };
+  }
+  return { limited: false, remaining: Math.max(0, maxAttempts - entry.count), retryAfterSec: 0 };
+}
+
+function recordRateLimitFailure(key, windowMs = RATE_LIMIT_CONFIG.windowMs, now = Date.now()) {
+  pruneRateLimits(now);
+  let entry = rateLimitBuckets.get(key);
+  if (!entry || now >= entry.resetAt) {
+    entry = { count: 0, firstAt: now, resetAt: now + windowMs };
+  }
+  entry.count += 1;
+  // Refresh insertion order for bounded LRU eviction
+  rateLimitBuckets.delete(key);
+  rateLimitBuckets.set(key, entry);
+  return {
+    count: entry.count,
+    retryAfterSec: Math.max(1, Math.ceil((entry.resetAt - now) / 1000)),
+  };
+}
+
+function clearRateLimit(key) {
+  rateLimitBuckets.delete(key);
+}
+
+function sendRateLimited(res, retryAfterSec, message, extraPayload = {}) {
+  const seconds = Math.max(1, Math.ceil(retryAfterSec || 1));
+  res.setHeader('Retry-After', String(seconds));
+  return res.status(429).json({
+    ok: false,
+    error: message,
+    retryAfter: seconds,
+    ...extraPayload,
+  });
+}
 
 function createSession(user) {
   const token = crypto.randomBytes(32).toString('hex');
-  sessions.set(token, { username: user.username, role: user.role, createdAt: Date.now() });
+  sessions.set(token, { username: user.username, role: user.role, createdAt: Date.now(), pinFails: 0 });
   return token;
 }
 
-function getSessionUser(req) {
+function extractSessionToken(req) {
   let token = null;
-  const authHeader = req.headers.authorization;
+  const authHeader = req && req.headers ? req.headers.authorization : null;
   if (authHeader && authHeader.startsWith('Bearer ')) {
     token = authHeader.slice(7).trim();
   }
   if (!token) {
-    const cookies = req.headers.cookie || '';
+    const cookies = (req && req.headers && req.headers.cookie) || '';
     const match = cookies.split(/;\s*/).find((c) => c.startsWith(SESSION_COOKIE + '='));
     if (match) token = decodeURIComponent(match.split('=')[1]);
   }
+  return token;
+}
+
+function getSessionInfo(req) {
+  const token = extractSessionToken(req);
   if (!token) return null;
   const session = sessions.get(token);
   if (!session) return null;
@@ -224,7 +449,31 @@ function getSessionUser(req) {
     sessions.delete(token);
     return null;
   }
-  return user;
+  return { token, session, user };
+}
+
+function getSessionUser(req) {
+  const info = getSessionInfo(req);
+  return info ? info.user : null;
+}
+
+function revokeUserSessions(username) {
+  const wanted = String(username || '').trim().toLowerCase();
+  if (!wanted) return 0;
+  let revoked = 0;
+  for (const [token, session] of sessions.entries()) {
+    if (session && String(session.username || '').trim().toLowerCase() === wanted) {
+      sessions.delete(token);
+      revoked++;
+    }
+  }
+  return revoked;
+}
+
+function clearCookieOptions(req) {
+  const opts = cookieOptions(req);
+  delete opts.maxAge;
+  return opts;
 }
 
 function clearSession(req, res) {
@@ -235,7 +484,7 @@ function clearSession(req, res) {
   const cookies = req.headers.cookie || '';
   const match = cookies.split(/;\s*/).find((c) => c.startsWith(SESSION_COOKIE + '='));
   if (match) sessions.delete(decodeURIComponent(match.split('=')[1]));
-  res.clearCookie(SESSION_COOKIE);
+  res.clearCookie(SESSION_COOKIE, clearCookieOptions(req));
 }
 
 function publicUser(user) {
@@ -247,15 +496,87 @@ function publicUser(user) {
   };
 }
 
+const CSRF_SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+const CSRF_BLOCKED_FORM_CONTENT_TYPES = new Set([
+  'application/x-www-form-urlencoded',
+  'multipart/form-data',
+  'text/plain',
+]);
+
+function getExpectedRequestHost(req) {
+  const socketIp = req && req.socket ? req.socket.remoteAddress : '';
+  const rawFwdHost = isTrustedProxySocket(socketIp) && req.headers && req.headers['x-forwarded-host'];
+  const rawHost = rawFwdHost || (req.headers && req.headers.host) || '';
+  return String(rawHost).split(',')[0].trim().toLowerCase();
+}
+
+function csrfProtection(req, res, next) {
+  const method = String(req.method || 'GET').toUpperCase();
+  if (CSRF_SAFE_METHODS.has(method)) {
+    return next();
+  }
+
+  // Requests carrying an explicit Authorization Bearer token cannot be triggered by cross-site forms/cookies
+  const authHeader = String((req.headers && req.headers.authorization) || '').trim();
+  if (authHeader.startsWith('Bearer ') && authHeader.slice(7).trim().length > 0) {
+    return next();
+  }
+
+  const secFetchSite = String((req.headers && req.headers['sec-fetch-site']) || '').trim().toLowerCase();
+  if (secFetchSite && secFetchSite !== 'same-origin' && secFetchSite !== 'none') {
+    return res.status(403).json({ ok: false, error: 'Cross-site request blocked (CSRF protection).' });
+  }
+
+  const contentType = String((req.headers && req.headers['content-type']) || '').split(';')[0].trim().toLowerCase();
+  if (CSRF_BLOCKED_FORM_CONTENT_TYPES.has(contentType)) {
+    return res.status(403).json({ ok: false, error: 'Cross-site request blocked (CSRF protection).' });
+  }
+
+  const expectedHost = getExpectedRequestHost(req);
+  const origin = req.headers && req.headers.origin;
+  if (origin !== undefined) {
+    const trimmedOrigin = String(origin).trim();
+    if (!trimmedOrigin || trimmedOrigin.toLowerCase() === 'null') {
+      return res.status(403).json({ ok: false, error: 'Cross-site request blocked (CSRF protection).' });
+    }
+    let originHost = '';
+    try {
+      originHost = new URL(trimmedOrigin).host.toLowerCase();
+    } catch {
+      originHost = '';
+    }
+    if (!expectedHost || !originHost || originHost !== expectedHost) {
+      return res.status(403).json({ ok: false, error: 'Cross-site request blocked (CSRF protection).' });
+    }
+    return next();
+  }
+
+  const referer = req.headers && req.headers.referer;
+  if (referer !== undefined) {
+    let refererHost = '';
+    try {
+      refererHost = new URL(String(referer).trim()).host.toLowerCase();
+    } catch {
+      refererHost = '';
+    }
+    if (!expectedHost || !refererHost || refererHost !== expectedHost) {
+      return res.status(403).json({ ok: false, error: 'Cross-site request blocked (CSRF protection).' });
+    }
+  }
+
+  return next();
+}
+
 // ---------------------------------------------------------------------------
 // Express app
 // ---------------------------------------------------------------------------
 const app = express();
-app.set('trust proxy', 1);
+app.set('trust proxy', (ip) => isTrustedProxySocket(normalizeIp(ip)));
 app.use((req, res, next) => {
   res.setHeader('Permissions-Policy', 'usb=*, serial=*, hid=*, gamepad=*, camera=*, microphone=*');
   next();
 });
+app.use('/api', csrfProtection);
 app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(APP_ROOT, 'public'), {
   setHeaders: (res, filePath) => {
@@ -269,7 +590,10 @@ app.get(['/modules', '/modules/'], (req, res) => {
 });
 app.get('/modules/beta.html', (req, res, next) => {
   const user = getSessionUser(req);
-  if (!user || user.username.toLowerCase() !== 'matt') {
+  if (!user) {
+    return res.status(401).send('Authentication required.');
+  }
+  if (user.username.toLowerCase() !== 'matt') {
     return res.status(403).send('Access restricted to Matt.');
   }
   next();
@@ -294,67 +618,211 @@ app.get('/modules/:file', (req, res, next) => {
 app.use('/vendor/jspdf', express.static(path.join(APP_ROOT, 'node_modules', 'jspdf', 'dist')));
 
 function requireAuth(req, res, next) {
-  const user = getSessionUser(req);
-  if (!user) return res.status(401).json({ ok: false, error: 'Not signed in.' });
-  req.user = user;
+  const info = getSessionInfo(req);
+  if (!info) return res.status(401).json({ ok: false, error: 'Not signed in.' });
+  req.user = info.user;
+  req.session = info.session;
+  req.sessionToken = info.token;
   next();
 }
 
 function requireAdmin(req, res, next) {
-  const user = getSessionUser(req);
-  if (!user) return res.status(401).json({ ok: false, error: 'Not signed in.' });
-  if (user.role !== 'admin') return res.status(403).json({ ok: false, error: 'Admin permission required.' });
-  req.user = user;
+  const info = getSessionInfo(req);
+  if (!info) return res.status(401).json({ ok: false, error: 'Not signed in.' });
+  if (info.user.role !== 'admin') return res.status(403).json({ ok: false, error: 'Admin permission required.' });
+  req.user = info.user;
+  req.session = info.session;
+  req.sessionToken = info.token;
   next();
 }
 
 function requireMatt(req, res, next) {
-  const user = getSessionUser(req);
-  if (!user || user.username.toLowerCase() !== 'matt') {
+  const info = getSessionInfo(req);
+  if (!info) {
+    return res.status(401).json({ ok: false, error: 'Not signed in.' });
+  }
+  if (info.user.username.toLowerCase() !== 'matt') {
     return res.status(403).json({ ok: false, error: 'Access restricted to Matt.' });
   }
-  req.user = user;
+  req.user = info.user;
+  req.session = info.session;
+  req.sessionToken = info.token;
   next();
 }
 
 function cookieOptions(req) {
-  const isHttps = req ? (req.secure || req.headers['x-forwarded-proto'] === 'https') : false;
+  const isHttps = isRequestHttps(req);
   return {
     httpOnly: true,
     sameSite: isHttps ? 'none' : 'lax',
-    secure: isHttps || process.env.NODE_ENV === 'production' || process.env.FORCE_SECURE_COOKIES === '1',
+    secure: isHttps || process.env.FORCE_SECURE_COOKIES === '1',
     maxAge: SESSION_MAX_AGE_MS,
   };
 }
 
 // ---- Auth ----
 function clientIp(req) {
-  const fwd = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
-  return fwd || req.socket.remoteAddress || 'unknown';
+  const rawSocket = normalizeIp(req && req.socket ? req.socket.remoteAddress : '');
+  if (!rawSocket) return 'unknown';
+  if (!isTrustedProxySocket(rawSocket)) {
+    return rawSocket;
+  }
+  const xffRaw = String((req && req.headers && req.headers['x-forwarded-for']) || '');
+  if (!xffRaw) return rawSocket;
+  const hops = xffRaw.split(',').map((h) => normalizeIp(h)).filter(Boolean);
+  let resolved = rawSocket;
+  for (let i = hops.length - 1; i >= 0; i--) {
+    const hop = hops[i];
+    if (net.isIP(hop) === 0) {
+      return resolved;
+    }
+    if (!isTrustedProxySocket(hop)) {
+      return hop;
+    }
+    resolved = hop;
+  }
+  return resolved;
 }
+
+app.get('/api/setup/status', (req, res) => {
+  const setupRequired = isSetupRequired();
+  const setupAllowed = isSetupTransportAllowed(req);
+  res.json({
+    ok: true,
+    setupRequired,
+    setupAllowed,
+    httpsRequired: !setupAllowed,
+  });
+});
+
+app.post('/api/setup', (req, res) => {
+  const ip = clientIp(req);
+  if (setupInProgress) {
+    return res.status(409).json({ ok: false, error: 'Initial setup is already in progress.' });
+  }
+  setupInProgress = true;
+  try {
+    if (!isSetupRequired()) {
+      initialSetupToken = null;
+      cleanupSetupTokenFile();
+      return res.status(403).json({ ok: false, error: 'Initial setup has already been completed.' });
+    }
+    if (!isSetupTransportAllowed(req)) {
+      logActivity('system', 'setup-blocked-http', `Blocked insecure plain-HTTP first-run setup attempt (from ${ip})`);
+      return res.status(403).json({
+        ok: false,
+        error: 'First-run setup requires HTTPS (or direct localhost access). Open the app over HTTPS before submitting the setup token, administrator password, and PIN.',
+      });
+    }
+    const setupRateKey = `setup-ip:${ip}`;
+    const setupLimitState = checkRateLimit(setupRateKey, RATE_LIMIT_CONFIG.setupIpMax);
+    if (setupLimitState.limited) {
+      logActivity('system', 'setup-rate-limited', `Rate-limited first-run setup attempt (from ${ip})`);
+      return sendRateLimited(
+        res,
+        setupLimitState.retryAfterSec,
+        'Too many failed setup attempts. Please wait and try again later.'
+      );
+    }
+
+    const { setupToken, username, password, pin } = req.body || {};
+    if (!verifySetupToken(setupToken)) {
+      const failState = recordRateLimitFailure(setupRateKey);
+      logActivity('system', 'setup-failed', `Invalid first-run setup token attempt (from ${ip})`);
+      if (failState.count >= RATE_LIMIT_CONFIG.setupIpMax) {
+        return sendRateLimited(
+          res,
+          failState.retryAfterSec,
+          'Too many failed setup attempts. Please wait and try again later.'
+        );
+      }
+      return res.status(403).json({ ok: false, error: 'Invalid or missing setup token.' });
+    }
+    const name = String(username || '').trim();
+    if (!/^[A-Za-z0-9._-]{2,24}$/.test(name)) {
+      return res.status(400).json({ ok: false, error: 'Username must be 2-24 characters (letters, numbers, . _ -).' });
+    }
+    const pw = password !== undefined && password !== null ? String(password) : '';
+    if (pw.length < 8) {
+      return res.status(400).json({ ok: false, error: 'Administrator password must be at least 8 characters.' });
+    }
+    const pinStr = String(pin || '').trim();
+    if (!/^\d{4}$/.test(pinStr)) {
+      return res.status(400).json({ ok: false, error: 'PIN must be exactly 4 digits.' });
+    }
+    if (!isSetupRequired()) {
+      initialSetupToken = null;
+      return res.status(403).json({ ok: false, error: 'Initial setup has already been completed.' });
+    }
+
+    const adminUser = {
+      username: name,
+      role: 'admin',
+      createdAt: new Date().toISOString(),
+      password: makeCredentials(pw),
+      pin: makeCredentials(pinStr),
+      mustChangePassword: false,
+      theme: 'yellow',
+    };
+    saveUsers([adminUser]);
+    initialSetupToken = null;
+    cleanupSetupTokenFile();
+    clearRateLimit(setupRateKey);
+    logActivity(name, 'setup-complete', `Initial administrator "${name}" created via first-run setup (from ${ip})`);
+
+    const token = createSession(adminUser);
+    res.cookie(SESSION_COOKIE, token, cookieOptions(req));
+    return res.json({ ok: true, user: publicUser(adminUser), token });
+  } finally {
+    setupInProgress = false;
+  }
+});
 
 app.post('/api/login', (req, res) => {
   const ip = clientIp(req);
+  if (isSetupRequired()) {
+    return res.json({ ok: false, error: 'Initial administrator setup is required before signing in.' });
+  }
   const { username, password } = req.body || {};
+  const unameKey = String(username || '').trim().toLowerCase() || '__empty__';
+  const ipKey = `login-ip:${ip}`;
+  const userIpKey = `login-user-ip:${ip}:${unameKey}`;
+
+  const ipLimit = checkRateLimit(ipKey, RATE_LIMIT_CONFIG.loginIpMax);
+  const userIpLimit = checkRateLimit(userIpKey, RATE_LIMIT_CONFIG.loginUserIpMax);
+  if (ipLimit.limited || userIpLimit.limited) {
+    const retryAfterSec = Math.max(ipLimit.retryAfterSec, userIpLimit.retryAfterSec);
+    logActivity('system', 'login-rate-limited', `Rate-limited login attempt (from ${ip})`);
+    return sendRateLimited(
+      res,
+      retryAfterSec,
+      'Too many failed sign-in attempts. Please wait and try again later.'
+    );
+  }
+
   const users = loadUsers();
   const user = findUser(users, username);
-
-  const rawPw = password !== undefined && password !== null ? String(password) : '';
-  const trimmedPw = rawPw.trim();
-  const isValidPw = user && (
-    verifySecret(rawPw, user.password) ||
-    verifySecret(trimmedPw, user.password) ||
-    (user.username.toLowerCase() === 'matt' && (rawPw === '1234!' || trimmedPw === '1234!' || rawPw === '1234' || trimmedPw === '1234'))
-  );
+  const isValidPw = user && verifySecretAny(password, user.password);
 
   if (!user || !isValidPw) {
+    const ipFail = recordRateLimitFailure(ipKey);
+    const userIpFail = recordRateLimitFailure(userIpKey);
     logActivity(username || 'unknown', 'login-failed', `Incorrect username or password (from ${ip})`);
+    if (ipFail.count >= RATE_LIMIT_CONFIG.loginIpMax || userIpFail.count >= RATE_LIMIT_CONFIG.loginUserIpMax) {
+      const retryAfterSec = Math.max(ipFail.retryAfterSec, userIpFail.retryAfterSec);
+      return sendRateLimited(
+        res,
+        retryAfterSec,
+        'Too many failed sign-in attempts. Please wait and try again later.'
+      );
+    }
     return res.json({ ok: false, error: 'Incorrect username or password.' });
   }
 
+  clearRateLimit(userIpKey);
   const token = createSession(user);
   res.cookie(SESSION_COOKIE, token, cookieOptions(req));
-  logActivity(user.username, 'login', 'Signed in with password');
+  logActivity(user.username, 'login', `Signed in with password (cryptographically verified, from ${ip})`);
   res.json({ ok: true, user: publicUser(user), token });
 });
 
@@ -366,42 +834,71 @@ app.post('/api/logout', (req, res) => {
 });
 
 app.get('/api/me', (req, res) => {
+  const setupRequired = isSetupRequired();
   const user = getSessionUser(req);
-  if (!user) return res.json({ ok: true, user: null });
-  res.json({ ok: true, user: publicUser(user) });
+  if (!user) return res.json({ ok: true, user: null, setupRequired });
+  res.json({ ok: true, user: publicUser(user), setupRequired: false });
 });
 
-app.post('/api/verify-pin', (req, res) => {
-  const user = getSessionUser(req);
-  if (!user) return res.json({ ok: false, error: 'No active session.' });
-  const rawPin = (req.body || {}).pin !== undefined && (req.body || {}).pin !== null ? String((req.body || {}).pin) : '';
-  const trimmedPin = rawPin.trim();
-  const isValidPin = verifySecret(rawPin, user.pin) ||
-    verifySecret(trimmedPin, user.pin) ||
-    (user.username.toLowerCase() === 'matt' && (rawPin === '1234' || trimmedPin === '1234'));
+app.post('/api/verify-pin', requireAuth, (req, res) => {
+  const user = req.user;
+  const session = req.session;
+  const ip = clientIp(req);
+  const pinIpKey = `pin-ip:${ip}`;
+
+  const pinIpLimit = checkRateLimit(pinIpKey, RATE_LIMIT_CONFIG.pinIpMax);
+  if (pinIpLimit.limited || (session && session.pinFails >= RATE_LIMIT_CONFIG.pinSessionMax)) {
+    if (req.sessionToken) sessions.delete(req.sessionToken);
+    res.clearCookie(SESSION_COOKIE, clearCookieOptions(req));
+    const retryAfterSec = pinIpLimit.limited
+      ? pinIpLimit.retryAfterSec
+      : Math.ceil(RATE_LIMIT_CONFIG.windowMs / 1000);
+    return sendRateLimited(
+      res,
+      retryAfterSec,
+      'Too many incorrect PIN attempts — session invalidated. Please sign in again.',
+      { sessionRevoked: true }
+    );
+  }
+
+  const isValidPin = verifySecretAny((req.body || {}).pin, user.pin);
 
   if (!isValidPin) {
-    logActivity(user.username, 'pin-failed', 'Incorrect PIN entered at lock screen');
-    return res.json({ ok: false, error: 'Incorrect PIN.' });
+    if (session) session.pinFails = (session.pinFails || 0) + 1;
+    const ipFail = recordRateLimitFailure(pinIpKey);
+    const sessionFails = session ? session.pinFails : RATE_LIMIT_CONFIG.pinSessionMax;
+    if (sessionFails >= RATE_LIMIT_CONFIG.pinSessionMax || ipFail.count >= RATE_LIMIT_CONFIG.pinIpMax) {
+      if (req.sessionToken) sessions.delete(req.sessionToken);
+      res.clearCookie(SESSION_COOKIE, clearCookieOptions(req));
+      logActivity(user.username, 'pin-locked', `Session invalidated after repeated incorrect PIN attempts (from ${ip})`);
+      return sendRateLimited(
+        res,
+        ipFail.retryAfterSec,
+        'Too many incorrect PIN attempts — session invalidated. Please sign in again.',
+        { sessionRevoked: true }
+      );
+    }
+    logActivity(user.username, 'pin-failed', `Incorrect PIN entered at lock screen (${sessionFails}/${RATE_LIMIT_CONFIG.pinSessionMax}, from ${ip})`);
+    return res.json({
+      ok: false,
+      error: 'Incorrect PIN.',
+      attemptsRemaining: RATE_LIMIT_CONFIG.pinSessionMax - sessionFails,
+    });
   }
-  logActivity(user.username, 'pin-unlock', 'Unlocked with PIN');
+
+  if (session) session.pinFails = 0;
+  logActivity(user.username, 'pin-unlock', 'Unlocked with PIN (cryptographically verified)');
   res.json({ ok: true });
 });
 
-app.post('/api/change-own-password', (req, res) => {
-  const user = getSessionUser(req);
-  if (!user) return res.json({ ok: false, error: 'No active session.' });
+app.post('/api/change-own-password', requireAuth, (req, res) => {
+  const user = req.user;
   const { currentPassword, newPassword } = req.body || {};
-  const rawCur = currentPassword !== undefined && currentPassword !== null ? String(currentPassword) : '';
-  const trimmedCur = rawCur.trim();
-  const isCurValid = verifySecret(rawCur, user.password) ||
-    verifySecret(trimmedCur, user.password) ||
-    (user.username.toLowerCase() === 'matt' && (rawCur === '1234!' || trimmedCur === '1234!' || rawCur === '1234' || trimmedCur === '1234'));
-  if (!isCurValid) {
+  if (!verifySecretAny(currentPassword, user.password)) {
     return res.json({ ok: false, error: 'Current password is incorrect.' });
   }
-  if (!newPassword || String(newPassword).length < 4) {
-    return res.json({ ok: false, error: 'New password must be at least 4 characters.' });
+  if (!newPassword || String(newPassword).length < 8) {
+    return res.json({ ok: false, error: 'New password must be at least 8 characters.' });
   }
   const users = loadUsers();
   const target = findUser(users, user.username);
@@ -409,13 +906,33 @@ app.post('/api/change-own-password', (req, res) => {
   target.password = makeCredentials(newPassword);
   target.mustChangePassword = false;
   saveUsers(users);
-  logActivity(user.username, 'password-changed', 'User changed their own password');
+  const revokedCount = revokeUserSessions(target.username);
+  res.clearCookie(SESSION_COOKIE, clearCookieOptions(req));
+  logActivity(user.username, 'password-changed', `User changed their own password (${revokedCount} session(s) invalidated)`);
+  res.json({ ok: true, reauthRequired: true, sessionsRevoked: revokedCount });
+});
+
+app.post('/api/change-own-pin', requireAuth, (req, res) => {
+  const user = req.user;
+  const { currentPassword, newPin } = req.body || {};
+  if (!verifySecretAny(currentPassword, user.password)) {
+    return res.json({ ok: false, error: 'Current password is incorrect.' });
+  }
+  const pinStr = String(newPin || '').trim();
+  if (!/^\d{4}$/.test(pinStr)) {
+    return res.json({ ok: false, error: 'PIN must be exactly 4 digits.' });
+  }
+  const users = loadUsers();
+  const target = findUser(users, user.username);
+  if (!target) return res.json({ ok: false, error: 'User not found.' });
+  target.pin = makeCredentials(pinStr);
+  saveUsers(users);
+  logActivity(user.username, 'pin-changed', 'User changed their own PIN');
   res.json({ ok: true });
 });
 
-app.post('/api/set-theme', (req, res) => {
-  const user = getSessionUser(req);
-  if (!user) return res.json({ ok: false, error: 'No active session.' });
+app.post('/api/set-theme', requireAuth, (req, res) => {
+  const user = req.user;
   const theme = (req.body || {}).theme;
   if (!VALID_THEMES.includes(theme)) return res.json({ ok: false, error: 'Unknown theme.' });
   const users = loadUsers();
@@ -449,8 +966,8 @@ app.post('/api/users', requireAdmin, (req, res) => {
   if (!/^[A-Za-z0-9._-]{2,24}$/.test(name)) {
     return res.json({ ok: false, error: 'Username must be 2-24 characters (letters, numbers, . _ -).' });
   }
-  if (!password || String(password).length < 4) {
-    return res.json({ ok: false, error: 'Password must be at least 4 characters.' });
+  if (!password || String(password).length < 8) {
+    return res.json({ ok: false, error: 'Password must be at least 8 characters.' });
   }
   if (!/^\d{4}$/.test(String(pin || ''))) {
     return res.json({ ok: false, error: 'PIN must be exactly 4 digits.' });
@@ -484,26 +1001,48 @@ app.post('/api/users/delete', requireAdmin, (req, res) => {
     return res.json({ ok: false, error: 'You cannot delete the account you are signed in with.' });
   }
   saveUsers(users.filter((u) => u !== user));
+  revokeUserSessions(user.username);
   logActivity(req.user.username, 'user-deleted', `Deleted user "${user.username}"`);
   res.json({ ok: true });
 });
 
 app.post('/api/users/reset-credentials', requireAdmin, (req, res) => {
   const { username, password, pin } = req.body || {};
+  if (!password && !pin) {
+    return res.json({ ok: false, error: 'Provide a new password and/or 4-digit PIN.' });
+  }
   const users = loadUsers();
   const user = findUser(users, username);
   if (!user) return res.json({ ok: false, error: 'User not found.' });
+  const passwordWasReset = Boolean(password);
   if (password) {
-    if (String(password).length < 4) return res.json({ ok: false, error: 'Password must be at least 4 characters.' });
+    if (String(password).length < 8) return res.json({ ok: false, error: 'Password must be at least 8 characters.' });
     user.password = makeCredentials(password);
+    user.mustChangePassword = false;
   }
   if (pin) {
     if (!/^\d{4}$/.test(String(pin))) return res.json({ ok: false, error: 'PIN must be exactly 4 digits.' });
     user.pin = makeCredentials(pin);
   }
   saveUsers(users);
-  logActivity(req.user.username, 'user-credentials-reset', `Reset credentials for "${user.username}"`);
-  res.json({ ok: true });
+  let revokedCount = 0;
+  const resetSelf = user.username.toLowerCase() === req.user.username.toLowerCase();
+  if (passwordWasReset) {
+    revokedCount = revokeUserSessions(user.username);
+    if (resetSelf) {
+      res.clearCookie(SESSION_COOKIE, clearCookieOptions(req));
+    }
+  }
+  logActivity(
+    req.user.username,
+    'user-credentials-reset',
+    `Reset credentials for "${user.username}"${passwordWasReset ? ` (${revokedCount} session(s) invalidated)` : ''}`
+  );
+  res.json({
+    ok: true,
+    sessionsRevoked: revokedCount,
+    reauthRequired: passwordWasReset && resetSelf,
+  });
 });
 
 // ---- Settings ----
@@ -555,14 +1094,14 @@ app.get('/api/activity', requireAdmin, (req, res) => {
 });
 
 // ---- Usernames List (for technician select in modules) ----
-app.get('/api/users/list', (req, res) => {
+app.get('/api/users/list', requireAuth, (req, res) => {
   const users = loadUsers();
   const list = users.map((u) => u.username).filter(Boolean);
   res.json({ ok: true, users: list });
 });
 
 // ---- Gamepad QA Reports Library Persistence ----
-const GAMEPAD_REPORTS_FILE = path.join(APP_ROOT, 'data', 'gamepad-reports.json');
+const GAMEPAD_REPORTS_FILE = path.join(DATA_DIR, 'gamepad-reports.json');
 
 function loadGamepadReports() {
   try {
@@ -575,17 +1114,17 @@ function loadGamepadReports() {
 
 function saveGamepadReports(reports) {
   try {
-    const dataDir = path.join(APP_ROOT, 'data');
+    const dataDir = DATA_DIR;
     if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
     fs.writeFileSync(GAMEPAD_REPORTS_FILE, JSON.stringify(reports, null, 2), 'utf8');
   } catch (e) {}
 }
 
-app.get('/api/gamepad-reports', (req, res) => {
+app.get('/api/gamepad-reports', requireAuth, (req, res) => {
   res.json({ ok: true, reports: loadGamepadReports() });
 });
 
-app.post('/api/gamepad-reports', (req, res) => {
+app.post('/api/gamepad-reports', requireAuth, (req, res) => {
   const report = req.body;
   if (!report || !report.id) return res.status(400).json({ ok: false, error: 'Invalid report data' });
   const reports = loadGamepadReports();
@@ -599,7 +1138,7 @@ app.post('/api/gamepad-reports', (req, res) => {
   res.json({ ok: true, report });
 });
 
-app.patch('/api/gamepad-reports/:id/sku', (req, res) => {
+app.patch('/api/gamepad-reports/:id/sku', requireAuth, (req, res) => {
   const { id } = req.params;
   const { sku, notes } = req.body || {};
   const reports = loadGamepadReports();
@@ -612,7 +1151,7 @@ app.patch('/api/gamepad-reports/:id/sku', (req, res) => {
   res.json({ ok: true, report: target });
 });
 
-app.delete('/api/gamepad-reports/:id', (req, res) => {
+app.delete('/api/gamepad-reports/:id', requireAuth, (req, res) => {
   const { id } = req.params;
   let reports = loadGamepadReports();
   reports = reports.filter((r) => r.id !== id);
@@ -621,7 +1160,7 @@ app.delete('/api/gamepad-reports/:id', (req, res) => {
 });
 
 // ---- Phone & Tablet QA Reports Library Persistence ----
-const PHONE_REPORTS_FILE = path.join(APP_ROOT, 'data', 'phone-reports.json');
+const PHONE_REPORTS_FILE = path.join(DATA_DIR, 'phone-reports.json');
 
 function loadPhoneReports() {
   try {
@@ -634,17 +1173,17 @@ function loadPhoneReports() {
 
 function savePhoneReports(reports) {
   try {
-    const dataDir = path.join(APP_ROOT, 'data');
+    const dataDir = DATA_DIR;
     if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
     fs.writeFileSync(PHONE_REPORTS_FILE, JSON.stringify(reports, null, 2), 'utf8');
   } catch (e) {}
 }
 
-app.get('/api/phone-reports', (req, res) => {
+app.get('/api/phone-reports', requireAuth, (req, res) => {
   res.json({ ok: true, reports: loadPhoneReports() });
 });
 
-app.post('/api/phone-reports', (req, res) => {
+app.post('/api/phone-reports', requireAuth, (req, res) => {
   const report = req.body;
   if (!report || !report.id) return res.status(400).json({ ok: false, error: 'Invalid report data' });
   const reports = loadPhoneReports();
@@ -658,7 +1197,7 @@ app.post('/api/phone-reports', (req, res) => {
   res.json({ ok: true, report });
 });
 
-app.patch('/api/phone-reports/:id/sku', (req, res) => {
+app.patch('/api/phone-reports/:id/sku', requireAuth, (req, res) => {
   const { id } = req.params;
   const { sku, notes } = req.body || {};
   const reports = loadPhoneReports();
@@ -671,7 +1210,7 @@ app.patch('/api/phone-reports/:id/sku', (req, res) => {
   res.json({ ok: true, report: target });
 });
 
-app.delete('/api/phone-reports/:id', (req, res) => {
+app.delete('/api/phone-reports/:id', requireAuth, (req, res) => {
   const { id } = req.params;
   let reports = loadPhoneReports();
   reports = reports.filter((r) => r.id !== id);
@@ -680,7 +1219,7 @@ app.delete('/api/phone-reports/:id', (req, res) => {
 });
 
 // ---- Repair Book In & Workshop Job Tracking Persistence ----
-const REPAIRS_FILE = path.join(APP_ROOT, 'data', 'repairs.json');
+const REPAIRS_FILE = path.join(DATA_DIR, 'repairs.json');
 
 function loadRepairTickets() {
   try {
@@ -693,17 +1232,17 @@ function loadRepairTickets() {
 
 function saveRepairTickets(tickets) {
   try {
-    const dataDir = path.join(APP_ROOT, 'data');
+    const dataDir = DATA_DIR;
     if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
     fs.writeFileSync(REPAIRS_FILE, JSON.stringify(tickets, null, 2), 'utf8');
   } catch (e) {}
 }
 
-app.get('/api/repairs', (req, res) => {
+app.get('/api/repairs', requireAuth, (req, res) => {
   res.json({ ok: true, tickets: loadRepairTickets() });
 });
 
-app.post('/api/repairs', (req, res) => {
+app.post('/api/repairs', requireAuth, (req, res) => {
   const ticket = req.body;
   if (!ticket || !ticket.id) return res.status(400).json({ ok: false, error: 'Invalid ticket data' });
   const tickets = loadRepairTickets();
@@ -722,7 +1261,7 @@ app.post('/api/repairs', (req, res) => {
       : [{
           status: ticket.status || 'Booked In',
           changedAt: ticket.createdAt || nowStr,
-          changedBy: ticket.bookedBy || (req.user ? req.user.username : 'Matt'),
+          changedBy: ticket.bookedBy || req.user.username,
           note: 'Initial intake and booking registered.'
         }];
     tickets.unshift({ 
@@ -733,12 +1272,12 @@ app.post('/api/repairs', (req, res) => {
     });
   }
   saveRepairTickets(tickets);
-  const actor = req.user ? req.user.username : (ticket.bookedBy || 'Matt');
+  const actor = req.user.username;
   logActivity(actor, 'repair-save', `Saved repair ticket ${ticket.id} (${(ticket.device && ticket.device.model) || 'Device'}) - Status: ${ticket.status}`);
   res.json({ ok: true, ticket });
 });
 
-app.patch('/api/repairs/:id/status', (req, res) => {
+app.patch('/api/repairs/:id/status', requireAuth, (req, res) => {
   const { id } = req.params;
   const { status, changedBy, note, changedAt } = req.body || {};
   if (!status) return res.status(400).json({ ok: false, error: 'Status is required' });
@@ -748,7 +1287,7 @@ app.patch('/api/repairs/:id/status', (req, res) => {
   if (!target) return res.status(404).json({ ok: false, error: 'Repair ticket not found' });
 
   const nowStr = changedAt || new Date().toLocaleString('en-GB');
-  const user = changedBy || (req.user ? req.user.username : 'Matt');
+  const user = changedBy || req.user.username;
   
   const historyEntry = {
     status: status,
@@ -771,7 +1310,7 @@ app.patch('/api/repairs/:id/status', (req, res) => {
   res.json({ ok: true, ticket: target });
 });
 
-app.delete('/api/repairs/:id', (req, res) => {
+app.delete('/api/repairs/:id', requireAuth, (req, res) => {
   const { id } = req.params;
   let tickets = loadRepairTickets();
   tickets = tickets.filter((t) => t.id !== id);
@@ -782,7 +1321,7 @@ app.delete('/api/repairs/:id', (req, res) => {
 // ---- USB Phone & Tablet Diagnostic Agent Bridge ----
 let activeUsbDevice = null;
 
-app.get('/api/usb-agent/status', (req, res) => {
+app.get('/api/usb-agent/status', requireAuth, (req, res) => {
   res.json({
     ok: true,
     agentOnline: true,
@@ -793,26 +1332,29 @@ app.get('/api/usb-agent/status', (req, res) => {
   });
 });
 
-app.get('/api/usb-agent/device', (req, res) => {
+app.get('/api/usb-agent/device', requireAuth, (req, res) => {
   res.json({
     ok: true,
     device: activeUsbDevice,
   });
 });
 
-app.post('/api/usb-agent/device', (req, res) => {
+app.post('/api/usb-agent/device', requireAuth, (req, res) => {
   const device = req.body;
+  if (!device || typeof device !== 'object' || Array.isArray(device)) {
+    return res.status(400).json({ ok: false, error: 'Valid device payload required.' });
+  }
   activeUsbDevice = device;
   res.json({ ok: true, activeDevice: activeUsbDevice });
 });
 
-app.delete('/api/usb-agent/device', (req, res) => {
+app.delete('/api/usb-agent/device', requireAuth, (req, res) => {
   activeUsbDevice = null;
   res.json({ ok: true });
 });
 
 // ---- CeX Catalog Database & Lookup Engine ----
-const CEX_CACHE_FILE = path.join(APP_ROOT, 'data', 'cex-cache.json');
+const CEX_CACHE_FILE = path.join(DATA_DIR, 'cex-cache.json');
 
 function loadCexCache() {
   try {
@@ -826,7 +1368,7 @@ function loadCexCache() {
 function saveCexCache(barcode, item) {
   if (!barcode || !item) return;
   try {
-    const dataDir = path.join(APP_ROOT, 'data');
+    const dataDir = DATA_DIR;
     if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
     const cache = loadCexCache();
     cache[String(barcode).trim()] = {
@@ -1181,7 +1723,7 @@ async function queryCexPromise(query) {
 }
 
 // CeX Barcode & Product Proxy endpoint
-app.get('/api/cex-lookup', async (req, res) => {
+app.get('/api/cex-lookup', requireAuth, async (req, res) => {
   const barcode = String(req.query.barcode || req.query.q || '').trim();
   if (!barcode) return res.json({ ok: false, error: 'No barcode or query provided.' });
   const result = await queryCexPromise(barcode);
@@ -1189,7 +1731,7 @@ app.get('/api/cex-lookup', async (req, res) => {
 });
 
 // ---- Game Library Persistence & Monday 06:00 Sync Engine ----
-const GAME_LIBRARY_FILE = path.join(APP_ROOT, 'data', 'game-library.json');
+const GAME_LIBRARY_FILE = path.join(DATA_DIR, 'game-library.json');
 
 function loadGameLibrary() {
   try {
@@ -1213,7 +1755,7 @@ function loadGameLibrary() {
 
 function saveGameLibrary(lib) {
   try {
-    const dataDir = path.join(APP_ROOT, 'data');
+    const dataDir = DATA_DIR;
     if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
     fs.writeFileSync(GAME_LIBRARY_FILE, JSON.stringify(lib, null, 2), 'utf8');
   } catch (e) {
@@ -1288,14 +1830,14 @@ function scheduleMondaySync() {
 }
 
 // Game Library Endpoints
-app.get('/api/games', (req, res) => {
+app.get('/api/games', requireAuth, (req, res) => {
   const lib = loadGameLibrary();
   const ms = getMsUntilNextMonday0600();
   lib.nextMondaySync = new Date(Date.now() + ms).toISOString();
   res.json({ ok: true, ...lib });
 });
 
-app.post('/api/games', (req, res) => {
+app.post('/api/games', requireAuth, (req, res) => {
   const { storeGames, overflowGames, consoles } = req.body || {};
   const current = loadGameLibrary();
   if (Array.isArray(storeGames)) current.storeGames = storeGames;
@@ -1305,7 +1847,7 @@ app.post('/api/games', (req, res) => {
   res.json({ ok: true, savedAt: new Date().toISOString() });
 });
 
-app.post('/api/games/sync-cex', async (req, res) => {
+app.post('/api/games/sync-cex', requireAuth, async (req, res) => {
   try {
     const result = await performCexMondaySync();
     res.json(result);
@@ -1395,12 +1937,14 @@ function fetchLoisBullion(force = false) {
   });
 }
 
-// Background auto-refresh every 30 minutes
-setInterval(() => {
-  fetchLoisBullion(true).catch(() => {});
-}, 30 * 60 * 1000);
+if (require.main === module) {
+  // Background auto-refresh every 30 minutes
+  setInterval(() => {
+    fetchLoisBullion(true).catch(() => {});
+  }, 30 * 60 * 1000);
+}
 
-app.get('/api/bullion-rates', async (req, res) => {
+app.get('/api/bullion-rates', requireAuth, async (req, res) => {
   const force = req.query.force === '1' || req.query.force === 'true';
   const data = await fetchLoisBullion(force);
   res.json({
@@ -1413,7 +1957,7 @@ app.get('/api/bullion-rates', async (req, res) => {
 });
 
 // ---- Matt's Beta App Incubator & Staging API ----
-const BETA_PROJECTS_FILE = path.join(APP_ROOT, 'data', 'beta-projects.json');
+const BETA_PROJECTS_FILE = path.join(DATA_DIR, 'beta-projects.json');
 
 function loadBetaProjects() {
   try {
@@ -1426,7 +1970,7 @@ function loadBetaProjects() {
 
 function saveBetaProjects(projects) {
   try {
-    const dataDir = path.join(APP_ROOT, 'data');
+    const dataDir = DATA_DIR;
     if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
     fs.writeFileSync(BETA_PROJECTS_FILE, JSON.stringify(projects, null, 2), 'utf8');
   } catch (e) {}
@@ -1477,27 +2021,39 @@ app.post('/api/beta/integrate', requireMatt, (req, res) => {
 app.get('/healthz', (req, res) => res.json({ ok: true, version: APP_VERSION }));
 
 // ---- Boot ----
-(async () => {
-  const mode = await store.init();
-  if (loadUsers().length === 0) {
-    // First run: create the master account (Matt / 1234!, PIN 1234).
-    saveUsers([
-      {
-        username: 'Matt',
-        role: 'admin',
-        createdAt: new Date().toISOString(),
-        password: makeCredentials('1234!'),
-        pin: makeCredentials('1234'),
-        mustChangePassword: false,
-        theme: 'yellow',
-      },
-    ]);
-  }
-  loadSettings();
-  scheduleMondaySync();
-  logActivity('system', 'server-start', `SOS Tools Web v${APP_VERSION} started (store: ${mode})`);
+if (require.main === module) {
+  (async () => {
+    const mode = await store.init();
+    initSetupState();
+    loadSettings();
+    scheduleMondaySync();
+    logActivity('system', 'server-start', `SOS Tools Web v${APP_VERSION} started (store: ${mode}${isSetupRequired() ? ', setup-required' : ''})`);
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`SOS Tools Web v${APP_VERSION} running on http://0.0.0.0:${PORT}`);
-  });
-})();
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`SOS Tools Web v${APP_VERSION} running on http://0.0.0.0:${PORT}`);
+    });
+  })();
+} else {
+  module.exports = {
+    app,
+    store,
+    SETUP_TOKEN_FILE,
+    RATE_LIMIT_CONFIG,
+    initSetupState,
+    isSetupRequired,
+    normalizeIp,
+    isLoopbackIp,
+    getConfiguredTrustedProxies,
+    isTrustedProxySocket,
+    isRequestHttps,
+    isSetupHttps,
+    isSetupTransportAllowed,
+    cookieOptions,
+    csrfProtection,
+    clientIp,
+    revokeUserSessions,
+    clearAllRateLimitsForTest: () => rateLimitBuckets.clear(),
+    getSetupInProgress: () => setupInProgress,
+    setSetupInProgressForTest: (val) => { setupInProgress = Boolean(val); },
+  };
+}
