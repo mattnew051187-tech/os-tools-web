@@ -39,9 +39,54 @@ const state = {
 
 /* ---------------- Screens ---------------- */
 function show(screen) {
-  for (const id of ['screen-login', 'screen-lock', 'screen-main']) {
+  for (const id of ['screen-setup', 'screen-login', 'screen-lock', 'screen-main']) {
     $('#' + id).classList.toggle('hidden', id !== screen);
   }
+}
+
+/* ---------------- First-run Setup ---------------- */
+const setupForm = $('#setup-form');
+if (setupForm) {
+  setupForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    $('#setup-error').textContent = '';
+    const setupToken = $('#setup-token').value.trim();
+    const username = $('#setup-username').value.trim();
+    const password = $('#setup-password').value;
+    const confirmPassword = $('#setup-password-confirm').value;
+    const pin = $('#setup-pin').value.trim();
+    const confirmPin = $('#setup-pin-confirm').value.trim();
+
+    if (password.length < 8) {
+      $('#setup-error').textContent = 'Password must be at least 8 characters.';
+      return;
+    }
+    if (password !== confirmPassword) {
+      $('#setup-error').textContent = 'Passwords do not match.';
+      return;
+    }
+    if (!/^\d{4}$/.test(pin)) {
+      $('#setup-error').textContent = 'PIN must be exactly 4 digits.';
+      return;
+    }
+    if (pin !== confirmPin) {
+      $('#setup-error').textContent = 'PINs do not match.';
+      return;
+    }
+
+    const res = await window.sos.completeSetup({ setupToken, username, password, pin });
+    if (!res.ok) {
+      $('#setup-error').textContent = res.error || 'Initial setup failed.';
+      return;
+    }
+    $('#setup-token').value = '';
+    $('#setup-password').value = '';
+    $('#setup-password-confirm').value = '';
+    $('#setup-pin').value = '';
+    $('#setup-pin-confirm').value = '';
+    await enterApp(res.user, { via: 'setup' });
+    flashBanner('Initial administrator account created.');
+  });
 }
 
 /* ---------------- Login ---------------- */
@@ -128,7 +173,12 @@ async function loadBullionRates(force = false) {
   if (updatedEl && force) updatedEl.textContent = 'Updating...';
 
   try {
-    const res = await fetch(`/api/bullion-rates${force ? '?force=1' : ''}`);
+    const token = sessionStorage.getItem('sos_token');
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const res = await fetch(`/api/bullion-rates${force ? '?force=1' : ''}`, {
+      headers,
+      credentials: 'include',
+    });
     if (res.ok) {
       const data = await res.json();
       if (data && data.ok && data.rates) {
@@ -409,6 +459,10 @@ async function handlePinKey(key) {
       state.pinFails = 0;
       $('#lock-error').textContent = '';
       await enterApp(state.user, { via: 'pin' });
+    } else if (res.sessionRevoked) {
+      state.pinFails = 0;
+      await signOut();
+      $('#login-error').textContent = res.error || 'Too many incorrect PIN attempts — please sign in again.';
     } else {
       state.pinFails++;
       $('#lock-error').textContent = `${res.error || 'Incorrect PIN.'} (${state.pinFails}/3)`;
@@ -564,7 +618,7 @@ async function loadUsersTable() {
       <td>${u.role}</td>
       <td>${created}</td>
       <td class="row-form" style="margin:0">
-        <input type="password" placeholder="New password" data-pw="${u.username}" style="flex:0 1 150px" />
+        <input type="password" minlength="8" placeholder="New password (min 8)" data-pw="${u.username}" style="flex:0 1 160px" />
         <input inputmode="numeric" maxlength="4" placeholder="New PIN" data-pin="${u.username}" style="flex:0 1 110px" />
         <button class="btn" data-reset="${u.username}">Reset</button>
         <button class="btn danger" data-del="${u.username}">Delete</button>
@@ -575,7 +629,19 @@ async function loadUsersTable() {
     b.addEventListener('click', async () => {
       const name = b.dataset.reset;
       const pw = tbody.querySelector(`input[data-pw="${name}"]`).value;
-      const pin = tbody.querySelector(`input[data-pin="${name}"]`).value;
+      const pin = tbody.querySelector(`input[data-pin="${name}"]`).value.trim();
+      if (!pw && !pin) {
+        $('#user-form-error').textContent = 'Provide a new password and/or 4-digit PIN.';
+        return;
+      }
+      if (pw && pw.length < 8) {
+        $('#user-form-error').textContent = 'Password must be at least 8 characters.';
+        return;
+      }
+      if (pin && !/^\d{4}$/.test(pin)) {
+        $('#user-form-error').textContent = 'PIN must be exactly 4 digits.';
+        return;
+      }
       const r = await window.sos.resetCredentials(name, pw || undefined, pin || undefined);
       $('#user-form-error').textContent = r.ok ? 'Credentials updated.' : r.error;
       if (r.ok) loadUsersTable();
@@ -593,12 +659,19 @@ async function loadUsersTable() {
 $('#user-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   $('#user-form-error').textContent = '';
-  const res = await window.sos.createUser(
-    $('#new-username').value,
-    $('#new-password').value,
-    $('#new-pin').value,
-    $('#new-role').value
-  );
+  const username = $('#new-username').value.trim();
+  const password = $('#new-password').value;
+  const pin = $('#new-pin').value.trim();
+  const role = $('#new-role').value;
+  if (password.length < 8) {
+    $('#user-form-error').textContent = 'Password must be at least 8 characters.';
+    return;
+  }
+  if (!/^\d{4}$/.test(pin)) {
+    $('#user-form-error').textContent = 'PIN must be exactly 4 digits.';
+    return;
+  }
+  const res = await window.sos.createUser(username, password, pin, role);
   if (!res.ok) {
     $('#user-form-error').textContent = res.error;
     return;
@@ -717,15 +790,33 @@ $('#theme-select').addEventListener('change', async (e) => {
 
 $('#change-password-form').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const res = await window.sos.changeOwnPassword($('#cur-password').value, $('#new-self-password').value);
-  $('#change-password-msg').textContent = res.ok ? 'Password changed.' : res.error;
+  const curPassword = $('#cur-password').value;
+  const newPassword = $('#new-self-password').value;
+  if (newPassword.length < 8) {
+    $('#change-password-msg').textContent = 'New password must be at least 8 characters.';
+    return;
+  }
+  const res = await window.sos.changeOwnPassword(curPassword, newPassword);
+  $('#change-password-msg').textContent = res.ok ? 'Password changed — please sign in with your new password.' : res.error;
   if (res.ok) {
     $('#cur-password').value = $('#new-self-password').value = '';
-    const me = await window.sos.getCurrentUser();
-    if (me && me.user) state.user = me.user;
     $('#must-change').classList.add('hidden');
+    await signOut();
+    $('#login-error').textContent = 'Password changed — please sign in with your new password.';
   }
 });
+
+const changePinForm = $('#change-pin-form');
+if (changePinForm) {
+  changePinForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const res = await window.sos.changeOwnPin($('#pin-cur-password').value, $('#new-self-pin').value.trim());
+    $('#change-pin-msg').textContent = res.ok ? 'PIN changed.' : res.error;
+    if (res.ok) {
+      $('#pin-cur-password').value = $('#new-self-pin').value = '';
+    }
+  });
+}
 
 /* ---------------- Helpers ---------------- */
 function escapeHtml(s) {
@@ -740,11 +831,33 @@ function escapeAttr(s) {
 /* ---------------- Boot ---------------- */
 buildKeypad();
 
-/* Always land cleanly on the login screen requiring credentials */
-show('screen-login');
+async function initAuthScreen() {
+  const status = await window.sos.getSetupStatus();
+  if (status && status.ok && status.setupRequired === true) {
+    show('screen-setup');
+    const warnEl = $('#setup-https-warning');
+    const formEl = $('#setup-form');
+    const submitBtn = $('#setup-submit-btn');
+    if (status.setupAllowed === false) {
+      if (warnEl) warnEl.classList.remove('hidden');
+      if (submitBtn) submitBtn.disabled = true;
+      if (formEl) {
+        formEl.querySelectorAll('input').forEach((inp) => { inp.disabled = true; });
+      }
+    } else {
+      if (warnEl) warnEl.classList.add('hidden');
+      if (submitBtn) submitBtn.disabled = false;
+      const tok = $('#setup-token');
+      if (tok) tok.focus();
+    }
+  } else {
+    show('screen-login');
+    const u = $('#login-username');
+    if (u) u.focus();
+  }
+}
 
-// Immediately load live Lois Bullion rates on boot so top-right ticker is always populated
-loadBullionRates();
+initAuthScreen();
 startBullionTimer();
 
 // Forward parent window gamepad events to active iframe so gamepads are immediately detected
