@@ -12,8 +12,38 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body data-theme="yellow">
+  <!-- ============ FIRST-RUN SETUP SCREEN ============ -->
+  <div id="screen-setup" class="screen centered hidden">
+    <div class="card login-card">
+      <img class="brand-logo" src="assets/sos-logo.png" alt="SOS Quality Used Goods — Buy · Sell · Repair" />
+      <p class="tagline">Initial Administrator Setup</p>
+      <p class="hint" style="margin-bottom:12px;">
+        No user accounts exist yet. Enter the one-time setup token from <code>INITIAL_SETUP_TOKEN</code> or the server&rsquo;s <code>data/.setup-token</code> file to create the first administrator account.
+      </p>
+      <p id="setup-https-warning" class="error hidden" style="margin-bottom:10px;">
+        First-run setup requires HTTPS (or direct localhost access). Do not send your setup token, password, or PIN over plain HTTP. Open this app via HTTPS and reload.
+      </p>
+      <form id="setup-form">
+        <label for="setup-token">One-time Setup Token</label>
+        <input id="setup-token" type="password" autocomplete="off" required />
+        <label for="setup-username">Administrator Username</label>
+        <input id="setup-username" type="text" autocomplete="username" minlength="2" maxlength="24" required />
+        <label for="setup-password">Password (min 8 characters)</label>
+        <input id="setup-password" type="password" autocomplete="new-password" minlength="8" required />
+        <label for="setup-password-confirm">Confirm Password</label>
+        <input id="setup-password-confirm" type="password" autocomplete="new-password" minlength="8" required />
+        <label for="setup-pin">4-Digit Lock PIN</label>
+        <input id="setup-pin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" required />
+        <label for="setup-pin-confirm">Confirm 4-Digit PIN</label>
+        <input id="setup-pin-confirm" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" required />
+        <button id="setup-submit-btn" type="submit" class="btn primary block">Create Administrator Account</button>
+        <p id="setup-error" class="error"></p>
+      </form>
+    </div>
+  </div>
+
   <!-- ============ LOGIN SCREEN ============ -->
-  <div id="screen-login" class="screen centered">
+  <div id="screen-login" class="screen centered hidden">
     <div class="card login-card">
       <img class="brand-logo" src="assets/sos-logo.png" alt="SOS Quality Used Goods — Buy · Sell · Repair" />
       <p class="tagline">SOS Tools — Workshop Launchpad</p>
@@ -126,7 +156,7 @@
 
     <div id="banner" class="banner hidden"></div>
     <div id="must-change" class="banner warn hidden">
-      You are using the default master password. Please change it in <b>Account</b>.
+      Please update your password in <b>Account</b>.
     </div>
 
     <main id="tab-content" class="tab-content">
@@ -164,9 +194,9 @@
           <button class="btn back-btn" data-back>&#8592; Home</button>
           <h2>User Management</h2>
           <form id="user-form" class="row-form">
-            <input id="new-username" placeholder="Username" />
-            <input id="new-password" type="password" placeholder="Password" />
-            <input id="new-pin" inputmode="numeric" maxlength="4" placeholder="PIN (4 digits)" />
+            <input id="new-username" placeholder="Username" minlength="2" maxlength="24" required />
+            <input id="new-password" type="password" placeholder="Password (min 8 chars)" minlength="8" required />
+            <input id="new-pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="PIN (4 digits)" required />
             <select id="new-role"><option value="user">Standard user</option><option value="admin">Admin</option></select>
             <button type="submit" class="btn primary">Create user</button>
           </form>
@@ -219,11 +249,20 @@
           <h2>Account</h2>
           <form id="change-password-form">
             <label>Current password</label>
-            <input id="cur-password" type="password" />
-            <label>New password</label>
-            <input id="new-self-password" type="password" />
+            <input id="cur-password" type="password" autocomplete="current-password" required />
+            <label>New password (min 8 characters)</label>
+            <input id="new-self-password" type="password" autocomplete="new-password" minlength="8" required />
             <button type="submit" class="btn primary">Change password</button>
             <p id="change-password-msg" class="hint"></p>
+          </form>
+          <h2 style="margin-top:28px">Change Lock PIN</h2>
+          <form id="change-pin-form">
+            <label>Current password</label>
+            <input id="pin-cur-password" type="password" autocomplete="current-password" />
+            <label>New 4-digit PIN</label>
+            <input id="new-self-pin" type="password" inputmode="numeric" maxlength="4" autocomplete="off" />
+            <button type="submit" class="btn primary">Change PIN</button>
+            <p id="change-pin-msg" class="hint"></p>
           </form>
           <h2 style="margin-top:28px">Appearance</h2>
           <p class="hint">Your colour profile is saved to your account and applied every time you sign in — on every device.</p>

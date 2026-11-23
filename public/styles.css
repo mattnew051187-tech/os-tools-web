@@ -112,6 +112,8 @@ body {
 }
 
 .login-card { width: 360px; text-align: center; }
+#screen-setup { overflow-y: auto; padding: 20px 12px; align-items: safe center; }
+#screen-setup .login-card { width: 400px; max-width: 100%; }
 
 .logo {
   font-size: 34px;

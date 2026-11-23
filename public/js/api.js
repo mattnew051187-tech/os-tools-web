@@ -25,7 +25,9 @@
   }
 
   window.sos = {
-    // Auth
+    // Auth & first-run setup
+    getSetupStatus: () => request('GET', '/api/setup/status'),
+    completeSetup: (payload) => request('POST', '/api/setup', payload),
     getCurrentUser: () => request('GET', '/api/me'),
     login: (username, password) => request('POST', '/api/login', { username, password }),
     verifyPin: (pin) => request('POST', '/api/verify-pin', { pin }),
@@ -36,6 +38,8 @@
     setTheme: (theme) => request('POST', '/api/set-theme', { theme }),
     changeOwnPassword: (currentPassword, newPassword) =>
       request('POST', '/api/change-own-password', { currentPassword, newPassword }),
+    changeOwnPin: (currentPassword, newPin) =>
+      request('POST', '/api/change-own-pin', { currentPassword, newPin }),
 
     // Users (admin)
     listUsers: () => request('GET', '/api/users'),

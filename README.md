@@ -2,30 +2,49 @@
 
 The production platform. Everything lives centrally on this server:
 
-- **User accounts** (usernames, hashed passwords, PINs, themes) — one list for everyone
-- **Activity log** — every login, unlock, user change and settings change, attributed per user
-- **Module sources** — what each tab shows (built-in placeholder / file on server / web URL)
+- **User accounts** (usernames, scrypt-hashed passwords and PINs, themes) — one list for everyone
+- **Activity log** — every login, unlock, user change, recovery action, and settings change, attributed per user
+- **Module sources** — what each tab shows (built-in module / file on server / web URL)
 - **Settings** — idle-lock timeout, update notice URL
 
 Any device with a browser — Windows PC, Mac, tablet, phone — gets the full app by visiting
 the server address. Content is refreshed from the server at every sign-in and unlock, so it
-is always current. The desktop edition remains available as the beta-testing environment.
+is always current.
 
 ## Running it
 
 ```bash
-cd SOSTools-Web
+cd os-tools-web
 npm install
 npm start
 ```
 
-Then open **http://localhost:3000**. First run creates the master account:
+Open **http://localhost:3000** (or your HTTPS reverse-proxy URL on a remote server).
 
-| Username | Password | PIN |
-|---|---|---|
-| Admin | 12345 | 1234 |
+### First-run administrator setup
 
-(Change both immediately via Account / Users.)
+When no user accounts exist yet (`data/users.json` is missing or empty, or the MongoDB `users` collection is empty), the server enters **Initial Administrator Setup** mode instead of creating default credentials:
+
+1. **Setup token**: Either set `INITIAL_SETUP_TOKEN` (16+ characters) in `.env`/environment before starting the server, or read the auto-generated 48-character one-time token from `data/.setup-token` (created on boot with `0600` permissions). **Setup tokens are never printed to logs.**
+2. **Transport safeguard**: Submitting `/api/setup` is only allowed over **HTTPS** (direct TLS or behind a trusted reverse proxy forwarding `X-Forwarded-Proto: https`) or direct loopback (`localhost` / `127.0.0.1`). Plain HTTP remote setup requests are rejected (`403`).
+3. **Create the first admin**: Open the web UI, enter the setup token, choose the administrator username, a password (minimum 8 characters), and a 4-digit PIN. Once created, `data/.setup-token` is deleted and `/api/setup` is permanently disabled while any user account exists.
+
+> Existing `users.json` installations keep working with their existing hashed credentials. No default password or PIN exists anywhere in the codebase.
+
+## Offline administrator verification & recovery
+
+If an administrator forgets their password/PIN or loses access on a JSON file store (`data/users.json`), **stop the server first** and run the offline CLI scripts as the server owner (or via `sudo` cleanly — ownership and `0600` permissions are preserved):
+
+```bash
+# Check stored credentials cleanly (supports JSON store; checks MongoDB store connectivity)
+node scripts/verify-admin-credential.js
+
+# Reset an administrator's password and/or 4-digit PIN offline
+# (Refuses to overwrite if the SOS Tools server appears to be running)
+node scripts/set-admin-credential.js
+```
+
+For MongoDB-backed deployments (`MONGODB_URI`), `set-admin-credential.js` intentionally refuses to modify the local JSON fallback file; manage accounts against the database directly or temporarily verify connectivity with `verify-admin-credential.js`.
 
 ## Migrating accounts from the desktop edition
 
@@ -35,99 +54,34 @@ The data format is identical. To bring your existing users across, copy:
 C:\Users\<you>\AppData\Roaming\sos-tools\sos-tools-data\users.json
 ```
 
-into `SOSTools-Web\data\users.json` (while the server is stopped) and restart it.
+into `data/users.json` (while the server is stopped, with `0600` permissions) and restart it.
 
 ## Where data lives
 
-Everything is in `SOSTools-Web\data\`:
+Everything in file-store mode lives inside `./data/` (or `SOS_DATA_DIR`):
 
-- `users.json` — accounts (passwords/PINs salted + hashed, never plain text)
+- `users.json` — accounts (passwords/PINs salted + hashed with scrypt, never plain text)
 - `settings.json` — settings and module sources
 - `activity-log.jsonl` — central audit trail
+- `repairs.json`, `phone-reports.json`, `gamepad-reports.json`, `game-library.json`, `cex-cache.json`, `beta-projects.json` — workshop module data
+- `.setup-token` — temporary `0600` first-run token (automatically deleted once setup completes)
 
-Back this folder up and it carries your entire user base.
+Back up this directory regularly.
+
+## Reverse proxy, HTTPS, cookies & CSRF protection
+
+- **Reverse proxy (`TRUSTED_PROXIES`)**: Only loopback (`127.0.0.1`, `::1`) is trusted by default. If TLS terminates on an upstream proxy on a separate host, set `TRUSTED_PROXIES=<proxy-ip1>,<proxy-ip2>`. Spoofed `X-Forwarded-For`, `X-Forwarded-Proto`, and `X-Forwarded-Host` headers from untrusted sockets are ignored.
+- **Session cookies (`sos_session`)**: Issued as `HttpOnly` with 12-hour server-side expiry (`SESSION_MAX_AGE_MS`).
+  - Over HTTPS (direct TLS or trusted `X-Forwarded-Proto: https`) or when `FORCE_SECURE_COOKIES=1`, cookies include `Secure`.
+  - Setting `NODE_ENV=production` alone does **not** force `Secure` cookies on plain HTTP (`http://<server-ip>:3000`), avoiding broken module iframe logins before TLS/Caddy/Nginx is configured.
+  - Enable HTTPS (e.g. Caddy or Nginx + Let's Encrypt) before exposing the app on public/untrusted networks, and optionally set `FORCE_SECURE_COOKIES=1`.
+- **CSRF protection**: All state-changing `/api/*` requests (`POST`, `PUT`, `PATCH`, `DELETE`) authenticated by cookie rather than `Authorization: Bearer` enforce same-origin checks (`Sec-Fetch-Site`, `Origin`, `Referer`) and block simple cross-site HTML form content types (`application/x-www-form-urlencoded`, `multipart/form-data`, `text/plain`).
+- **Session revocation & lockout protection**:
+  - `POST /api/logout`, own-password changes (`/api/change-own-password`), and admin password resets (`/api/users/reset-credentials`) immediately invalidate affected active sessions and clear the session cookie.
+  - Rate limiting (`429` + `Retry-After`) protects `/api/login`, `/api/verify-pin` (invalidating the current session after repeated wrong PINs without permanent account lockout), and `/api/setup`.
 
 ## Hosting options
 
-**Option B — free cloud hosting with a permanent address (Render + MongoDB Atlas):**
-
-The app supports a cloud database out of the box: set the `MONGODB_URI` environment variable
-and all accounts/settings/logs persist in MongoDB Atlas (free tier) instead of local files —
-surviving restarts and redeploys.
-
-1. Create a free **GitHub** account and a new repository (e.g. `sos-tools-web`), upload this
-   folder's files (not `node_modules` or `data`)
-2. Create a free **MongoDB Atlas** account → M0 cluster → database user → network access
-   `0.0.0.0/0` → copy the connection string
-3. Create a free **Render** Web Service connected to that repo — build `npm install`, start
-   `node server.js`, environment variable `MONGODB_URI` = the Atlas connection string
-   (also set `NODE_ENV=production`)
-4. Render gives you a permanent address like `https://sos-tools.onrender.com`
-5. Future deploys: update the files in the GitHub repo → Render redeploys automatically
-
-Free-tier notes: Render spins the app down after ~15 min idle (first visitor waits ~1 min
-for wake-up; logins during the day keep it warm) and shows a `onrender.com` subdomain.
-
-**Option A — run it on one always-on PC at the shop (free):**
-
-See the step-by-step below. Short version: run `start-server.bat` on the shop PC, tell staff
-the address `http://<shop-pc-ip>:3000`, and (optionally) install Tailscale for access from
-outside the shop.
-
-### Option A step-by-step
-
-1. Copy the `SOSTools-Web` folder to the always-on PC (USB is fine) and install Node.js LTS
-   there if it isn't installed
-2. Run `npm install` once in that folder
-3. Double-click `start-server.bat` — the server runs while that window is open
-4. Find the PC's address: open PowerShell there and run `ipconfig` — note the **IPv4 Address**
-   (e.g. `192.168.1.50`). Staff use `http://192.168.1.50:3000`
-5. Allow the port through Windows Firewall (PowerShell as admin):
-   `netsh advfirewall firewall add rule name="SOS Tools" dir=in action=allow protocol=TCP localport=3000`
-6. In the router, give that PC a fixed DHCP reservation so its IP never changes
-7. Auto-start on boot: press Win+R, type `shell:startup`, Enter — put a shortcut to
-   `start-server.bat` in that folder. For crash-recovery too, use PM2:
-   `npm install -g pm2` then `pm2 start server.js --name sos-tools`, `pm2 save`,
-   `pm2 startup` (follow its printed instruction)
-8. Access from outside the shop: install **Tailscale** (free) on the server PC and on each
-   device that needs remote access; then use the Tailscale name instead of the IP
-
-**Option B (chosen) — Oracle Cloud free-forever VPS:**
-
-A real always-on Ubuntu server, £0 forever, no sleeping. Deploy via:
-
-1. Create a free GitHub account and a **public** repo `sos-tools-web`; upload this folder's
-   files (not `node_modules` or `data` — `data` must never be uploaded, it holds accounts)
-2. Sign up at cloud.oracle.com (free tier; needs a card for identity checks, never charged;
-   **home region: UK South (London)** — this cannot be changed later)
-3. Compute → Create Instance: Ubuntu 22.04, shape **VM.Standard.E2.1.Micro** (tick "Always
-   Free eligible"), generate/download the SSH keys and keep them safe
-4. Under *Advanced options → Management → Add cloud-init script*: paste the contents of
-   `deploy/oracle-cloud-init.txt` **after replacing GITHUB_USERNAME with your GitHub username**
-5. After creation: note the instance's **Public IP address**, then open port 3000 in the
-   cloud firewall: Networking → Virtual Cloud Networks → your VCN → Security Lists →
-   Default Security List → Add Ingress Rule: source `0.0.0.0/0`, protocol TCP, port 3000
-6. Wait ~5 minutes for cloud-init to finish, then open `http://<PUBLIC-IP>:3000`
-7. Sign in Admin/12345 → change the password immediately
-
-From then on, updating the live site = changing the files in the GitHub repo; the VM pulls
-and applies them automatically every 10 minutes (only restarting if something changed).
-
-HTTPS note: the site is HTTP until you attach a domain name (~£1–10/yr) — then we add a free
-Let's Encrypt certificate via Caddy for full HTTPS. Not urgent for an internal tool, but
-recommended before long-term public use.
-
-**Option C — proper paid web hosting (a few pounds/month):**
-
-Any host that runs Node.js works (Render, Railway, a small VPS, etc.). Deploy the
-`SOSTools-Web` folder, set `PORT` if needed, and attach persistent storage for the `data`
-folder. The host provides the HTTPS certificate automatically.
-
-**Option C — free host with a database** — possible, but the JSON file store works best with
-Options A/B. Ask if you want a database-backed variant.
-
-## Security
-
-- Session cookies are httpOnly; passwords/PINs hashed with scrypt
-- Set `NODE_ENV=production` when deployed behind HTTPS so cookies are marked Secure
-- All privileged endpoints require an authenticated session; admin ones require the admin role
+- **Oracle Cloud / Ubuntu VPS + Systemd + Caddy/Nginx HTTPS**: Install Node.js LTS, copy app files (never commit `data/` or `.env`), bind behind Caddy/Nginx with HTTPS, and configure automatic backups of `data/`.
+- **Always-on shop PC / Tailscale**: Run `npm start` on a LAN workstation with Windows Firewall / Tailscale access control.
+- **Render + MongoDB Atlas**: Set `MONGODB_URI`, `INITIAL_SETUP_TOKEN`, and `FORCE_SECURE_COOKIES=1`.
